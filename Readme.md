@@ -4,6 +4,10 @@
 * f -- should be in fem corpus
 * c -- canonical, should be in nkrja
 
+**general issues**
+* to avoid bag in russpelling: take all -iя and replase with ""
+
+
 **issues: OZ**  
 * 1839 - T. 4 -- no OCR  
 

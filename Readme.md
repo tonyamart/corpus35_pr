@@ -8,11 +8,12 @@
 * to avoid bag in russpelling: take all -iя and replase with ""
 
 
-**issues: OZ**  
+**issues:**  
 * missed id: 
 	* P_NA_1837 -- СО. 1837. Ч. 185. № 12. С. 397-400. Подпись: Головачов.
 	* P_NA_1837_188_22 -- СО. 1837. Ч. 188. № 21. С. 5-8.
 Я. Драгоманов. Баллада (С нем., из уланда)
+* P_1305 -- many repeats (refrain)
 
 
 * 1839 - T. 4 -- no OCR  

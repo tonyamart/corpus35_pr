@@ -1,7 +1,7 @@
 import os
 import re
 from russpelling import *
-import pandas as pd
+#import pandas as pd
 
 try:
     folder = input('Write the folder name: ')

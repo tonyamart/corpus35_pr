@@ -5,16 +5,12 @@
 * c -- canonical, should be in nkrja
 
 **general issues**
-* to avoid bag in russpelling: take all -iя and replase with ""
+* to avoid bag in russpelling: take all -iя and replase with "iя * "
 
 
 **issues:**  
 
 *SO:*
-* missed id: 
-	* P_NA_1837 -- СО. 1837. Ч. 185. № 12. С. 397-400. Подпись: Головачов.
-	* P_NA_1837_188_22 -- СО. 1837. Ч. 188. № 21. С. 5-8.
-Я. Драгоманов. Баллада (С нем., из уланда)
 * P_1305, 1312 -- many repeats (refrain)
 * P_1338 -- Покрывало Менцова -- перепечатано в СО
 

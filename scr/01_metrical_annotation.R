@@ -41,7 +41,7 @@ to_binary <- function(df,document="doc_id",text="acc_text") {
 
 #### stanza feet / rhytm annotation ####
 
-# dat_lables <- read.csv("data/temp_stanza_accent_meters.csv")
+dat_lables <- read.csv("data/temp_stanza_accent_meters.csv")
 glimpse(dat_lables)
 
 st_stresses <- to_binary(dat_lables, document = "id_st", text = "text")
@@ -54,7 +54,6 @@ st_stresses <- st_stresses %>%
          )
 
 glimpse(st_stresses)
-
 
 
 st_stresses <- st_stresses %>% 
@@ -112,9 +111,18 @@ st_stresses %>%
 # test_all <- test_all %>% 
 #   filter(text != "")
 
+meters_all <- read.csv("data/all_stanza_labled.csv") %>% select(-X, -Unnamed..0)
+glimpse(meters_all)
+
 # basic calculation on N poems in each meter
 # baseline is 55% of a poem in is one meter
-poems_meters <- test_all %>% 
+poems_meters <- meters_all %>% 
+  mutate(meter = recode(meter,
+                        "iambos" = "iamb",
+                        "choreios" = "trochee", 
+                        "amphibrachys" = "amphibrach",
+                        "anapaistos" = "anapaest", 
+                        "daktylos" = "dactyl")) %>% 
   filter(!is.na(meter)) %>% 
   group_by(id, meter) %>% 
   count() %>% # this count shows that some poems (e.g. P_1001) might have 1 stanza as dolnik3 and 6 as trochee
@@ -129,7 +137,7 @@ poems_meters <- test_all %>%
   ungroup() 
 
 poems_meters
-length(unique(poems_meters$id)) # 1319 poems roughly covered with a meter lable
+length(unique(poems_meters$id)) # 1324 poems roughly covered with a meter lable
 
 # general meter distribution in the corpus
 poems_meters %>% 
@@ -155,7 +163,7 @@ feet_reg <- st_stresses %>%
             n_syl = n_syl, 
             n_lines = n,
             perc_feet = n/sum(n)) %>%
-  filter(perc_feet > 0.75) %>% 
+  filter(perc_feet > 0.7) %>% 
   top_n(1, perc_feet) %>% 
   ungroup()
 
@@ -194,6 +202,6 @@ metrical_data %>%
 metrical_data_fin <- metrical_data %>% 
   select(id, meter, feet, perc_meter, perc_feet)
 
-write.csv(metrical_data_fin, file = "data/metrical_annotation_monometers.csv")
+write.csv(metrical_data_fin, file = "data/metrical_annotation_monometers_70.csv")
 
 

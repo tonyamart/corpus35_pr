@@ -1,9 +1,10 @@
 library(tidyverse)
 
-# save:
-# load('data/corpus_periodicals.Rda)
-
 setwd("/Users/tonya/Documents/thesis1830s/corpus35_pr/")
+
+# save:
+load('data/corpus_periodicals_nolables.Rda')
+
 
 #### Corpus compilation from folder (raw files) #####
 
@@ -135,3 +136,49 @@ dat_lables <- left_join(dat_stanza, meters, by = "id_st")
 glimpse(dat_lables)
 
 write.csv(dat_lables, file = "temp_stanza_accent_meters.csv")
+
+#### data for lemmatization ####
+load("data/corpus_periodicals_nolables.Rda")
+
+head(dat)
+
+dat <- dat %>% 
+  separate_rows(text, sep = "\n") %>% 
+  #remove <>
+  mutate(text = str_remove_all(text, "<.*?>")) %>% 
+  # remove empty lines
+  filter(text != "" | str_detect(text, "^[[:punct:]]+$")) %>% 
+  group_by(id) %>% 
+  mutate(text = paste0(text, collapse = "\n")) %>% 
+  distinct() %>% 
+  ungroup()
+
+head(dat)
+
+write.csv(dat, file = "data/id_text_lemm.csv")
+
+
+#### nkrja preparation ####
+
+load("data/19th_corpus_sampled.rda")
+glimpse(ru19_fin)
+
+unique(ru19_fin$meter_gr)
+
+nkrja19 <- ru19_fin %>% 
+  mutate(text_raw = "",
+         meter_gr = recode(meter_gr, 
+                           "Х" = "trochee",
+                           "Я" = "iamb", 
+                           "Аф" = "amphibrach",
+                           "Ан" = "anapaest", 
+                           "Д" = "dactyl"),
+         feet_gr = recode(feet_gr, "В" = "free"),
+         formula = paste0(meter_gr, "_", feet_gr),
+         id = paste0("N_", index)) %>% 
+  select(id, text_raw, text_lemm, year, formula, meter_gr, feet_gr, verses) %>% 
+  rename("meter" = "meter_gr",
+         "feet" = "feet_gr",
+         "n_lines" = "verses")
+
+#write.csv(nkrja19, file = "data/02_01_nkrjalem.csv")

@@ -45,6 +45,13 @@ top_meters <- meter_counts %>%
   filter(n > 1) %>% 
   select(-n)
 
+n_texts_corpus <- lda_metadata %>% 
+  mutate(year_span = floor(as.numeric(year)/5)*5) %>% 
+  rename("meter" = "formula") %>% 
+  filter(year_span == 1835 & meter %in% top_meters$meter) %>% 
+  group_by(corpus, meter) %>% 
+  count(sort = T)
+
 glimpse(gamma)
 gamma <- gamma %>% 
   rename("meter" = "formula")
@@ -186,18 +193,21 @@ edgelist_only35 %>%
 
 n_connections("N", "iamb--5")
 
+n_texts_corpus
+
 iamb4 <- network_gr(net35, c("iamb--4"), wes_palette("Darjeeling1")[2], 
-                    "Iamb-4:         N = 127         P = 348")
+                    "Iamb-4\nNumber of texts: National corpus = 276      Periodicals 1835-1840: 465\nNumber of connetions: N = 127       P = 348")
 trochee4 <- network_gr(net35, c("trochee--4"), wes_palette("Darjeeling1")[1], 
-                       "Trochee-4:         N = 63         P = 89")
+                       "Trochee-4\nNumber of texts: National corpus = 185      Periodicals 1835-1840: 227\nNumber of connetions:         N = 63         P = 89")
 iamb6 <- network_gr(net35, c("iamb--6"), wes_palette("Darjeeling1")[4], 
-                    "Iamb-6:         N = 6         P = 27")
+                    "Iamb-6\nNumber of texts: National corpus = 73      Periodicals 1835-1840: 93\nNumber of connetions:         N = 6         P = 27")
 iamb5 <- network_gr(net35, c("iamb--5"), wes_palette("Darjeeling1")[3], 
-                    "Iamb-5:         N = 5         P = 17")
+                    "Iamb-5\nNumber of texts: National corpus = 87      Periodicals 1835-1840: 89\nNumber of connetions:         N = 5         P = 17")
 
 trochee4 + iamb4 + iamb5 + iamb6 + plot_layout(nrow = 4)
 
 ggsave(file = "plots/02_networks_comp.png", plot = last_plot(), height = 10, width = 7, bg = "white")
+
 
 #### net w/o fn ####
 ggraph(net35, layout = "stress") +
@@ -223,3 +233,56 @@ ggraph(net35, layout = "stress") +
 
 
 
+
+
+#### barplot for n of connections ####
+
+links
+links1835 <- links %>% 
+  filter(slice == 1835 & meter %in% c("iamb--4", "iamb--6", "iamb--5", "trochee--4"))
+
+n_texts_corpus 
+
+# same counts as on networks (check)
+links1835 %>% 
+  group_by(meter, corpus) %>% 
+  count()
+
+links_n <- links1835 %>% 
+  filter(corpus == "N") %>% 
+  mutate(connection = paste0(meter, "__", edge_id)) %>% 
+  select(connection) 
+
+links_p <- links1835 %>% 
+  filter(corpus == "P") %>% 
+  mutate(connection = paste0(meter, "__", edge_id)) %>% 
+  select(connection) 
+  
+t <- intersect(links_n$connection, links_p$connection)
+
+head(t)
+length(t)
+
+
+links1835 %>% 
+  mutate(connection = paste0(meter, "__", edge_id)) %>% 
+  mutate(corpus_new = ifelse(connection %in% t, "Both", corpus)) %>% 
+  mutate(corpus_new = recode(corpus_new, 
+                           "N" = "National corpus", 
+                           "P" = "Periodicals")) %>% 
+  group_by(corpus_new, meter) %>% 
+  count() %>% 
+  ggplot(aes(x = meter,
+           y = n,
+           group = corpus_new,
+           fill = corpus_new)) +
+  geom_col(position = "dodge") +
+  labs(x = "Meter",
+       y = "Number of connections", 
+       fill = "Corpus") + 
+  scale_fill_manual(values = c(wes_palette("Rushmore1")[3:5])) + 
+  theme(axis.text = element_text(size = 11), 
+        legend.position = "bottom")
+
+ggsave(file = "plots/02_connections_diff.png", plot = last_plot(),
+       height = 6, width = 8, bg = "white")

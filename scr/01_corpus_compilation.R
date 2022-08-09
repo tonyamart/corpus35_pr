@@ -182,3 +182,11 @@ nkrja19 <- ru19_fin %>%
          "n_lines" = "verses")
 
 #write.csv(nkrja19, file = "data/02_01_nkrjalem.csv")
+
+load("data/19th_corpus_sampled.rda")
+glimpse(ru19_fin)
+nkrja_authors <- ru19_fin %>% 
+  select(index, author) %>% 
+  mutate(index = paste0("N--", index))
+
+write.csv(nkrja_authors, file = "data/02_01_nkrja_authors.csv")

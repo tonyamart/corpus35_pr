@@ -1,0 +1,225 @@
+library(tidyverse)
+library(tidytext)
+library(topicmodels)
+
+library(igraph)
+library(sna)
+library(ggraph)
+
+library(wesanderson)
+library(patchwork)
+theme_set(theme_minimal())
+
+setwd("Documents/thesis1830s/corpus35_pr/")
+
+#### load data ####
+load("data/02_01_75k_lda_output.Rda")
+
+glimpse(beta)
+glimpse(gamma)
+
+source("scr/02_02_fn_calculate_edges.R")
+
+lda_metadata <- corpus35lda  %>% 
+  tidy(matrix = "gamma")  %>% 
+  select(document)  %>% 
+  unique() %>% 
+  separate(document, into = c("index", "year", "first_line", "formula"), sep = "_") %>% 
+  mutate(corpus = str_replace_all(index, "^(\\w)--(\\d+.*)", "\\1"))
+
+head(lda_metadata)
+
+meter_counts <- lda_metadata %>% 
+  mutate(year_span = floor(as.numeric(year)/5)*5) %>% 
+  rename("meter" = "formula") %>% 
+  filter(!str_detect(meter, "other")) %>% 
+  group_by(year_span, meter) %>% 
+  count(sort = T) %>% 
+  ungroup() %>% 
+  filter(n > 10 & year_span != 1850)
+
+head(meter_counts)
+
+top_meters <- meter_counts %>% 
+  count(meter) %>% 
+  filter(n > 1) %>% 
+  select(-n)
+
+glimpse(gamma)
+gamma <- gamma %>% 
+  rename("meter" = "formula")
+
+#### Calculate edges ####
+
+# topic labels fn (AS)
+get_topic_labels = function(x, n_labels = 10) {
+  
+  library(tidyverse)
+  library(tidytext)
+  library(topicmodels)
+  
+  #takes beta-matrix as an input
+  top_terms = x %>%
+    group_by(topic) %>%
+    top_n(20, beta) %>%
+    ungroup() %>%
+    arrange(topic, -beta)
+  
+  topic_labels = top_terms %>%
+    group_by(topic) %>%
+    top_n(n_labels, beta) %>%
+    summarise(label=paste(term, collapse=" ")) %>%
+    mutate(label = paste(topic, label, sep="_"))
+  
+  return(topic_labels)
+}
+
+topic_labels <- get_topic_labels(beta, n_labels = 5)
+
+edges_raw <- compute_edges(gamma,
+                           gamma_thresh = 0.05,
+                           time_slice = 5)
+
+head(edges_raw)
+
+edges_raw %>% 
+  filter(corpus == "P")
+
+## links
+
+links <- edges_raw %>% 
+  filter(meter %in% top_meters$meter) %>% 
+  group_by(slice, meter, corpus) %>% 
+  mutate(meter_conunt = max(row_number())) %>% 
+  count(slice, meter, edge_id, source, target, sort = T)  %>% 
+  filter(n > 2) %>% 
+  ungroup() # filter out links based of frequency
+
+links %>% 
+  filter(corpus == "P")
+
+edgelist <- links %>% 
+  select(source, target, n, meter, slice, corpus) %>% 
+  mutate(width = n/10) %>% 
+  filter(slice != 1850)
+
+nodelist <- tibble(source = unique(c(links$target, links$source))) %>% 
+  mutate(idn = as.numeric(str_replace(source, "^([0-9].*?)_.*", "\\1"))) 
+
+
+head(edgelist)
+head(nodelist)
+nrow(nodelist)
+
+
+# igraph netowork
+net <- graph_from_data_frame(d=edgelist, vertices=nodelist, directed=F)
+net
+#### some measures ####
+betw = igraph::betweenness(net)
+head(betw)
+
+# named vector to tibble
+str(betw)
+
+betw_tib <- as_tibble(as.list(betw)) %>% 
+  mutate(x = "x") %>% 
+  pivot_longer(!x, names_to = "source", values_to = "betw") %>% 
+  select(-x)
+head(betw_tib)
+
+nodelist <- inner_join(nodelist, betw_tib, by = "source")
+nrow(nodelist)
+
+deg <- igraph::degree(net, mode="all")
+head(deg)
+
+degree_tib <- as_tibble(as.list(deg)) %>% 
+  mutate(x = "x") %>% 
+  pivot_longer(!x, names_to = "source", values_to = "degree") %>% 
+  select(-x)
+nodelist <- inner_join(nodelist, degree_tib, by = "source")
+
+head(nodelist)
+head(edgelist)
+
+edgelist1835 <- edgelist %>% 
+  filter(slice %in% c(1830, 1835, 1840))
+
+edgelist_only35 <- edgelist %>% 
+  filter(slice %in% c(1835))
+
+net35 <- graph_from_data_frame(d=edgelist_only35, vertices=nodelist, directed=F)
+net <- graph_from_data_frame(d=edgelist1835, vertices=nodelist, directed=F)
+
+#### ggraph ####
+
+top_meters
+
+network_gr <- function(network, meter_value, palette_v, subtitle) {
+  ggraph(network, layout = "stress") +
+    geom_edge_fan(aes(color=meter,
+                      filter = meter %in% meter_value,
+                      width = width, 
+                      alpha = 0.4)) +
+    geom_node_point() +
+    geom_node_text(aes(label=idn), 
+                   hjust=0.1, 
+                   vjust=-0.4, 
+                   size=3, 
+                   color="grey50") +
+    theme_void() + 
+    theme(strip.text = element_text(size = 12)) +
+    facet_wrap(~corpus, 
+               scales="free", 
+               drop=T,
+               ncol = 4) + 
+    scale_edge_color_manual(values = palette_v) + 
+    theme(legend.position = "None") + 
+    labs(subtitle = subtitle)
+}
+
+edgelist_only35 %>% 
+  filter(corpus == "N" & meter == "iamb--5") %>% 
+  distinct(source, target) %>% 
+  nrow()
+
+n_connections("N", "iamb--5")
+
+iamb4 <- network_gr(net35, c("iamb--4"), wes_palette("Darjeeling1")[2], 
+                    "Iamb-4:         N = 127         P = 348")
+trochee4 <- network_gr(net35, c("trochee--4"), wes_palette("Darjeeling1")[1], 
+                       "Trochee-4:         N = 63         P = 89")
+iamb6 <- network_gr(net35, c("iamb--6"), wes_palette("Darjeeling1")[4], 
+                    "Iamb-6:         N = 6         P = 27")
+iamb5 <- network_gr(net35, c("iamb--5"), wes_palette("Darjeeling1")[3], 
+                    "Iamb-5:         N = 5         P = 17")
+
+trochee4 + iamb4 + iamb5 + iamb6 + plot_layout(nrow = 4)
+
+ggsave(file = "plots/02_networks_comp.png", plot = last_plot(), height = 10, width = 7, bg = "white")
+
+#### net w/o fn ####
+ggraph(net35, layout = "stress") +
+  geom_edge_fan(aes(color=meter,
+                    filter = meter == "iamb--4",
+                    width = width, 
+                    alpha = 0.4)) +
+  geom_node_point() +
+  geom_node_text(aes(label=idn), 
+                 hjust=0.1, 
+                 vjust=-0.4, 
+                 size=3, 
+                 color="grey50") +
+  theme_void() + 
+  theme(strip.text = element_text(size = 12)) +
+  facet_wrap(~corpus, 
+             scales="free", 
+             drop=T,
+             ncol = 4) + 
+  scale_edge_color_manual(values = wes_palette("Darjeeling1")[2]) + 
+  theme(legend.position = "None") + 
+  labs(subtitle = "Iamb-4")
+
+
+

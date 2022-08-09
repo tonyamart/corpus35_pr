@@ -260,7 +260,15 @@ ggsave(filename = "plots/02_meters_distribution.png", plot = last_plot(),
        height = 6, width = 8, dpi = 300, bg = "white")
 
   
-  
+# quick gamma test
+gamma %>% 
+  mutate(year_span = floor(as.numeric(year)/5)*5) %>% 
+  group_by(year_span, topic) %>% 
+  summarise(gamma_avg = mean(gamma)) %>% 
+  filter(topic %in% c(1,2,3,4,5, 10)) %>% 
+  ggplot(aes(x = year_span, y = gamma_avg, fill = as.factor(topic))) + geom_col()
+
+
 
   
   

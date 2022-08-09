@@ -228,30 +228,36 @@ gamma_w_meta %>%
        fill = "Корпус") + 
   theme(legend.position = "None")
 
-ggsave(file = "plots/02_authors_intersection.png", plot = last_plot(),
-       height = 7, width = 6, dpi = 300, bg = "white")
+# ggsave(file = "plots/02_authors_intersection.png", plot = last_plot(),
+#        height = 7, width = 6, dpi = 300, bg = "white")
 
 #### intersection gamma data ####
 
-save(gamma_w_meta, authors_intersection, file = "data/02_03_projection.Rda")
+# save(gamma_w_meta, authors_intersection, file = "data/02_03_projection.Rda")
+
+# load("data/02_03_projection.Rda")
 
 gamma_proj <- gamma_w_meta %>%
   filter(author %in% authors_intersection) %>%
-  mutate(author_corpus = paste0(corpus, "_", author)) %>% 
-  group_by(author_corpus, topic) %>% 
+  mutate(id = paste0(corpus, "_", author)) %>% 
+  group_by(id, topic) %>% 
   summarise(gamma_avg = mean(gamma)) %>% 
   ungroup()
 
 
 meta_proj <- gamma_w_meta %>%
   filter(author %in% authors_intersection) %>%
-  mutate(author_corpus = paste0(corpus, "_", author))
+  mutate(id = paste0(corpus, "_", author)) %>% 
+  group_by(id, corpus, author) %>% 
+  count() %>% 
+  select(-n) %>% 
+  distinct()
 
-ids <- gamma_proj$author_corpus %>% unique()
+ids <- gamma_proj$id %>% unique()
 
 wide <- gamma_proj %>%
   pivot_wider(names_from = topic, values_from = gamma_avg) %>% 
-  select(-author_corpus)
+  select(-id)
 
 # matrix
 distances <- wide %>%
@@ -271,12 +277,40 @@ mds$points
 #### Projection plot ####
 projection_df <- tibble(x = mds$points[,1],
        y = mds$points[,2],
-       author_corpus = rownames(mds$points)) %>% 
-  left_join(meta_proj, by = "author_corpus")
+       id = rownames(mds$points)) %>% 
+  left_join(meta_proj, by = "id")
+
+glimpse(projection_df)
+
+authors_intersection
+
+benedictovshina <- c("Якубович_ЛА", "Ершов_ПП", 
+                     "Тимофеев_АВ", "Бенедиктов_ВГ", "Кукольник_НВ", "Губер_ЭИ", 
+                     "Бахтурин_КА")
+
+pushkin <- c("Козлов_ИИ", "Гребенка_ЕП", "Теплова_НС", "Подолинский_АИ",
+             "Струйский_ДЮ", "Ознобишин_ДП")
+
+others <- c("Кольцов_АВ", "Некрасов_НА", "Полежаев_АИ", 
+            "Шевырев_СП", "Милькеев_ЕЛ", "Огарев_НП", "Федоров_БМ")
+
+canon <- c("Баратынский_ЕА", "Жуковский_ВА")
 
 projection_df %>% 
-  ggplot(aes(x, y, color = corpus)) + 
-  geom_point() + 
-  # geom_label_repel(aes(label = ))
+  filter(str_detect(author, "Розен"))
 
 
+projection_df %>% 
+  filter(author %in% pushkin) %>% 
+  ggplot(aes(x, y, color = author)) + 
+  geom_point(data = projection_df, aes(x, y), color = wes_palette("Rushmore1")[4]) + 
+  geom_label_repel(aes(label = author),
+                  box.padding = 1, 
+                  max.overlaps = Inf,
+                  ) + 
+  scale_color_manual(values = c(wes_palette("Darjeeling1"), wes_palette("Darjeeling2")[2:5])) + 
+  labs(x = "", y = "", color = "Author") + 
+  theme(legend.position = "None")
+
+ggsave(file = "plots/02_3_proj_pushkinsk.png", plot = last_plot(), 
+       height = 8, width = 10, dpi = 300, bg = "white")

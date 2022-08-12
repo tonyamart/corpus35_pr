@@ -8,13 +8,6 @@ library(wesanderson)
 
 setwd("Documents/thesis1830s/corpus35_pr/")
 
-# plan:
-# take corpus35 from 02_02, get quick elegies & ballads extraction
-# count
-# lable
-# attach non-labled data (everything from per1835)
-# do shit
-
 ##########################
 #### data preparation ####
 ##########################
@@ -43,7 +36,7 @@ ballads_df <- tibble(
 )
   
 glimpse(ballads_df)  
-write.csv(ballads_df, file = "/Users/tonya/Downloads/ballads_df.csv")  
+#write.csv(ballads_df, file = "/Users/tonya/Downloads/ballads_df.csv")  
 
 ballads <- read.csv("/Users/tonya/Downloads/ballads_df.csv")
 str(ballads)
@@ -175,6 +168,7 @@ glimpse(elegies_1835) # 22 elegies
 songs_1835 <- songs_1835 %>% select(-first_line_test)
 glimpse(songs_1835)
 
+#### nkrja data ####
 nkrja_nolable <- read.csv("data/02_01_nkrjalem.csv")
 glimpse(nkrja_nolable)
 nkrja_nolable <- nkrja_nolable %>% 
@@ -228,7 +222,7 @@ all_data$type %>% table()
 all_data$full_type %>% table()
 
 test_corp <- all_data %>% 
-  filter(type %in% c("RP", "NL"))
+  filter(type %in% c("EL", "NL"))
 
 test_corp$type %>% table()
 test_corp$full_type %>% table()
@@ -238,13 +232,33 @@ test_size = n - train_size
 train_size
 test_size
 
+#### compilation of test corpus for elegies 
+glimpse(test_corp)
+glimpse(el_corpus)
 
-test_corp <- test_corp %>% 
-  filter(full_type != "NL_T")
+to_add <- 100-22
+elegies30 <- el_corpus %>% 
+  filter(year > 1828) %>% 
+  sample_n(78) %>% 
+  mutate(id = paste0("EL_P_add_", id), 
+         id_test = paste0("EL_", "id"),
+         type = "EL") %>% 
+  select(id, type, text_lem, id_test)
 
+glimpse(elegies_1835)
 
+elegies_1835_full <- rbind(elegies30 %>% select(-id_test), elegies_1835)
+
+glimpse(elegies)
+elegies <- elegies %>% 
+  anti_join(elegies30 %>% mutate(id = id_test), by = 'id')
+
+all_elegies <- rbind(elegies, elegies_1835_full) %>% mutate(type = "EL")
+
+test_corp <- rbind(all_elegies, corpus35_nolable, nkrja_nolable)
 
 table(test_corp$type)
+unique(test_corp$id)
 glimpse(test_corp)
 
 #table(iambic$type)
@@ -267,7 +281,7 @@ head(ranks)
 # frequencies
 freqs_new <- test_corp %>%
   unnest_tokens(input = text_lem, output = word, token = "words") %>% 
-  right_join(ranks, by="word") %>% # we are leaving 4000 MFWs that were cut-off earlier 
+  right_join(ranks, by="word") %>% # leaving 4000 MFWs that were cut-off earlier 
   count(id, word) %>% # count words within each text
   group_by(id) %>%
   mutate(n = n/sum(n)) %>% 
@@ -323,47 +337,60 @@ n
 train_size = round(n*0.75)
 test_size = n - train_size
 
-# ballads: BL_T = 154, BL_P = 56
-# russongs: RP_T = 245, RP_P = 82
+
 
 train_size
 test_size
 
-class_test <- class_test %>% 
+##### genre VS all tests ####
+# train_set <- class_test %>% 
+#   group_by(text_genre) %>% 
+#   sample_n(train_size) %>% 
+#   ungroup()
+# 
+# test_set <- class_test %>%
+#   anti_join(train_set, by="id") %>%
+#   group_by(text_genre) %>%
+#   sample_n(test_size) %>%
+#   ungroup()
+
+
+
+##### 1835-1840 tests #####
+
+# ballads: BL_T = 154, BL_P = 56
+# russongs: RP_T = 245, RP_P = 82
+
+class_test <- class_test %>%
   mutate(test_train = ifelse(str_detect(id, "_P_"), "test", "train"))
 
-
-
-train_set <- class_test %>% 
-  filter(test_train == "train") %>% 
-  group_by(text_genre) %>% 
+train_set <- class_test %>%
+  filter(test_train == "train") %>%
+  group_by(text_genre) %>%
   #sample_n(train_size - 4) %>% # -4 for ballads
-  sample_n(249) %>% # for russongs
-  #sabmple_n(train_size) %>% 
+  #sample_n(249) %>% # for russongs
+  sample_n(train_size) %>%
   ungroup()
 
-test_set <- class_test %>% 
-  filter(test_train == "test") %>% 
-  group_by(text_genre) %>% 
-  sample_n(77) %>% # for russongs
-  #sample_n(test_size) %>% 
+test_set <- class_test %>%
+  filter(test_train == "test") %>%
+  group_by(text_genre) %>%
+  #sample_n(77) %>% # for russongs
+  #sample_n(test_size) %>% # for ballads 
+  sample_n(100) %>% # for broken elegies
   ungroup()
 
-# train_set <- class_test %>%
-#   group_by(text_genre) %>%
-#   sample_n(train_size) %>% # sample n times per each group (genre) 
-#   ungroup() 
-# 
-# test_set <- class_test %>% 
-#   anti_join(train_set, by="text_id") %>% # 1. remove already sampled training set from the data
-#   group_by(text_genre) %>% 
-#   sample_n(test_size) %>% # 2. sample again the test per each genre
-#   ungroup() 
+test_set <- class_test %>%
+  anti_join(train_set, by="id") %>%
+  group_by(text_genre) %>%
+  sample_n(test_size) %>%
+  ungroup()
 
 train_set[1:5, 1:5]
 test_set[1:5, 1:5]
 
 svm_model <-svm(as.factor(text_genre)~.,  
+                #data = train_set %>% select(-c(id, text_id)), 
                 data = train_set %>% select(-c(id, text_id, test_train)), 
                 method = "C-classification", 
                 kernel = "linear", 
@@ -380,7 +407,11 @@ misclass <- tibble(id = test_set$id,
 
 misclass %>% 
   mutate(misclassed = ifelse(true_genre != prediction, 1, 0)) %>% 
-  filter(misclassed == 1)
+  filter(misclassed == 1) %>% 
+  filter(!str_detect(id, "EL_P_add_")) %>% 
+  count()
+
+
 
 w_genres = t(svm_model$coefs) %*% svm_model$SV
 

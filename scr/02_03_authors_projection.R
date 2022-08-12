@@ -49,6 +49,7 @@ load("data/02_01_75k_lda_output.Rda")
 
 
 texts <- read.csv("data/01_id_text_lemm.csv")
+per_meta <- read.delim("meta/database_poems_published_in_journals.tsv")
 glimpse(texts)
 
 dat <- left_join(texts, per_meta %>% mutate(id = text_ID), by = "id") %>% select(-X, -Unnamed..0)
@@ -127,18 +128,21 @@ ggsave(filename = "plots/02_per_corpus_stats.png", plot = last_plot(),
 
 
 #### tokens / types count ####
-glimpse(dat)
+sampled <- read.csv("data/02_01_per_sampled_labled.csv")
 
-corpus_tokens <- dat %>% 
+corpus_tokens <- sampled %>% 
   unnest_tokens(input = text_lemm, output = word, token = "words") %>% 
   group_by(word) %>% 
   count(sort = T)
 
-# 16 182 types
-# 251 207 words
+# 13 876 types
+# 180 207 words
 corpus_tokens %>% 
   ungroup() %>% 
   summarise(sum(n))
+
+
+
 
 ####### projection data ######
 # periodicals metadata
@@ -175,7 +179,7 @@ glimpse(meta_authors)
 glimpse(gamma)
 gamma_w_meta <- gamma %>% 
   mutate(year_span = floor(as.numeric(year)/5)*5) %>% 
-  filter(year_span > 1830 & year_span < 1845) %>% 
+  filter(year_span > 1824 & year_span < 1846) %>% 
   mutate(index_sample = index,
          index = str_replace_all(index_sample, "^(\\w--\\d+)(-.*)", "\\1")) %>% 
   left_join(meta_authors, by = "index")
@@ -189,7 +193,7 @@ gamma_w_meta %>%
   count() # texts: N = 2326, P = 1743
 
 gamma_w_meta %>% 
-  filter(corpus == "P") %>% 
+  filter(corpus == "N") %>% 
   group_by(index, author) %>% 
   count() %>% 
   select(-n) %>% 
@@ -233,9 +237,16 @@ gamma_w_meta %>%
 
 #### intersection gamma data ####
 
-# save(gamma_w_meta, authors_intersection, file = "data/02_03_projection.Rda")
+#save(gamma_w_meta, authors_intersection, file = "data/02_03_projection.Rda")
 
-# load("data/02_03_projection.Rda")
+load("data/02_03_projection.Rda")
+
+n_texts <- gamma_w_meta %>% 
+  filter(author %in% authors_intersection) %>%
+  mutate(id = paste0(corpus, "_", author)) %>% 
+  group_by(id) %>% 
+  count() %>% 
+  mutate(n_t = n/75)
 
 gamma_proj <- gamma_w_meta %>%
   filter(author %in% authors_intersection) %>%
@@ -278,18 +289,19 @@ mds$points
 projection_df <- tibble(x = mds$points[,1],
        y = mds$points[,2],
        id = rownames(mds$points)) %>% 
-  left_join(meta_proj, by = "id")
+  left_join(meta_proj, by = "id") %>% 
+  filter(id != "P_Пушкин_АС")
 
 glimpse(projection_df)
 
 authors_intersection
 
 benedictovshina <- c("Якубович_ЛА", "Ершов_ПП", 
-                     "Тимофеев_АВ", "Бенедиктов_ВГ", "Кукольник_НВ", "Губер_ЭИ", 
-                     "Бахтурин_КА")
+                     "Тимофеев_АВ", "Бенедиктов_ВГ", "Кукольник_НВ", "Пушкин_АС")
 
-pushkin <- c("Козлов_ИИ", "Гребенка_ЕП", "Теплова_НС", "Подолинский_АИ",
-             "Струйский_ДЮ", "Ознобишин_ДП")
+pushkin <- c("Козлов_ИИ", "Теплова_НС", "Подолинский_АИ",
+             "Струйский_ДЮ", "Ознобишин_ДП", "Губер_ЭИ", 
+             "Бахтурин_КА", "Пушкин_АС")
 
 others <- c("Кольцов_АВ", "Некрасов_НА", "Полежаев_АИ", 
             "Шевырев_СП", "Милькеев_ЕЛ", "Огарев_НП", "Федоров_БМ")
@@ -304,8 +316,8 @@ projection_df %>%
   filter(author %in% pushkin) %>% 
   ggplot(aes(x, y, color = author)) + 
   geom_point(data = projection_df, aes(x, y), color = wes_palette("Rushmore1")[4]) + 
-  geom_label_repel(aes(label = author),
-                  box.padding = 1, 
+  geom_label_repel(aes(label = id),
+                  box.padding = 1.2, 
                   max.overlaps = Inf,
                   ) + 
   scale_color_manual(values = c(wes_palette("Darjeeling1"), wes_palette("Darjeeling2")[2:5])) + 
@@ -314,3 +326,5 @@ projection_df %>%
 
 ggsave(file = "plots/02_3_proj_pushkinsk.png", plot = last_plot(), 
        height = 8, width = 10, dpi = 300, bg = "white")
+
+

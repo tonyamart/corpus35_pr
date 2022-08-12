@@ -270,9 +270,25 @@ gamma %>%
 
 
 
+#### meters percentages count ####
   
-  
-
+lda_metadata %>% 
+  mutate(decade = floor(as.numeric(year)/5)*5) %>%  # 15,152 rows 
+  filter(decade > 1829 & decade < 1845) %>% 
+  filter(!str_detect(formula, "other|dolnik|регулярная")) %>% 
+  mutate(decade = ifelse(corpus == "P", "periodicals_1835", decade)) %>% 
+  filter(corpus == "P") %>% 
+  #filter(corpus != "P") %>% 
+  #group_by(decade, formula) %>% 
+  group_by(formula) %>% 
+  count(sort = T) %>% 
+  ungroup() %>% 
+  filter(n > 10 & formula != "NA") %>% 
+  #filter(decade == 1830) %>% 
+  summarise(
+            formula = formula,
+            n = n,
+            perc = n/sum(n)) 
   
 
   

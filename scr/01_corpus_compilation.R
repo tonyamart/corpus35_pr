@@ -190,3 +190,25 @@ nkrja_authors <- ru19_fin %>%
   mutate(index = paste0("N--", index))
 
 write.csv(nkrja_authors, file = "data/02_01_nkrja_authors.csv")
+
+#### Line distribution in nkrja per author
+nkrja <- read.csv("data/02_01_nkrjalem.csv")
+
+nkrja_authors <- read.csv("data/02_01_nkrja_authors.csv") %>% select(-X)
+glimpse(nkrja_authors)
+
+glimpse(nkrja)
+test <- nkrja %>% 
+  mutate(index = str_replace_all(id, "_", "--")) %>% 
+  left_join(nkrja_authors, by = "index") %>% 
+  filter(year > 1829 & year < 1841) %>%
+  group_by(id) %>%
+  separate_rows(text_lemm, sep = "\n") %>%
+  filter(text_lemm != "") %>%
+  ungroup() %>% 
+  group_by(author) %>% 
+  count(sort = T)
+
+test
+median(test$n)
+mean(test$n)

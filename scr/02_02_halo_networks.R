@@ -48,7 +48,7 @@ top_meters <- meter_counts %>%
 n_texts_corpus <- lda_metadata %>% 
   mutate(year_span = floor(as.numeric(year)/5)*5) %>% 
   rename("meter" = "formula") %>% 
-  filter(year_span == 1835 & meter %in% top_meters$meter) %>% 
+  filter(year_span %in% c(1830, 1835) & meter %in% top_meters$meter) %>% 
   group_by(corpus, meter) %>% 
   count(sort = T)
 
@@ -150,6 +150,48 @@ nodelist <- inner_join(nodelist, degree_tib, by = "source")
 head(nodelist)
 head(edgelist)
 
+
+
+#  upd net
+net <- graph_from_data_frame(d=edgelist, vertices=nodelist, directed=F)
+
+######## networks all ####
+network_all <- function(network, meter_value, palette_v) {
+  ggraph(network, layout = "stress") +
+    geom_edge_fan(aes(color=meter,
+                      filter = meter %in% c(meter_value) & corpus == "N", #!!!! select only nkrja
+                      width = width, 
+                      alpha = 0.4)) +
+    geom_node_point(aes(alpha = degree)) +
+    geom_node_text(aes(label=idn), 
+                   hjust=0.1, 
+                   vjust=-0.4, 
+                   size=3, 
+                   color="grey50") +
+    theme_void() + 
+    theme(strip.text = element_text(size = 12)) +
+    facet_wrap(~slice, 
+               scales="free_x", 
+               drop=T,
+               ncol = 5) + 
+    scale_edge_color_manual(values = palette_v)
+}
+
+unique(edgelist$meter)
+
+i_free <- network_all(net, c("iamb--free"), wes_palette("Darjeeling1")[4])
+i4 <- network_all(net, c("iamb--4"), wes_palette("Darjeeling1")[2]) 
+tr4 <- network_all(net, c("trochee--4"), wes_palette("Darjeeling1")[1])
+i6 <- network_all(net, c("iamb--6"), wes_palette("Darjeeling1")[3])
+all_nkrja <- network_all(net, c("iamb--6", "iamb--4", "trochee--4"), c(wes_palette("Darjeeling1")[2], wes_palette("Darjeeling1")[3], wes_palette("Darjeeling1")[1]))
+
+ggsave("plots/02_networks_nkrja_all.png", plot = all_nkrja, 
+       width = 12, height = 10, dpi = 300, bg = "white")
+
+############################
+#### networks 1835 #########
+############################
+
 edgelist1835 <- edgelist %>% 
   filter(slice %in% c(1830, 1835, 1840))
 
@@ -159,6 +201,7 @@ edgelist_only35 <- edgelist %>%
 net35 <- graph_from_data_frame(d=edgelist_only35, vertices=nodelist, directed=F)
 net <- graph_from_data_frame(d=edgelist1835, vertices=nodelist, directed=F)
 
+
 #### ggraph ####
 
 top_meters
@@ -166,7 +209,8 @@ top_meters
 network_gr <- function(network, meter_value, palette_v, subtitle) {
   ggraph(network, layout = "stress") +
     geom_edge_fan(aes(color=meter,
-                      filter = meter %in% meter_value,
+                      #### change for groupings!!!
+                      filter = meter %in% meter_value & slice %in% c(1835), # this
                       width = width, 
                       alpha = 0.4)) +
     geom_node_point() +
@@ -186,27 +230,43 @@ network_gr <- function(network, meter_value, palette_v, subtitle) {
     labs(subtitle = subtitle)
 }
 
-edgelist_only35 %>% 
-  filter(corpus == "N" & meter == "iamb--5") %>% 
-  distinct(source, target) %>% 
-  nrow()
-
-n_connections("N", "iamb--5")
 
 n_texts_corpus
 
-iamb4 <- network_gr(net35, c("iamb--4"), wes_palette("Darjeeling1")[2], 
+edgelist %>% 
+  filter(corpus == "N" & meter == "iamb--5" & slice %in% c(1830, 1835)) %>% 
+  distinct(source, target) %>% 
+  nrow()
+
+#titles for 1830-1835
+# iamb4 <- network_gr(net, c("iamb--4"), wes_palette("Darjeeling1")[2], 
+#                     "Iamb-4\nNumber of texts: National corpus = 778      Periodicals 1835-1840: 465\nNumber of connetions: N = 447       P = 348")
+# trochee4 <- network_gr(net, c("trochee--4"), wes_palette("Darjeeling1")[1], 
+#                        "Trochee-4\nNumber of texts: National corpus = 358      Periodicals 1835-1840: 227\nNumber of connetions:         N = 91         P = 89")
+# iamb6 <- network_gr(net, c("iamb--6"), wes_palette("Darjeeling1")[4], 
+#                     "Iamb-6\nNumber of texts: National corpus = 164      Periodicals 1835-1840: 93\nNumber of connetions:         N = 18         P = 27")
+# iamb5 <- network_gr(net, c("iamb--5"), wes_palette("Darjeeling1")[3], 
+#                     "Iamb-5\nNumber of texts: National corpus = 242      Periodicals 1835-1840: 89\nNumber of connetions:         N = 48         P = 17")
+
+# titles for 1835 only
+iamb4 <- network_gr(net, c("iamb--4"), wes_palette("Darjeeling1")[2], 
                     "Iamb-4\nNumber of texts: National corpus = 276      Periodicals 1835-1840: 465\nNumber of connetions: N = 127       P = 348")
-trochee4 <- network_gr(net35, c("trochee--4"), wes_palette("Darjeeling1")[1], 
+trochee4 <- network_gr(net, c("trochee--4"), wes_palette("Darjeeling1")[1], 
                        "Trochee-4\nNumber of texts: National corpus = 185      Periodicals 1835-1840: 227\nNumber of connetions:         N = 63         P = 89")
-iamb6 <- network_gr(net35, c("iamb--6"), wes_palette("Darjeeling1")[4], 
-                    "Iamb-6\nNumber of texts: National corpus = 73      Periodicals 1835-1840: 93\nNumber of connetions:         N = 6         P = 27")
-iamb5 <- network_gr(net35, c("iamb--5"), wes_palette("Darjeeling1")[3], 
-                    "Iamb-5\nNumber of texts: National corpus = 87      Periodicals 1835-1840: 89\nNumber of connetions:         N = 5         P = 17")
+iamb6 <- network_gr(net, c("iamb--6"), wes_palette("Darjeeling1")[4], 
+                    "Iamb-6\nNumber of texts: National corpus = 87      Periodicals 1835-1840: 93\nNumber of connetions:         N = 5         P = 27")
+iamb5 <- network_gr(net, c("iamb--5"), wes_palette("Darjeeling1")[3], 
+                    "Iamb-5\nNumber of texts: National corpus = 73      Periodicals 1835-1840: 89\nNumber of connetions:         N = 6         P = 17")
 
 trochee4 + iamb4 + iamb5 + iamb6 + plot_layout(nrow = 4)
 
-ggsave(file = "plots/02_networks_comp.png", plot = last_plot(), height = 10, width = 7, bg = "white")
+ggsave(file = "plots/02_networks_comp_only35.png", plot = last_plot(), height = 10, width = 7, bg = "white")
+
+
+head(edgelist)
+tr <- edgelist %>% 
+  filter(corpus == "P" & meter == "trochee--4") %>% 
+  top_n(20, n)
 
 
 #### net w/o fn ####
@@ -239,7 +299,7 @@ ggraph(net35, layout = "stress") +
 
 links
 links1835 <- links %>% 
-  filter(slice == 1835 & meter %in% c("iamb--4", "iamb--6", "iamb--5", "trochee--4"))
+  filter(slice %in% c(1835) & meter %in% c("iamb--4", "iamb--6", "iamb--5", "trochee--4"))
 
 n_texts_corpus 
 
@@ -263,8 +323,8 @@ t <- intersect(links_n$connection, links_p$connection)
 head(t)
 length(t)
 
-
-links1835 %>% 
+# links1830_35 # variable for net 1830+1835
+links35_pl <- links1835 %>% 
   mutate(connection = paste0(meter, "__", edge_id)) %>% 
   mutate(corpus_new = ifelse(connection %in% t, "Both", corpus)) %>% 
   mutate(corpus_new = recode(corpus_new, 
@@ -278,11 +338,15 @@ links1835 %>%
            fill = corpus_new)) +
   geom_col(position = "dodge") +
   labs(x = "Meter",
-       y = "Number of connections", 
-       fill = "Corpus") + 
+       y = "", 
+       fill = "Corpus",
+       subtitle = "National corpus texts dated 1835-1840") + 
   scale_fill_manual(values = c(wes_palette("Rushmore1")[3:5])) + 
   theme(axis.text = element_text(size = 11), 
-        legend.position = "bottom")
+        legend.position = "None", 
+        plot.subtitle = element_text(hjust = 0.5))
 
-ggsave(file = "plots/02_connections_diff.png", plot = last_plot(),
-       height = 6, width = 8, bg = "white")
+links1830_35 + links35_pl
+
+ggsave(file = "plots/02_connections_diff_merged.png", plot = last_plot(),
+       height = 7, width = 10, bg = "white")

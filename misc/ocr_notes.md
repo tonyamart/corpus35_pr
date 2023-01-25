@@ -1,22 +1,41 @@
-### meta per 3
+### Collections
 
+Header:
+<id: 83>
+<year: 1835>
+<descr: Elegies-like, incl. translations from Lamartine >
+
+
+Sep tags:
+<title: ||sub: >
+<pages: >
+  
+<title: >
+<pages: >
+
+<genre title: >
+<notes: >
+  
+  
+### meta per 3
+  
 *added a column text_raw*  
 * f -- should be in fem corpus
 * c -- canonical, should be in nkrja
-
+  
 **general issues**
 * to avoid bag in russpelling: take all -iя and replase with "iя * "
-
+  
 
 **issues:**  
-
+  
 *SO:*
 * 1836: 428 -- не найдено, см.: СО. 1836. Ч. 179. 33. 354-356
-
+  
 
 * P_1305, 1312 -- many repeats (refrain)
 * P_1338 -- Покрывало Менцова -- перепечатано в СО
-
+  
 
 * 1839 - T. 4 -- no OCR  
 

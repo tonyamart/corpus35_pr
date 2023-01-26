@@ -1,9 +1,9 @@
 ### Collections
 
 Header:
-<id: 83>
-<year: 1835>
-<descr: Elegies-like, incl. translations from Lamartine >
+<id: >
+<year: >
+<descr:  >
 
 
 Sep tags:

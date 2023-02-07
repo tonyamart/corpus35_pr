@@ -16,6 +16,9 @@ Sep tags:
 <genre title: >
 <notes: >
   
+almanacs:  
+<notes: ||author: >
+  
   
 ### meta per 3
   

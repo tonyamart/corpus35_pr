@@ -19,6 +19,10 @@ Sep tags:
 almanacs:  
 <notes: ||author: >
   
+
+<title: >
+<pages: >
+<notes: ||author: >
   
 ### meta per 3
   

@@ -21,6 +21,8 @@ dat <- left_join(dat, meters, by = "id")
 
 glimpse(dat)
 
+
+# add n of lines & clean <tags>
 dat <- dat %>%
   # add number of lines
   separate_rows(text, sep = "\\n") %>%
@@ -30,6 +32,7 @@ dat <- dat %>%
   group_by(id) %>%
   mutate(n_lines = row_number(),
          n_lines = max(n_lines)) %>%
+  # wrap separated rows back in one cell
   mutate(text = paste0(text, collapse = "\n")) %>%
   distinct() %>% 
   ungroup() %>% 
@@ -63,6 +66,22 @@ glimpse(sampled)
 length(unique(sampled$id))
 
 #write.csv(sampled, file = "data/02_01_per_sampled_labled.csv")
+
+## write periodicals corpus (full) and sampled to `main` folder
+
+# load metadata
+metadata <- read.delim("meta/database_poems_published_in_journals.tsv")
+
+full_periodicals <- left_join(metadata %>% rename(id = text_ID), dat, by = "id") %>% 
+  # filter texts which are not available
+  filter(!is.na(text_raw))
+
+glimpse(full_periodicals)
+
+# write.csv(full_periodicals, "data/main/periodicals_lem.csv")
+
+
+
 
 per1835 <- sampled %>% 
   separate(id, into = c("id", "sample"), sep = "-") %>% 

@@ -24,6 +24,8 @@ almanacs:
 <pages: >
 <notes: ||author: >
   
+*added <sic> to different curious examples in grammar or lexicon*
+
 ### meta per 3
   
 *added a column text_raw*  

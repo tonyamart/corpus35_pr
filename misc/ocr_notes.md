@@ -17,7 +17,10 @@ Sep tags:
 <notes: >
   
 almanacs:  
+<title: >
+<pages: >
 <notes: ||author: >
+
   
 
 <title: >

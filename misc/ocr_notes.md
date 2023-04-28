@@ -73,6 +73,7 @@ almanacs:
 
 **Old spelling word list**
 - оне
+- одне
 - окиан
 - скрып-
 - (о)крилять

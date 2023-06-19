@@ -1,0 +1,414 @@
+---
+title: "04_analysis"
+author: "tonya"
+format: html
+editor: visual
+---
+
+## Chapter 1.4
+
+Analysis of poetry collections metadata (1835-1840)
+
+```{r}
+library(tidyverse)
+
+library(patchwork)
+library(wesanderson)
+library(MetBrewer)
+library(gghighlight)
+theme_set(theme_minimal())
+
+# fix problems with cyrillics
+# library(extrafont)
+# library(showtext)
+# font_add("Arial", "/Library/Fonts/Arial.ttf") 
+# showtext_auto()
+
+pal <- c(wes_palette("Chevalier1")[4], # sand
+         wes_palette("Royal1")[1], # grey
+         wes_palette("Zissou1")[4], # yellow
+         wes_palette("Royal1")[2] # red
+        ) 
+```
+
+```{r}
+# do not run
+# how`data/01_4 fil` was done
+#`meta/collections_meta.cs` is derived from `numbers_meta/biblio_poetry_1830_1850_short.numbers`
+# 
+# pb <- read.csv("../../meta/collections_meta.csv", sep = ";") %>%
+#     # add older ids where available
+#     mutate(COL_ID = ifelse(!is.na(COL_ID), paste0("COL_", COL_ID), COL_ID)) %>% 
+#     select(id, COL_ID,
+#           poetry_prose, book_type, genre, special_tag,
+#           author_sign, author, author_full_name,
+#           title,
+#           city, publisher, year,
+#           pages, size_fold, size_cm, 
+#           digital_copy, digital_copy_URL)
+# 
+# glimpse(pb)
+# 
+# #write.csv(pb, file = "../../data/01_4_poetry_books_1835_1840.csv")
+# rm(pb)
+
+```
+
+Load dataset:
+
+```{r}
+pb_full <- read.csv("../../data/01_4_poetry_books_1835_1840.csv") %>% 
+    select(-X) %>%
+    mutate(year = as.numeric(year),
+          group = paste0(book_type, "_", genre),
+          # cleaning of tagging artefacts
+          group = str_replace_all(group, "(alm).*", "\\1"),
+          group = str_remove_all(group, "; nar")) 
+
+glimpse(pb_full)
+```
+
+### **Clean metadata with only lyric poetry between 1835 and 1840**
+
+```{r}
+pb <- pb_full %>% 
+    filter(year > 1834 & year < 1841) %>% 
+
+    # remove completely unknown books (not found either in 19-c. catalogues nor in modern ones)
+    filter(special_tag != "unknown") %>%
+    
+    # for now I also filter out all narrative poems!
+    filter(!str_detect(group, "nar")) %>%
+    
+    # recode group names
+    mutate(group_abbr = group,
+          group_eng = recode(group,
+                         alm = "Almanacks",
+                         col_lyr = "Lyric collections",
+                         col_nar = "Narrative collections",
+                         sep_nar = "Narrative booklets",
+                         sep_lyr = "Lyric booklets"),
+          group = recode(group_abbr,
+                            alm = "Альманахи",
+                            col_lyr = "Сборники стихотворений",
+                         col_nar = "Сборники поэм",
+                         sep_nar = "Отд. поэмы",
+                         sep_lyr = "Отд. стихотворения")) %>% 
+    
+    # fill author's names if unavailable
+    mutate(author = ifelse(author == "" & author_sign != "", author_sign, author))
+
+pb %>% 
+    count(group)
+```
+
+```{r}
+# test how many books are containing prose (except for almanacks)
+pb %>%
+    filter(poetry_prose == "pr" & book_type != "alm")
+```
+
+#### Plot 1.4.1. Number of books by category
+
+```{r}
+pb %>% 
+    group_by(group, year) %>% 
+    count() %>%
+    ggplot(aes(x = year, y = n,# color = group, 
+               fill = group)) + 
+        # geom_line() + geom_point() +
+        #facet_wrap(~group_rus, scales = "free_x") +
+        geom_col(position = "dodge") + 
+        scale_fill_manual(values = pal) + 
+        scale_x_continuous(breaks = seq(1835,1840,1)) +
+        theme(
+            legend.position = "bottom",
+            axis.title = element_text(size = 14),
+            axis.text = element_text(size = 12),
+            legend.text = element_text(size = 14)
+        ) + 
+        labs(x = "Год", y = "Количество книг", fill = "")
+
+ggsave(file = "plots/Fig_1-4-1.png", plot = last_plot(), dpi = 300,
+    width = 10, height = 8, bg = "white")
+```
+
+#### Plot 1.4.2. Boxplots w/ n of pages and size in cm
+
+```{r}
+p1 <- pb %>% 
+    filter(!is.na(pages)) %>%
+    ggplot(aes(x = year, y = pages, group = year, 
+               #color = group, 
+               fill = group)) + 
+        geom_boxplot() + 
+        facet_wrap(~group) + 
+        
+        scale_x_continuous(breaks = seq(1835, 1840, 1)) +
+        scale_fill_manual(values = pal) + 
+        theme(
+            legend.position = "None",
+            axis.text = element_text(size = 12),
+            axis.text.x = element_blank(), # removed years from x axis for the upper plot
+            strip.text = element_text(size = 14)
+        ) + 
+        labs(x = "", y = "Количество страниц")
+
+p2 <- pb %>% 
+    filter(!is.na(size_cm)) %>% 
+    ggplot(aes(x = year, y = size_cm, group = year, fill = group)) + 
+        geom_boxplot() + 
+        facet_wrap(~group) + 
+        scale_x_continuous(breaks = seq(1835, 1840, 1)) +
+        scale_fill_manual(values = pal) + 
+        theme(
+            legend.position = "None",
+            axis.text = element_text(size = 12),
+            strip.text = element_blank() # remove facet labels for lower plot
+        ) + 
+        labs(x = "Год", y = "Размер в сантиметрах")
+
+
+p3 <- p1 / p2
+
+p3
+
+ggsave("plots/Fig_1-4-2.png", plot = p3, dpi = 300, bg = "white",
+      width = 10, height = 8)
+```
+
+### Lyric collections
+
+```{r}
+lyr <- pb %>% 
+  filter(group_abbr == "col_lyr" & special_tag != "unknown")
+
+glimpse(lyr)
+```
+
+Top authors
+
+```{r}
+lyr %>% 
+    filter(author != "") %>% 
+    count(author, sort = T) %>% head(15)
+```
+
+Smallest & biggest lyric collections (in size, cm)
+
+```{r}
+lyr %>% 
+    select(author, title, publisher, year, pages, size_fold, size_cm) %>%
+    arrange(-desc(size_cm)) %>% head(10)
+
+lyr %>% 
+    select(author, title, publisher, year, pages, size_fold, size_cm) %>%
+    arrange(desc(size_cm)) %>% head(10)
+```
+
+Smallest lyric collections in the number of pages & the thickiest
+
+```{r}
+lyr %>% 
+    select(author, title, publisher, year, pages, size_fold, size_cm) %>%
+    arrange(-desc(pages)) %>% head(10)
+
+lyr %>% 
+    select(author, title, publisher, year, pages, size_fold, size_cm) %>%
+    arrange(desc(pages)) %>% head(10)
+```
+
+### Separate editions
+
+```{r}
+pb %>% 
+  filter(group_abbr == "sep_lyr" & author != "") %>% 
+  group_by(author) %>% 
+  count(sort = T) %>% 
+  head(10)
+```
+
+Some random examples of separate editions:
+
+```{r}
+pb %>% 
+  filter(group_abbr == "sep_lyr" & author != "") %>% 
+  sample_n(size = 10) %>% 
+  select(title)
+```
+
+### City of publishing
+
+```{r}
+pb %>% 
+  count(city, sort = T)
+```
+
+```{r}
+pb %>% 
+  filter(city != "") %>% 
+  group_by(year, city) %>% 
+  count(sort = F) %>% 
+  pivot_wider(names_from = year, values_from = n)
+```
+
+```{r}
+pb %>% 
+  #filter(group_abbr == "col_lyr") %>% 
+  filter(city %in% c("СПб.", "М.")) %>% 
+  count(city, year) %>% 
+  mutate(city = ifelse(city == "М.", "Москва", "Санкт-Петербург")) %>% 
+  ggplot(aes(x = year, y = n, fill = city)) + 
+  geom_col(position = "dodge", width = 0.8) + 
+  #geom_smooth(aes(color = city)) + 
+  facet_wrap(~city, ncol = 1) + 
+  scale_x_continuous(breaks = seq(1835, 1840, 1)) + 
+  scale_fill_manual(values = pal) + 
+  scale_color_manual(values = pal) + 
+  labs(x = "Год", y = "Количество книг", fill = "") + 
+  theme(strip.text = element_text(size = 14),
+        legend.text = element_text(size = 14),
+        axis.text = element_text(size = 14),
+        axis.title = element_text(size = 12),
+        legend.position = "bottom")
+
+# ggsave(file = "plots/Fig_1-4-3.png", plot = last_plot(), dpi = 300,
+#        width = 8, height = 8,
+#        bg = "white")
+```
+
+### Publishers
+
+```{r}
+
+publ_totals <- pb %>% 
+  mutate(publisher = paste0(city, ": ", publisher)) %>% 
+  filter(publisher != ": ") %>%
+  count(publisher, sort = T) %>% 
+  rename(total = n)
+
+pb %>% 
+  mutate(publisher = paste0(city, ": ", publisher)) %>% 
+  filter(publisher != ": ") %>% 
+  left_join(publ_totals, by = "publisher") %>% 
+  
+  # variant 1: select publishers by total n of books
+  filter(publisher %in% publ_totals$publisher[1:12]) %>% 
+  mutate(publisher = paste0(publisher, " (", total, ")")) %>% 
+  count(year, publisher) %>% 
+  
+    
+  # variant 2: select by number of non-NA in each year  
+  # count number of missing values
+  
+  #pivot_wider(names_from = year, values_from = n) %>% 
+  # mutate(x = rowSums(is.na(.))) %>% 
+  # # drop rows with more than 2 years missing
+  # filter(x < 4) %>% 
+  # select(-x) %>% 
+  # pivot_longer(!publisher, names_to = "year", values_to = "n") %>% 
+    
+  # plot  
+  ggplot(aes(x = year, y = n, fill = publisher)) +
+  geom_col(width = 0.95) + 
+  facet_wrap(~publisher, 
+             strip.position = "left",
+             ncol = 1) + 
+  scale_x_continuous(breaks = seq(1835, 1840, 1)) + 
+  scale_fill_met_d(name = "Redon") + 
+  labs(x = "Год", 
+       y = "") + 
+  theme(legend.position = "None",
+        strip.text.y.left = element_text(angle = 0),
+        strip.placement = "outside",
+        strip.text = element_text(size = 12),
+        axis.text.y.left = element_blank(),
+        axis.text.x = element_text(size = 12),
+        axis.title = element_text(size = 14))
+
+# ggsave(file = "plots/Fig_1-4-4.png", plot = last_plot(), dpi = 300,
+#        width = 8, height = 10,
+#        bg = "white")
+```
+
+```{r}
+publ_totals[1:12,]
+```
+
+Full publishers' data
+
+```{r}
+# filter typographies with more than 15 poetry books issued
+top_typos_35 <- sort(publ_totals$publisher[1:12])
+
+publ_plot_data <- pb_full %>% 
+    mutate(typo = paste0(city, ": ", publisher)) %>% 
+    filter(!is.na(year)) %>% 
+    #filter(typo %in% top_typos) %>%
+    count(typo, year, sort = T) %>% 
+    ungroup() %>% 
+    pivot_wider(names_from = year, values_from = n) %>%
+    mutate_if(is.numeric, ~replace_na(., 0)) %>%
+    pivot_longer(!typo, names_to = "year", values_to = "n") %>% 
+    arrange(-desc(year)) %>%
+    group_by(typo) %>% 
+    mutate(cum_sum = cumsum(n),
+          typo_group = ifelse(typo %in% top_typos_35, typo, "others")) %>% 
+    filter(typo_group != "others")
+
+# glimpse(publ_plot_data)
+
+publ_plot_data %>% 
+    ggplot(aes(x = as.factor(year), y = cum_sum, color = typo_group, 
+               group = typo)) + 
+        geom_line(alpha = 0.6, linewidth = 1) + 
+        gghighlight(use_direct_label = FALSE,
+              unhighlighted_params = list(colour = alpha("grey85", 1))) + 
+        scale_color_met_d(name = "Redon") + 
+        
+  
+        geom_point(data = publ_plot_data %>% 
+                     filter(year == 1835) %>% 
+                     group_by(typo) %>% 
+                     slice_max(cum_sum)
+                     ) + 
+        geom_text(data = publ_plot_data %>% 
+                     filter(year == 1835) %>% 
+                     group_by(typo) %>% 
+                     slice_max(cum_sum),
+                  aes(label = cum_sum),
+                  vjust = -1) + 
+  
+        geom_point(data = publ_plot_data %>% 
+                     filter(year == 1840) %>% 
+                     group_by(typo) %>% 
+                     slice_max(cum_sum)
+                     ) + 
+        geom_text(data = publ_plot_data %>% 
+                     filter(year == 1840) %>% 
+                     group_by(typo) %>% 
+                     slice_max(cum_sum),
+                  aes(label = cum_sum),
+                  vjust = -1) +
+        
+        facet_wrap(~factor(typo_group,
+                          levels = top_typos_35),
+                   ncol = 3) +
+        scale_x_discrete(breaks = seq(1830, 1850, 5)) +
+        labs(x = "",
+             y = "",
+             color = "") + 
+        theme(axis.text = element_text(size = 12),
+              legend.text = element_text(size = 14),
+              strip.text = element_text(size = 12),
+              panel.spacing = unit(1.5, "lines")) + 
+  
+        annotate("rect", 
+                 xmin = 6, xmax = 11, 
+                 ymin = 0, ymax = Inf, 
+                 alpha = 0.1)
+  
+ggsave("plots/Fig_1-4-5.png", plot = last_plot(), dpi = 300,
+       height = 12, width = 11,
+       bg = "white")
+```

@@ -68,6 +68,92 @@ pb_full <- read.csv("../../data/01_4_poetry_books_1835_1840.csv") %>%
 glimpse(pb_full)
 ```
 
+#### Plot 1.4.0 - Digitisation
+
+```{r}
+n_digit <- pb_full %>% 
+    filter(group != "col_nar") %>% 
+    mutate(group = recode(group,
+                            alm = "Альманахи",
+                            col_lyr = "Сборники стихотворений",
+                         col_nar = "Сборники поэм",
+                         sep_nar = "Отд. поэмы",
+                         sep_lyr = "Отд. стихотворения")) %>%
+    mutate(dig = ifelse(digital_copy == "", FALSE, TRUE)) %>%
+    group_by(year, group, dig) %>% 
+    count() %>%
+    ggplot(aes(x = year, y = n, fill = as.factor(dig))) + 
+        geom_col() + 
+        facet_wrap(~group, 
+                   scales = "free_x",
+                   ncol = 4) + 
+        scale_fill_manual(values = c(wes_palette("Chevalier1")[3],
+                             wes_palette("Chevalier1")[1])) + 
+        scale_x_continuous(breaks = seq(1830, 1850, 5)) +
+        labs(x = "",
+             y = "Количество книг",
+             fill = "") + 
+        theme(axis.text = element_text(size = 12),
+              axis.title = element_text(size = 14),
+             strip.text = element_text(size = 14),
+             legend.position = "None") + 
+        annotate("rect", 
+                 xmin = 1834.5, xmax =1840.5, 
+                 ymin = 0, ymax = Inf, 
+                 alpha = 0.1)
+
+n_digit
+```
+
+```{r}
+perc_digit <- pb_full %>% 
+    filter(group != "col_nar") %>% 
+    mutate(group = recode(group,
+                            alm = "Альманахи",
+                            col_lyr = "Сборники стихотворений",
+                         col_nar = "Сборники поэм",
+                         sep_nar = "Отд. поэмы",
+                         sep_lyr = "Отд. стихотворения")) %>%
+    mutate(dig = ifelse(digital_copy == "", FALSE, TRUE)) %>%
+    group_by(year, group, dig) %>% 
+    count() %>%
+    ggplot(aes(x = year, y = n, fill = as.factor(dig))) + 
+        geom_col(position = "fill") + 
+        facet_wrap(~group, 
+                   scales = "free_x",
+                   ncol = 4) + 
+        scale_fill_manual(values = c(wes_palette("Chevalier1")[3],
+                             wes_palette("Chevalier1")[1])) + 
+        scale_x_continuous(breaks = seq(1830, 1850, 5)) +
+        labs(x = "Год",
+             y = "Процент книг",
+             fill = "Оцифровано") + 
+        theme(axis.text = element_text(size = 12),
+              axis.title = element_text(size = 14),
+             strip.text = element_text(size = 14),
+             legend.position = "bottom") + 
+        annotate("rect", 
+                 xmin = 1834.5, xmax =1840.5, 
+                 ymin = 0, ymax = Inf, 
+                 alpha = 0.2)
+
+perc_digit
+```
+
+Combine two plots:
+
+```{r}
+digit <- n_digit / perc_digit
+
+digit
+
+# ggsave("plots/Fig_1-4-0.png", plot = digit, dpi = 300,
+#        width = 11, height = 7,
+#        bg = "white")
+
+rm(digit, n_digit, perc_digit)
+```
+
 ### **Clean metadata with only lyric poetry between 1835 and 1840**
 
 ```{r}
@@ -129,8 +215,8 @@ pb %>%
         ) + 
         labs(x = "Год", y = "Количество книг", fill = "")
 
-ggsave(file = "plots/Fig_1-4-1.png", plot = last_plot(), dpi = 300,
-    width = 10, height = 8, bg = "white")
+# ggsave(file = "plots/Fig_1-4-1.png", plot = last_plot(), dpi = 300,
+#     width = 10, height = 8, bg = "white")
 ```
 
 #### Plot 1.4.2. Boxplots w/ n of pages and size in cm
@@ -152,7 +238,7 @@ p1 <- pb %>%
             axis.text.x = element_blank(), # removed years from x axis for the upper plot
             strip.text = element_text(size = 14)
         ) + 
-        labs(x = "", y = "Количество страниц")
+        labs(x = "", y = "Количество страниц") 
 
 p2 <- pb %>% 
     filter(!is.na(size_cm)) %>% 
@@ -168,13 +254,83 @@ p2 <- pb %>%
         ) + 
         labs(x = "Год", y = "Размер в сантиметрах")
 
+p3 <- p1 / p2
+
+p3
+
+# ggsave("plots/Fig_1-4-2.png", plot = p3, dpi = 300, bg = "white",
+#       width = 12, height = 8)
+```
+
+Full version of the plot
+
+```{r}
+p1 <- pb_full %>% 
+    filter(!str_detect(group, "nar")) %>%
+    filter(!is.na(pages)) %>% 
+    mutate(group = recode(group,
+                            alm = "Альманахи",
+                            col_lyr = "Сборники стихотворений",
+                         col_nar = "Сборники поэм",
+                         sep_nar = "Отд. поэмы",
+                         sep_lyr = "Отд. стихотворения")) %>%
+    ggplot(aes(x = year, y = pages, group = year, 
+               #color = group, 
+               fill = group)) + 
+        geom_boxplot() + 
+        facet_wrap(~group) + 
+        
+        scale_x_continuous(breaks = seq(1830, 1850, 5)) +
+        scale_fill_manual(values = pal) + 
+        theme(
+            legend.position = "None",
+            axis.text = element_text(size = 12),
+            axis.text.x = element_blank(), # removed years from x axis for the upper plot
+            strip.text = element_text(size = 14)
+        ) + 
+        labs(x = "", y = "Количество страниц") + 
+      annotate("rect", 
+                 xmin = 1834.5, xmax =1840.5, 
+                 ymin = 0, ymax = Inf, 
+                 alpha = 0.2)
+        
+
+p2 <- pb_full %>% 
+    filter(!str_detect(group, "nar")) %>%
+    filter(!is.na(size_cm)) %>% 
+    mutate(group = recode(group,
+                            alm = "Альманахи",
+                            col_lyr = "Сборники стихотворений",
+                         col_nar = "Сборники поэм",
+                         sep_nar = "Отд. поэмы",
+                         sep_lyr = "Отд. стихотворения")) %>%
+    ggplot(aes(x = year, y = size_cm, group = year, fill = group)) + 
+        geom_boxplot() + 
+        facet_wrap(~group) + 
+        scale_x_continuous(breaks = seq(1830, 1850, 5)) +
+        scale_fill_manual(values = pal) + 
+        theme(
+            legend.position = "None",
+            axis.text = element_text(size = 12),
+            strip.text = element_blank() # remove facet labels for lower plot
+        ) + 
+        labs(x = "Год", y = "Размер в сантиметрах") + 
+        annotate("rect", 
+                 xmin = 1834.5, xmax =1840.5, 
+                 ymin = 0, ymax = Inf, 
+                 alpha = 0.2)
+
 
 p3 <- p1 / p2
 
 p3
 
-ggsave("plots/Fig_1-4-2.png", plot = p3, dpi = 300, bg = "white",
-      width = 10, height = 8)
+ggsave("plots/Fig_1-4-2_full.png", plot = p3, dpi = 300, bg = "white",
+      width = 11, height = 8)
+```
+
+```{r}
+rm(p1,p2,p3)
 ```
 
 ### Lyric collections
@@ -186,12 +342,28 @@ lyr <- pb %>%
 glimpse(lyr)
 ```
 
+```{r}
+lyr %>% 
+  filter(!is.na(pages) & !is.na(size_cm)) %>% 
+  summarise(mean_p = mean(pages),
+            med_p = median(pages),
+            mean_s = mean(size_cm),
+            med_s = median(size_cm))
+```
+
 Top authors
 
 ```{r}
-lyr %>% 
+lyr_authors <- lyr %>% 
     filter(author != "") %>% 
     count(author, sort = T) %>% head(15)
+
+lyr_authors
+
+lyr %>% 
+  filter(author %in% lyr_authors$author) %>% 
+  select(author, title, year) %>% 
+  arrange(-desc(author))
 ```
 
 Smallest & biggest lyric collections (in size, cm)
@@ -221,11 +393,18 @@ lyr %>%
 ### Separate editions
 
 ```{r}
-pb %>% 
+sep_authors <- pb %>% 
   filter(group_abbr == "sep_lyr" & author != "") %>% 
   group_by(author) %>% 
   count(sort = T) %>% 
   head(10)
+
+sep_authors
+
+pb %>% 
+  filter(group_abbr == "sep_lyr" & author %in% sep_authors$author) %>% 
+  select(author, title, year) %>% 
+  arrange(-desc(author))
 ```
 
 Some random examples of separate editions:
@@ -234,7 +413,12 @@ Some random examples of separate editions:
 pb %>% 
   filter(group_abbr == "sep_lyr" & author != "") %>% 
   sample_n(size = 10) %>% 
-  select(title)
+  select(author, title, city, year)
+
+pb %>% 
+  filter(group_abbr == "sep_lyr" & str_detect(author, "Барановский")) %>% 
+  #sample_n(size = 10) %>% 
+  select(author, title, city, year)
 ```
 
 ### City of publishing
@@ -246,11 +430,20 @@ pb %>%
 
 ```{r}
 pb %>% 
+  mutate(typo = paste0(city, ": ", publisher)) %>% 
+  filter(!city %in% c("", "М.", "СПб.")) %>% 
+  count(typo, sort = T)
+```
+
+```{r}
+pb %>% 
   filter(city != "") %>% 
   group_by(year, city) %>% 
   count(sort = F) %>% 
   pivot_wider(names_from = year, values_from = n)
 ```
+
+#### Plot 1.4.3
 
 ```{r}
 pb %>% 
@@ -278,6 +471,23 @@ pb %>%
 ```
 
 ### Publishers
+
+Number of Moscow & Petersburg publishers
+
+```{r}
+pb %>% 
+  filter(city %in% c("М.", "СПб.")) %>% 
+  filter(publisher != "") %>% 
+  group_by(city, publisher) %>% 
+  count() %>% 
+  ungroup() %>% 
+  group_by(city) %>% 
+  summarise(n_typo = n(),
+            mean_n = mean(n),
+            median_n = median(n))
+```
+
+Barplot with only 1835-1840 publishing houses:
 
 ```{r}
 
@@ -334,6 +544,8 @@ pb %>%
 ```{r}
 publ_totals[1:12,]
 ```
+
+#### Plot 1.4.4
 
 Full publishers' data
 
@@ -411,4 +623,62 @@ publ_plot_data %>%
 ggsave("plots/Fig_1-4-5.png", plot = last_plot(), dpi = 300,
        height = 12, width = 11,
        bg = "white")
+```
+
+```{r}
+pb %>% 
+  filter(str_detect(publisher, "Смирдин.*")) %>% 
+  select(author, title, city, publisher, year)
+```
+
+### Authors
+
+Old collections meta:
+
+```{r}
+old_pb <- read.delim("../../meta/old/meta_collections.tsv", sep = "\t") %>% 
+  select(ID, A_ID, Author, Year, Title)
+glimpse(old_pb)
+
+pb_authors <- pb %>% 
+  left_join(old_pb %>% 
+    rename(COL_ID = ID) %>% 
+    select(COL_ID, A_ID), 
+      by = "COL_ID")
+
+pb_authors
+```
+
+Load old authors metadata
+
+```{r}
+authors <- read.delim("../../meta/old/authors.tsv", sep = "\t") %>% 
+  filter(Author_Initials != "")
+glimpse(authors)
+```
+
+Join PB and authors data, see who's left
+
+```{r}
+t <- pb_authors %>% 
+  left_join(authors, by = "A_ID") %>% 
+  select(id, COL_ID, A_ID, author, Author_Initials) %>% distinct
+
+t
+```
+
+```{r}
+t
+```
+
+```{r}
+authors
+authors[which(authors$Author_Initials == "Баратынский Е.А."), 1:2]
+```
+
+```{r}
+x <- as.data.frame(tibble(author = sort(unique(pb$author))))
+x
+
+write.csv(x = x, file = "../../meta/authors.csv")
 ```

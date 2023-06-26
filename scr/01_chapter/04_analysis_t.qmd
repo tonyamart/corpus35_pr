@@ -416,8 +416,9 @@ pb %>%
   select(author, title, city, year)
 
 pb %>% 
-  filter(group_abbr == "sep_lyr" & str_detect(author, "Барановский")) %>% 
-  #sample_n(size = 10) %>% 
+  filter(group_abbr == "sep_lyr" #& str_detect(author, "Барановский")
+         ) %>% 
+  sample_n(size = 10) %>% 
   select(author, title, city, year)
 ```
 
@@ -620,9 +621,9 @@ publ_plot_data %>%
                  ymin = 0, ymax = Inf, 
                  alpha = 0.1)
   
-ggsave("plots/Fig_1-4-5.png", plot = last_plot(), dpi = 300,
-       height = 12, width = 11,
-       bg = "white")
+# ggsave("plots/Fig_1-4-5.png", plot = last_plot(), dpi = 300,
+#        height = 12, width = 11,
+#        bg = "white")
 ```
 
 ```{r}
@@ -633,52 +634,182 @@ pb %>%
 
 ### Authors
 
-Old collections meta:
+#### Load data
+
+Load authors connector table and authors metadata
 
 ```{r}
-old_pb <- read.delim("../../meta/old/meta_collections.tsv", sep = "\t") %>% 
-  select(ID, A_ID, Author, Year, Title)
-glimpse(old_pb)
+# load table with author from pb and author ids
+authors_c <- read.csv("../../meta/authors_cols.csv", sep = ";") %>% 
+  select(-X) %>% 
+  mutate(A_ID = paste0("A_", A_ID))
+head(authors_c)
+
+length(unique(pb$author))
 
 pb_authors <- pb %>% 
-  left_join(old_pb %>% 
-    rename(COL_ID = ID) %>% 
-    select(COL_ID, A_ID), 
-      by = "COL_ID")
-
-pb_authors
+  left_join(authors_c, by = "author") 
 ```
 
-Load old authors metadata
+Load authors metadata
 
 ```{r}
-authors <- read.delim("../../meta/old/authors.tsv", sep = "\t") %>% 
-  filter(Author_Initials != "")
-glimpse(authors)
+authors_meta <- read.delim("../../meta/authors.tsv", sep = "\t") %>% 
+  mutate(A_ID = str_replace_all(A_ID, "-", "_"))
+head(authors_meta)
 ```
 
-Join PB and authors data, see who's left
+Join authors meta with pb
 
 ```{r}
-t <- pb_authors %>% 
-  left_join(authors, by = "A_ID") %>% 
-  select(id, COL_ID, A_ID, author, Author_Initials) %>% distinct
+pb_authors <- pb_authors %>% 
+  left_join(authors_meta, by = "A_ID")
 
-t
-```
+head(pb_authors)
 
-```{r}
-t
+# cases when author from cols meta is not equal to the author from authors meta:
+pb_authors %>% 
+  filter(author.x != author.y) %>% 
+  select(author.x, author.y)
 ```
 
 ```{r}
-authors
-authors[which(authors$Author_Initials == "Баратынский Е.А."), 1:2]
+pb_authors %>% 
+  filter(is.na(RP)) %>% 
+  select(id, COL_ID, A_ID, author_sign, title, year)
+
+# 36 NA-s! meaning no known author, not in the authors metadata
+```
+
+#### RP authors vs NA
+
+```{r}
+length(unique(pb_authors$author.x)) # 137 unique authors (- NA, - "")
+
+pb_authors %>% 
+  filter(!is.na(A_ID)) %>% 
+  select(A_ID, author.y, RP) %>% 
+  distinct() %>% 
+  filter(RP == "") # 55 authors without RP articles
+
+pb_authors %>% 
+  filter(!is.na(A_ID)) %>% 
+  select(A_ID, author.y, RP) %>% 
+  distinct() %>% 
+  filter(str_detect(RP, "\\d")) # 82 authors with RP articles
+
+total_known <- 55+82
+55/total_known*100 # 40% of authors IN THE META are unknown
+
+82/137*100 # 59.85 known by RP
+
+# total: summarise NA and non-RP
+pb_authors %>% 
+  filter(!str_detect(RP, "\\d")) %>%  # 62
+  count(group_abbr)
+
+62/218*100 
+
+pb_authors %>% 
+  filter(!str_detect(RP, "\\d")) %>% 
+  filter(group_abbr == "col_lyr")
+```
+
+#### Authors feats 
+
+```{r}
+# Aristocracy
+pb_authors %>% 
+  select(author.y, aristocracy) %>% 
+  distinct() %>% 
+  mutate(aristocracy = ifelse(is.na(aristocracy), "not_available", aristocracy)) %>% 
+  count(aristocracy) %>% 
+  mutate(perc = round((n/138)*100, 2))
+
+# total n for col_lyr (unique authors)
+31+61+46
+
+pb_authors %>% 
+  select(author.y, gender) %>% 
+  distinct() %>% 
+  mutate(gender = ifelse(is.na(gender), "not_available", gender)) %>% 
+  count(gender) %>% 
+  mutate(perc = round((n/138)*100, 2))
+
+1+7+129+1
+```
+
+Same but only for poetry collections:
+
+```{r}
+# Aristocracy
+pb_authors %>% 
+  filter(group_abbr == "col_lyr") %>% 
+  select(author.y, aristocracy) %>% 
+  distinct() %>% 
+  mutate(aristocracy = ifelse(is.na(aristocracy), "not_available", aristocracy)) %>% 
+  count(aristocracy) %>% 
+  mutate(perc = round((n/101)*100, 2))
+
+# total n for col_lyr (unique authors)
+22+45+34
+
+pb_authors %>% 
+  filter(group_abbr == "col_lyr") %>% 
+  select(author.y, gender) %>% 
+  distinct() %>% 
+  mutate(gender = ifelse(is.na(gender), "not_available", gender)) %>% 
+  count(gender) %>% 
+  mutate(perc = round((n/101)*100, 2))
+
+1+7+92+1
+```
+
+##### age
+
+```{r}
+library(tidytext)
+
+pb_authors %>% 
+  filter(str_detect(birth, "\\d") & str_detect(death, "\\d")) %>% 
+  mutate(birth = as.numeric(str_extract(birth, "\\d{4}")),
+         death = as.numeric(str_extract(death, "\\d{4}")),
+         RP = ifelse(str_detect(RP, "\\d+"), TRUE, FALSE)) %>% 
+  select(A_ID, group_abbr, RP, birth, death) %>% 
+  pivot_longer(!c(A_ID, group_abbr, RP), names_to = "event", values_to = "year") %>% 
+  ggplot(aes(x = year,
+    y = reorder_within(A_ID, -year, A_ID),
+    color = group_abbr)) + 
+  geom_line() + 
+  scale_y_reordered() +
+  #theme(legend.position = "None") + 
+    annotate("rect", xmin = 1835, xmax = 1840,
+             ymin = -Inf, ymax = Inf, 
+             alpha = 0.1)
 ```
 
 ```{r}
-x <- as.data.frame(tibble(author = sort(unique(pb$author))))
-x
-
-write.csv(x = x, file = "../../meta/authors.csv")
+pb_authors %>% 
+  filter(str_detect(birth, "\\d") & str_detect(death, "\\d")) %>% 
+  mutate(birth = as.numeric(str_extract(birth, "\\d{4}")),
+         death = as.numeric(str_extract(death, "\\d{4}")),
+         RP = ifelse(str_detect(RP, "\\d+"), TRUE, FALSE)) %>% 
+  select(A_ID, group_abbr, aristocracy, birth, death, year) %>% 
+  mutate(age_col = year - birth) %>% 
+  rename(year_col = year) %>% 
+  pivot_longer(!c(A_ID, group_abbr, aristocracy, age_col, year_col), 
+               names_to = "event", values_to = "year") %>% 
+  filter(!is.na(aristocracy)) %>% 
+  mutate(young = ifelse(age_col < 35, TRUE, FALSE)) %>% 
+  ggplot(aes(x = year,
+    y = reorder_within(A_ID, -year, age_col),
+    color = young)) +
+  geom_line() + 
+  geom_point(aes(x = year_col)) + 
+  scale_y_reordered() +
+  facet_wrap(~aristocracy, scales = "free") +
+  #theme(legend.position = "None") +
+    annotate("rect", xmin = 1835, xmax = 1840,
+             ymin = -Inf, ymax = Inf,
+             alpha = 0.1)
 ```

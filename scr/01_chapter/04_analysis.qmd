@@ -18,12 +18,6 @@ library(MetBrewer)
 library(gghighlight)
 theme_set(theme_minimal())
 
-# fix problems with cyrillics
-# library(extrafont)
-# library(showtext)
-# font_add("Arial", "/Library/Fonts/Arial.ttf") 
-# showtext_auto()
-
 pal <- c(wes_palette("Chevalier1")[4], # sand
          wes_palette("Royal1")[1], # grey
          wes_palette("Zissou1")[4], # yellow
@@ -79,7 +73,10 @@ n_digit <- pb_full %>%
                          col_nar = "Сборники поэм",
                          sep_nar = "Отд. поэмы",
                          sep_lyr = "Отд. стихотворения")) %>%
-    mutate(dig = ifelse(digital_copy == "", FALSE, TRUE)) %>%
+    mutate(dig = ifelse(digital_copy == "" | str_detect(digital_copy, "drive"), 
+                        FALSE, 
+                        TRUE)
+           ) %>%
     group_by(year, group, dig) %>% 
     count() %>%
     ggplot(aes(x = year, y = n, fill = as.factor(dig))) + 
@@ -114,7 +111,10 @@ perc_digit <- pb_full %>%
                          col_nar = "Сборники поэм",
                          sep_nar = "Отд. поэмы",
                          sep_lyr = "Отд. стихотворения")) %>%
-    mutate(dig = ifelse(digital_copy == "", FALSE, TRUE)) %>%
+    mutate(dig = ifelse(digital_copy == "" | str_detect(digital_copy, "drive"), 
+                        FALSE, 
+                        TRUE)
+           ) %>%
     group_by(year, group, dig) %>% 
     count() %>%
     ggplot(aes(x = year, y = n, fill = as.factor(dig))) + 
@@ -675,7 +675,7 @@ pb_authors %>%
 
 ```{r}
 pb_authors %>% 
-  filter(is.na(RP)) %>% 
+  filter(is.na(A_ID)) %>% 
   select(id, COL_ID, A_ID, author_sign, title, year)
 
 # 36 NA-s! meaning no known author, not in the authors metadata
@@ -684,38 +684,50 @@ pb_authors %>%
 #### RP authors vs NA
 
 ```{r}
+print("Number of known unique authors (-NA, - '')")
 length(unique(pb_authors$author.x)) # 137 unique authors (- NA, - "")
 
+
+total_known <- 55+82
+print(c("Percent of unknown authors" , 
+        55/total_known*100 ))  # 40% of authors IN THE META are unknown
+
+print(c("Percent of known (by RP) authors" , 
+        82/total_known*100 )) # 59.85 known by RP
+
+total_n_groups <- pb_authors %>% 
+  count(group_abbr)
+
+# total: summarise NA and non-RP
+pb_authors %>% 
+  filter(!str_detect(RP, "\\d")) %>%  # 62
+  count(group_abbr) %>% 
+  rename(unknown_authors = n) %>% 
+  left_join(total_n_groups, by = "group_abbr") %>% 
+  mutate(perc_unknown  = round((unknown_authors/n) * 100, 2) )
+```
+
+Authors without RP article:
+
+```{r}
 pb_authors %>% 
   filter(!is.na(A_ID)) %>% 
   select(A_ID, author.y, RP) %>% 
   distinct() %>% 
   filter(RP == "") # 55 authors without RP articles
+```
 
+Authors with RP articles:
+
+```{r}
 pb_authors %>% 
   filter(!is.na(A_ID)) %>% 
   select(A_ID, author.y, RP) %>% 
   distinct() %>% 
   filter(str_detect(RP, "\\d")) # 82 authors with RP articles
-
-total_known <- 55+82
-55/total_known*100 # 40% of authors IN THE META are unknown
-
-82/137*100 # 59.85 known by RP
-
-# total: summarise NA and non-RP
-pb_authors %>% 
-  filter(!str_detect(RP, "\\d")) %>%  # 62
-  count(group_abbr)
-
-62/218*100 
-
-pb_authors %>% 
-  filter(!str_detect(RP, "\\d")) %>% 
-  filter(group_abbr == "col_lyr")
 ```
 
-#### Authors feats 
+#### Authors feats
 
 ```{r}
 # Aristocracy
@@ -812,4 +824,234 @@ pb_authors %>%
     annotate("rect", xmin = 1835, xmax = 1840,
              ymin = -Inf, ymax = Inf,
              alpha = 0.1)
+```
+
+```{r}
+rm(authors_c, authors_meta, total_n_groups, total_known)
+```
+
+#### Authors from RNC / Periodicals
+
+##### RNC
+
+```{r}
+load("../../data/nkrja_19th_lem.Rda")
+
+head(unique(c19$author))
+```
+
+Cleaning RNC authors to match with `pb_authors` data
+
+```{r}
+
+# all RNC
+
+rnc_authors <- c19 %>% 
+  select(author) %>% 
+  mutate(author_rnc = str_replace_all(author, "(\\w\\.\\s\\w\\.)\\s(\\w+)$",
+                                       "\\2 \\1"),
+         author_rnc = str_remove_all(author_rnc, "[[:punct:]]|[[:space:]]")) %>% 
+  distinct() %>% 
+  select(author_rnc)
+
+rnc1830 <- c19 %>% 
+  filter(year > 1829 & year < 1840) %>% 
+  select(author) %>% 
+  mutate(author_rnc = str_replace_all(author, "(\\w\\.\\s\\w\\.)\\s(\\w+)$",
+                                       "\\2 \\1"),
+         author_rnc = str_remove_all(author_rnc, "[[:punct:]]|[[:space:]]")) %>% 
+  distinct() %>% 
+  select(author_rnc)
+
+```
+
+Same string manipulations with pb data
+
+```{r}
+authors_comparison <- pb_authors %>% 
+  select(author.y) %>% 
+  mutate(author_rnc = str_remove_all(author.y, "[[:punct:]]|[[:space:]]")) %>% 
+  distinct() %>% 
+  select(author_rnc) 
+
+authors_comparison %>% 
+  inner_join(rnc_authors, by = "author_rnc") # 29 authors intersection PB & all RNC
+
+authors_comparison %>% 
+  inner_join(rnc1830, by = "author_rnc") # 27 authors intersection PB & RNC 1830s
+
+print("Percent of intersected authors btw RNC & PB:")
+(29/ (nrow(authors_comparison)-1) )*100
+
+```
+
+```{r}
+rm(c19, authors_comparison, rnc_authors, rnc1830)
+```
+
+##### Periodicals
+
+```{r}
+per_meta <- read.delim("../../meta/database_poems_published_in_journals.tsv",
+                       sep = "\t")
+
+head(per_meta)
+
+per_authors <- per_meta %>% 
+  select(A_ID, Author_Initials) %>% 
+  distinct() %>% 
+  filter(!is.na(A_ID)) %>% 
+  mutate(A_ID = str_replace_all(A_ID, "-", "_"))
+
+rm(per_meta)
+```
+
+```{r}
+per_authors 
+```
+
+```{r}
+print(c("Number of authors in periodicals (by A_ID):", 
+      length(unique(per_authors$A_ID))))
+
+print(c("Number of authors in poetry books (by A_ID):", 
+      length(unique(pb_authors$A_ID))))
+```
+
+```{r}
+print("Intersection:")
+
+per_pb_intersection <- pb_authors %>% 
+  select(A_ID, author.y) %>% 
+  inner_join(per_authors, by = "A_ID") 
+
+nrow(per_pb_intersection)
+
+print(c("Percent of all PB authors intersected with periodicals:",
+        round(
+          ( nrow(per_pb_intersection)/ (length(unique(pb_authors$A_ID)) - 1) )*100, 
+          2)
+        ))
+
+per_pb_intersection
+
+```
+
+```{r}
+rm(authors_c, authors_meta, per_authors, per_pb_intersection, 
+   total_known, total_n_groups)
+```
+
+### Reviews
+
+```{r}
+reviews <- read.delim("../../meta/collections_reviews.tsv",
+                      sep = "\t")
+
+head(reviews)
+```
+
+Attach reviews to `pb`
+
+```{r}
+pb_reviews <- pb %>% 
+  rename(new_id = id) %>% 
+  left_join(reviews %>% 
+              filter(!is.na(COL_ID)) %>% 
+              select(-Author, -Title),
+            by = "COL_ID") 
+
+head(pb_reviews)
+```
+
+Number of reviewed books (in general and in groups)
+
+```{r}
+print("Total number of reviews:")
+
+pb_reviews %>% 
+  select(new_id, group_abbr, author, title, year,
+         Sovr, OZ, CO, MN, Telescope, JMNP, Sev_pchela, BdCH) %>% 
+  pivot_longer(!c(new_id, group_abbr, author, title, year),
+              names_to = "reviewer",
+              values_to = "score") %>% 
+  filter(!is.na(score) & score != "") %>% 
+  nrow()
+```
+
+Number of reviewed books (out of total 218)
+
+```{r}
+print("Total number of reviewed books:")
+pb_reviews %>% 
+  select(new_id, group_abbr, author, title, year,
+         Sovr, OZ, CO, MN, Telescope, JMNP, Sev_pchela, BdCH) %>% 
+  pivot_longer(!c(new_id, group_abbr, author, title, year),
+              names_to = "reviewer",
+              values_to = "score") %>% 
+  filter(!is.na(score) & score != "") %>% 
+  select(-reviewer, -score) %>% 
+  distinct() %>% 
+  nrow()
+
+total_n_groups <- pb %>% 
+  count(group_abbr) %>% 
+  rename(total = n)
+
+pb_reviews %>% 
+  select(new_id, group_abbr, author, title, year,
+         Sovr, OZ, CO, MN, Telescope, JMNP, Sev_pchela, BdCH) %>% 
+  pivot_longer(!c(new_id, group_abbr, author, title, year),
+              names_to = "reviewer",
+              values_to = "score") %>% 
+  filter(!is.na(score) & score != "") %>% 
+  select(-reviewer, -score) %>% 
+  distinct() %>% 
+  count(group_abbr) %>% 
+  left_join(total_n_groups, by = "group_abbr") %>% 
+  mutate(perc_reviewed = round( (n/total)*100, 2 ))
+```
+
+Number of positive/negative reviews by source
+
+```{r}
+pb_reviews %>% 
+  select(new_id, group_abbr, author, title, year,
+         Sovr_score, OZ_score, CO_score, MN_score, Telescope_score, JMNP_score,
+         Sev_pch_score, BdCH_score) %>% 
+  pivot_longer(!c(new_id, group_abbr, author, title, year),
+              names_to = "reviewer",
+              values_to = "score") %>% 
+  filter(!is.na(score) & score != "") %>% 
+  mutate(score_cln = str_extract(score, "neg"),
+         score_cln = ifelse(str_detect(score, "pos"), "pos", score_cln),
+         score_cln = ifelse(is.na(score_cln), "neutr", score_cln)) %>% 
+  group_by(reviewer) %>% 
+  count(score_cln) %>% 
+  ungroup() %>% 
+  pivot_wider(names_from = score_cln, values_from = n) %>% 
+  mutate(total_reviews = rowSums(.[2:4], na.rm = TRUE))
+```
+
+Number of reviews for each book
+
+```{r}
+n_reviews <- pb_reviews %>% 
+  select(new_id, group_abbr, author, title, year, 
+         Sovr, OZ, CO, MN, Telescope, JMNP, Sev_pchela, BdCH) %>% 
+  pivot_longer(!c(new_id, group_abbr, author, title, year), 
+               names_to = "reviewer",
+               values_to = "is_reviewed") %>% 
+  mutate(is_reviewed = ifelse(is.na(is_reviewed)| is_reviewed == "", 
+                              0, 
+                              1)) %>% 
+  pivot_wider(names_from = reviewer, values_from = is_reviewed) %>% 
+  mutate(n_reviews = rowSums(.[6:13])) %>% 
+  arrange(desc(n_reviews))
+
+head(n_reviews)
+```
+
+```{r}
+
 ```

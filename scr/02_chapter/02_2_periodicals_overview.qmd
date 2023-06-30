@@ -1,0 +1,475 @@
+---
+title: 'Chapter 2.2. Poems in periodicals: statistics'
+jupyter: ir
+---
+
+## Data load 
+
+Load packages and periodicals data
+
+```{r}
+library(tidyverse)
+
+library(treemap)
+library(ggplotify)
+theme_set(theme_minimal())
+library(wesanderson)
+library(MetBrewer)
+
+# fix problems with cyrillics
+# library(extrafont)
+# library(showtext)
+# font_add("Arial", "/Library/Fonts/Arial.ttf") 
+# showtext_auto()
+```
+
+Load data
+
+```{r}
+# periodicals
+per <- read.csv("../../data/periodicals_lem.csv") %>% 
+            select(-X) %>% 
+            rename(author = Author_Initials,
+                  year = Year, 
+                  title = Text_title,
+                  first_line = First_line) %>% 
+            filter(year != 1834)
+glimpse(per)
+```
+
+```{r}
+# RNC data
+load("../../data/nkrja_19th_lem.Rda")
+
+rnc_authors <- c19 %>% 
+    select(author) %>% 
+    mutate(author = str_remove_all(author, "[[:space:]]|[[:punct:]]")) %>% 
+    distinct() %>% 
+    pull()
+
+head(rnc_authors)
+
+#rm(c19)
+```
+
+```{r}
+print("Total number of authors in periodicals:")
+per %>% 
+    filter(!is.na(A_ID) & !is.na(author)) %>% # 1095 poems are with known author
+    select(author) %>% 
+    count(author, sort = T) %>% nrow() 
+
+print("Number of authors with biography in RP:")
+per %>% 
+    filter(!is.na(RP_biography)) %>% 
+    select(RP_biography) %>% 
+    count(RP_biography, sort = T) %>% nrow() 
+
+print("Number of authors included in RNC")
+per %>% 
+    filter(!is.na(author)) %>% 
+    select(author) %>% 
+    mutate(author = str_replace_all(author, "(.*?[[:space:]])(\\w\\.\\w.)", "\\2\\1")) %>% 
+    mutate(author = str_remove_all(author, "[[:space:]]|[[:punct:]]")) %>% 
+    distinct() %>% 
+    filter(author %in% rnc_authors) %>% nrow()
+```
+
+## Textual intersections between RNC & periodicals
+
+-   Create for each poem an id column containing two first lines
+-   Mark the intersection with a special tag
+
+```{r}
+periodicals <- per %>% 
+    filter(n_lines > 3) %>%
+    mutate(doublesCheck = str_extract(text_lemm, "^.*?\n.*?\n.*?\n")) %>% 
+    mutate(doublesCheck = str_remove_all(doublesCheck, "[[:punct:]]|[[:space:]]"))
+
+glimpse(periodicals)
+```
+
+```{r}
+nkrja19 <- c19 %>% 
+    rename(index = `Unnamed..0`,
+          text_lemm = lemma) %>% 
+    select(index, author, text_lemm) %>%
+    mutate(doublesCheck = str_extract(text_lemm, "^.*?\n.*?\n.*?\n")) %>% 
+    mutate(doublesCheck = str_remove_all(doublesCheck, "[[:punct:]]|[[:space:]]"))
+
+glimpse(nkrja19)
+```
+
+```{r}
+doubles_id <- periodicals %>% 
+    inner_join(nkrja19, by = "doublesCheck") %>% 
+    select(index, id, year, author.x, author.y, doublesCheck, text_raw)
+
+doubles_id %>% select(-text_raw) %>% head
+```
+
+```{r}
+print("Total number of intersected texts:")
+nrow(doubles_id)
+
+print("Total number of texts in periodicals:")
+nrow(periodicals)
+
+print("Total % of intersected texts out for all periodicals texts:")
+round( (nrow(doubles_id)/nrow(periodicals))*100 , 1) 
+```
+
+```{r}
+glimpse(doubles_id)
+
+doubles_counts <- doubles_id %>% 
+    count(year) %>% 
+    mutate(group = "Периодика и НКРЯ")
+
+doubles_counts %>% pivot_wider(names_from = year, values_from = n)
+```
+
+### Plot 2.2.1
+
+```{r}
+rnc_1835 <- c19 %>% 
+    rename(index = `Unnamed..0`) %>% 
+    # remove intersection
+    #anti_join(doubles_id %>% select(index), by = "index") %>%
+
+    # calculate number of unique poems
+    filter(year > 1834 & year < 1841) %>% 
+    count(year, sort = F) %>% 
+    mutate(group = "НКРЯ")
+
+rnc_1835 %>% pivot_wider(names_from = year, values_from = n)
+```
+
+```{r}
+counter_1835 <- per %>% 
+    # remove intersection
+    #anti_join(doubles_id %>% select(id), by = "id") %>%
+
+    count(year, sort = F) %>% 
+    mutate(group = "Периодика") %>%
+    rbind(rnc_1835, doubles_counts)
+
+counter_1835 %>% pivot_wider(names_from = year, values_from = n)
+```
+
+```{r}
+p2_2_1 <- counter_1835 %>%
+    ggplot(aes(x = year, y = n, fill = group)) + 
+    geom_col(position = "dodge", width = 0.6) + 
+    scale_fill_manual(values = c(
+                                wes_palette("Zissou1")[4],
+                                wes_palette("Royal1")[1], 
+                                wes_palette("Royal1")[2])) + 
+    scale_x_continuous(breaks = 1835:1840) +
+    theme(axis.text = element_text(size = 14),
+         axis.title = element_text(size = 16),
+         legend.title = element_text(size = 16, face = "bold"),
+         legend.text = element_text(size = 14)) + 
+    labs(x = "Год",
+        y = "Количество текстов",
+        fill = "Корпус")
+
+p2_2_1
+```
+
+```{r}
+# ggsave(file = "plots/fig2_2_1.png", plot = p2_2_1, dpi = 300,
+#       width = 8, height = 6, bg = "white")
+```
+
+## Sources statistics
+
+Analysis of poems published in different sources (journals & newspapers) and by different authors
+
+```{r}
+glimpse(per)
+```
+
+Load full metadata
+
+```{r}
+per_full <- read.delim("../../meta/database_poems_published_in_journals.tsv", sep = "\t") %>% 
+    rename(author = Author_Initials,
+                  year = Year, 
+                  title = Text_title,
+                  first_line = First_line) %>% 
+            filter(year != 1834)
+glimpse(per_full)
+```
+
+```{r}
+totals <- per_full %>% 
+    group_by(year, PER_ID) %>% 
+    count(sort = F) %>% 
+    ungroup() %>% 
+    rename(total_n = n) %>% 
+    mutate(source = paste0(year, "_", PER_ID)) %>% 
+    select(-year, -PER_ID)
+
+# current state of digitisation
+
+per %>% 
+    group_by(year, PER_ID) %>% 
+    count(sort = F) %>% 
+    ungroup() %>% 
+    mutate(source = paste0(year, "_", PER_ID)) %>% 
+    left_join(totals, by = "source") %>% 
+    select(-source) %>% 
+    mutate(to_digitise = total_n - n)
+```
+
+```{r}
+#todo <- per_full %>% 
+#    rename(id = text_ID) %>% 
+#    anti_join(per, by = "id")
+
+#write.csv(todo, "per_todo.csv")
+```
+
+```{r}
+per %>% group_by(year, PER_ID) %>% count() %>% 
+    ggplot(aes(x = year, y = n, fill = PER_ID)) + geom_col()
+```
+
+### Plots 2.2.2
+
+```{r}
+authors_sources <- per_full %>% 
+    #filter(PER_ID != "Сев_пч") %>% 
+    mutate(PER_ID = ifelse(str_detect(PER_ID,"СОиСА"), "СО", PER_ID)) %>% 
+    filter(!is.na(author)) %>% 
+    
+    # grouping by author, year and source
+    group_by(year, PER_ID, author) %>% 
+    count(sort = T) %>% 
+    ungroup() %>%
+    
+    # non-frequent authors grouped as "others"
+    mutate(author = ifelse(n < 3, "Другие", author)) %>% 
+    group_by(year, PER_ID, author) %>% 
+    # sum poems by others
+    summarise(n = sum(n)) %>% 
+    mutate(author_label = paste0(author, " (", n, ")"))
+
+head(authors_sources)
+```
+
+```{r}
+# light_palette <- 
+#     c(wes_palette("Chevalier1")[1], 
+#     wes_palette("Chevalier1")[2], 
+#     wes_palette("Chevalier1")[3], 
+#     wes_palette("Darjeeling2")[1], 
+#     wes_palette("Darjeeling2")[2], 
+#     wes_palette("Darjeeling2")[3])
+
+
+met.brewer("Lakota")
+str(met.brewer("Lakota"))
+```
+
+```{r}
+# treemap: https://cran.r-project.org/web/packages/treemap/treemap.pdf
+
+x <- NULL
+
+for (i in 1:length(unique(per_full$year))) {
+    
+    x <- unique(per_full$year)[i]
+    
+    filename = paste0("plots/treemaps/plot_", x, ".png")
+
+    png(filename, width = 600, height = 600)
+
+    t <- authors_sources %>% 
+        filter(year == x) %>% 
+        treemap(
+            index = c("PER_ID", "author_label"),
+            vSize = "n",
+            type = "index",
+            palette = light_palette,
+            fontsize.labels = c(20, 16),
+            #position.legend = "right",
+            overlap.labels = 1,
+            title = x,
+            fontsize.title = 22
+        )
+
+    dev.off()
+}
+```
+
+```{r}
+
+png("plots/treemaps/2-2-2_1835.png", height = 600, width = 600)
+
+authors_sources %>% 
+        filter(year == 1835) %>% 
+        treemap(
+            index = c("PER_ID", "author_label"),
+            vSize = "n",
+            type = "index",
+            palette = met.brewer("Lakota"),
+            fontsize.labels = c(22, 16),
+            #position.legend = "right",
+            overlap.labels = 1,
+            title = "1835",
+            fontsize.title = 22
+        )
+
+dev.off()
+```
+
+```{r}
+met.brewer("Lakota")
+met.brewer("Klimt")
+
+```
+
+```{r}
+png("plots/treemaps/2-2-2_1836.png", height = 600, width = 600)
+
+authors_sources %>% 
+        filter(year == 1836) %>% 
+        select(PER_ID) %>% distinct() %>% arrange(-desc(PER_ID))
+
+tree_pal <- c(met.brewer("Lakota")[1:5], 
+              met.brewer("Klimt")[6], 
+              met.brewer("Lakota")[6])
+
+authors_sources %>% 
+        filter(year == 1836) %>% 
+        treemap(
+            index = c("PER_ID", "author_label"),
+            vSize = "n",
+            type = "index",
+            palette = tree_pal,
+            fontsize.labels = c(22, 16),
+            #position.legend = "right",
+            overlap.labels = 1,
+            title = "1836",
+            fontsize.title = 22
+        )
+
+dev.off()
+```
+
+```{r}
+png("plots/treemaps/2-2-2_1837.png", height = 600, width = 600)
+
+authors_sources %>% 
+        filter(year == 1837) %>% 
+        select(PER_ID) %>% distinct() %>% arrange(-desc(PER_ID))
+
+tree_pal <- c(met.brewer("Lakota")[1:2],
+              met.brewer("Lakota")[5],
+              met.brewer("Klimt")[6])
+
+authors_sources %>%
+        filter(year == 1837) %>%
+        treemap(
+            index = c("PER_ID", "author_label"),
+            vSize = "n",
+            type = "index",
+            palette = tree_pal,
+            fontsize.labels = c(22, 16),
+            #position.legend = "right",
+            overlap.labels = 1,
+            title = "1837",
+            fontsize.title = 22
+        )
+
+dev.off()
+```
+
+```{r}
+png("plots/treemaps/2-2-2_1838.png", height = 600, width = 600)
+
+authors_sources %>% 
+        filter(year == 1838) %>% 
+        select(PER_ID) %>% distinct() %>% arrange(-desc(PER_ID))
+
+tree_pal <- c(met.brewer("Lakota")[1:2],
+              met.brewer("Lakota")[4:5],
+              met.brewer("Klimt")[6])
+
+authors_sources %>%
+        filter(year == 1838) %>%
+        treemap(
+            index = c("PER_ID", "author_label"),
+            vSize = "n",
+            type = "index",
+            palette = tree_pal,
+            fontsize.labels = c(22, 16),
+            #position.legend = "right",
+            overlap.labels = 1,
+            title = "1838",
+            fontsize.title = 22
+        )
+
+dev.off()
+```
+
+```{r}
+png("plots/treemaps/2-2-2_1839.png", height = 600, width = 600)
+
+authors_sources %>% 
+        filter(year == 1839) %>% 
+        select(PER_ID) %>% distinct() %>% arrange(-desc(PER_ID))
+
+tree_pal <- c(met.brewer("Lakota")[1:2],
+              met.brewer("Klimt")[5],
+              met.brewer("Lakota")[5],
+              met.brewer("Klimt")[6])
+
+authors_sources %>%
+        filter(year == 1839) %>%
+        treemap(
+            index = c("PER_ID", "author_label"),
+            vSize = "n",
+            type = "index",
+            palette = tree_pal,
+            fontsize.labels = c(22, 16),
+            #position.legend = "right",
+            overlap.labels = 1,
+            title = "1839",
+            fontsize.title = 22
+        )
+
+dev.off()
+```
+
+```{r}
+png("plots/treemaps/2-2-2_1840.png", height = 600, width = 600)
+
+authors_sources %>% 
+        filter(year == 1840) %>% 
+        select(PER_ID) %>% distinct() %>% arrange(-desc(PER_ID))
+
+tree_pal <- c(met.brewer("Lakota")[1:2],
+              met.brewer("Klimt")[5],
+              met.brewer("Klimt")[1],
+              met.brewer("Lakota")[5],
+              met.brewer("Klimt")[6])
+
+authors_sources %>%
+        filter(year == 1840) %>%
+        treemap(
+            index = c("PER_ID", "author_label"),
+            vSize = "n",
+            type = "index",
+            palette = tree_pal,
+            fontsize.labels = c(22, 16),
+            #position.legend = "right",
+            overlap.labels = 1,
+            title = "1840",
+            fontsize.title = 22
+        )
+
+dev.off()
+```

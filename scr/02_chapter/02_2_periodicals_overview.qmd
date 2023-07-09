@@ -3,7 +3,7 @@ title: 'Chapter 2.2. Poems in periodicals: statistics'
 jupyter: ir
 ---
 
-## Data load 
+## Data load
 
 Load packages and periodicals data
 

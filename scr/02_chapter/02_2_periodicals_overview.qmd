@@ -473,3 +473,50 @@ authors_sources %>%
 
 dev.off()
 ```
+
+### Authors rotation in journals
+
+```{r}
+per_full %>% 
+  filter(PER_ID == "БдЧ" & !is.na(author)) %>% 
+  group_by(year) %>% 
+  count(author, sort = T) %>% 
+  mutate(rank = row_number()) %>% 
+  ungroup() %>% 
+  #filter(rank < 21) %>% 
+  pivot_wider(!n, names_from = year, values_from = rank) %>% 
+  select(author, `1835`, `1836`, `1837`, `1838`, `1839`, `1840`)
+  #filter(year == 1835)
+```
+
+```{r}
+x <- per_full %>% 
+  filter(PER_ID == "БдЧ" & !is.na(author)) %>% 
+  group_by(year) %>% 
+  count(author, sort = T) %>% 
+  mutate(rank = row_number()) %>% 
+  ungroup() %>% 
+  filter(rank < 21) 
+
+x %>% filter(year == 1835)
+
+y <- x %>% 
+  filter(year %in% c(1835, 1836)) %>% 
+  pivot_wider(!n, names_from = year, values_from = rank) %>% 
+  rename(y1835 = `1835`,
+         y1836 = `1836`) %>% 
+  mutate(author = paste0(y1835, "_", author)) %>% 
+  #mutate_if(is.numeric, replace_na, 0) %>% 
+  arrange(-desc(y1835)) %>% 
+  drop_na()
+
+y
+
+y$y1835
+y$y1836
+
+
+
+k <- cor.test(c(2,3,5,6,9,14,16), c(1,12,7,8,2,11,13), method = "kendall")
+k
+```

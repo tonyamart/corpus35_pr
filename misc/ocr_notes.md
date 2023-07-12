@@ -31,6 +31,9 @@ almanacs:
 
 ### meta per 3
   
+*to edit!!*
+P_740 - возможно не стихотворение Майкова (нет в собр соч?)
+  
 *added a column text_raw*  
 * f -- should be in fem corpus
 * c -- canonical, should be in nkrja

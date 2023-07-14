@@ -1,0 +1,123 @@
+---
+title: "00_texts_separation"
+format: html
+editor: visual
+---
+
+```{r}
+library(tidyverse)
+```
+
+# Periodicals
+
+## Load data
+
+Read all .txt files in a folder
+
+```{r}
+fl <- list.files("../../misc/raw_ocr/SO/done_add/", # select folder
+                 pattern = ".txt",
+                 full.names = T)
+
+print("filelist:")
+fl # check filelist
+
+dat <- tibble(file = fl,
+            text = sapply(fl, read_file)) # read files with sapply
+
+head(dat)
+```
+
+## Extract id-s
+
+```{r}
+dat_cln <- dat %>% 
+  # add a <text_end> tag before each id for easier separation
+  mutate(text = str_replace_all(text, "<id:", "<text_end><id:")) %>% 
+  # separate rows by the tag
+  separate_rows(text, sep = "<text_end>") %>% 
+  # filter possible empty lines
+  filter(text != "") %>% 
+  # extract ids
+  mutate(id = str_extract(text, "<id:.*?>")) %>% 
+  # check if other tags are present
+  mutate(other_tags = str_extract(text, "<.*?>")) %>% 
+    
+  # main cleaning: 
+  # edit id-s from numbers to text id-s
+  mutate(id = str_remove_all(id, "<|>|id:\\s?"),
+         path = paste0("texts/P_", id, ".txt"),
+         # remove all tags from texts (everything in <>)
+         text = str_remove_all(text, "<.*?>"),
+         # remove newline(s) from the text beginning
+         text = str_remove(text, "^\n\n?|\n\n\n?$")
+         )
+
+head(dat_cln)
+nrow(dat_cln) # number of poems separated
+```
+
+## Check before writing
+
+Id-s & paths
+
+```{r}
+print(c(
+  "Number of unique id-s are equal to number of rows:", 
+  nrow(dat_cln) == length(unique(dat_cln$id))
+  ))
+
+# show duplicates
+dat_cln[duplicated(dat_cln$id),]
+
+# check paths
+head(unique(dat_cln$path))
+```
+
+## Write texts as separate files
+
+```{r}
+setwd("../../misc/raw_ocr/SO/done_add/")
+
+for (i in 1:nrow(dat_cln)) {
+  write_file(x = dat_cln$text[i], file = dat_cln$path[i])
+}
+
+#write_file(x = dat_cln$text[1], file = dat_cln$path[1])
+```
+
+## test: attach per to meta
+
+```{r}
+meta_todo <- read.csv("../../scr/02_chapter/per_todo.csv")
+glimpse(meta_todo)
+```
+
+```{r}
+lf <- list.files(path = "../../misc/raw_ocr/per_add/",
+                 pattern = ".txt",
+                 full.names = F)
+head(lf)
+length(lf)
+
+test_vec <- str_remove_all(lf, ".txt")
+
+meta_todo %>% 
+  filter(!id %in% test_vec) %>% 
+  count(PER_ID)
+
+```
+
+```{r}
+meta <- read.delim("../../meta/per_meta_140723.tsv", 
+                   sep = "\t") %>% 
+  filter(First_line != "") # 1870 texts
+
+# 1403 texts
+per_texts <- read.csv("../../data/periodicals_lem.csv") %>% rename(text_ID = id)
+
+meta %>% 
+  anti_join(per_texts, by = "text_ID") %>% # 468 texts to be added
+  filter(!text_ID %in% test_vec) %>%  # 182 to go
+  count(PER_ID, Year, sort = T)
+```

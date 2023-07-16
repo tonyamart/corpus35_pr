@@ -15,7 +15,7 @@ library(tidyverse)
 Read all .txt files in a folder
 
 ```{r}
-fl <- list.files("../../misc/raw_ocr/SO/done_add/", # select folder
+fl <- list.files("../../misc/raw_ocr/per_raw", # select folder
                  pattern = ".txt",
                  full.names = T)
 
@@ -46,7 +46,7 @@ dat_cln <- dat %>%
   # main cleaning: 
   # edit id-s from numbers to text id-s
   mutate(id = str_remove_all(id, "<|>|id:\\s?"),
-         path = paste0("texts/P_", id, ".txt"),
+         path = paste0("P_", id, ".txt"),
          # remove all tags from texts (everything in <>)
          text = str_remove_all(text, "<.*?>"),
          # remove newline(s) from the text beginning
@@ -77,7 +77,8 @@ head(unique(dat_cln$path))
 ## Write texts as separate files
 
 ```{r}
-setwd("../../misc/raw_ocr/SO/done_add/")
+getwd()
+setwd("../../misc/raw_ocr/per_raw/telescope/")
 
 for (i in 1:nrow(dat_cln)) {
   write_file(x = dat_cln$text[i], file = dat_cln$path[i])
@@ -119,5 +120,16 @@ per_texts <- read.csv("../../data/periodicals_lem.csv") %>% rename(text_ID = id)
 meta %>% 
   anti_join(per_texts, by = "text_ID") %>% # 468 texts to be added
   filter(!text_ID %in% test_vec) %>%  # 182 to go
-  count(PER_ID, Year, sort = T)
+  #count(PER_ID, Year, sort = T)
+  filter(PER_ID == "МН")
+```
+
+```{r}
+lf <- list.files(path = "../../misc/raw_ocr/per_add/", 
+                 #full.names = T,
+                 pattern = ".txt")
+
+head(lf)
+
+
 ```

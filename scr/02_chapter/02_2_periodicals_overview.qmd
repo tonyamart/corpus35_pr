@@ -490,33 +490,171 @@ per_full %>%
 ```
 
 ```{r}
-x <- per_full %>% 
-  filter(PER_ID == "БдЧ" & !is.na(author)) %>% 
-  group_by(year) %>% 
-  count(author, sort = T) %>% 
-  mutate(rank = row_number()) %>% 
-  ungroup() %>% 
-  filter(rank < 21) 
+per_full %>% 
+    filter(author == "Баратынский Е.А.") 
+```
 
-x %>% filter(year == 1835)
+```{r}
+x <- NULL
+y <- NULL
+k <- NULL
+years <- NULL
+tau <- NULL
 
-y <- x %>% 
-  filter(year %in% c(1835, 1836)) %>% 
-  pivot_wider(!n, names_from = year, values_from = rank) %>% 
-  rename(y1835 = `1835`,
-         y1836 = `1836`) %>% 
-  mutate(author = paste0(y1835, "_", author)) %>% 
-  #mutate_if(is.numeric, replace_na, 0) %>% 
-  arrange(-desc(y1835)) %>% 
-  drop_na()
+for (i in 1:(length(unique(per_full$year))-1)) {
+  year1 <- unique(per_full$year)[i]
+  year2 <- year1+1
+  
+  print(c(year1, year2))
+  
+  x <- per_full %>% 
+    filter(!is.na(author)) %>% 
+    group_by(year) %>% 
+    count(author, sort = T) %>% 
+    mutate(rank = row_number()) %>% 
+    ungroup() %>% 
+    filter(rank < 21) 
+  
+  y <- x %>% 
+    filter(year %in% c(year1, year2)) %>% 
+    #mutate(year = ifelse(year == year1, "year1", "year2")) %>% 
+    pivot_wider(id_cols = !n, names_from = year, values_from = rank) %>% 
+    drop_na()
 
-y
+  print(y)
+  
+  y <- x %>% 
+    filter(year %in% c(year1, year2)) %>% 
+    mutate(year = ifelse(year == year1, "year1", "year2")) %>% 
+    pivot_wider(id_cols = !n, names_from = year, values_from = rank) %>% 
+    drop_na()
 
-y$y1835
-y$y1836
+  x1 <- as.vector(y$year1)
+  x2 <- as.vector(y$year2)
+
+  k <- cor.test(x1, x2, method = "kendall")
+
+  years <- c(years, paste0(year1, "_", year2))
+  tau <- c(tau, unlist(k[[4]]))
+
+}
+
+```
+
+```{r}
+tibble(years = years,
+       tau = tau)
+```
+
+```{r}
+# unite some journal's names
+per_full <- per_full %>% 
+  mutate(per_cln = ifelse(PER_ID == "СОиСА", "СО", PER_ID),
+         per_cln = ifelse(PER_ID == "ЛГ", "ЛПРИ", per_cln))
+
+# quick look on journal's existence (in data)
+per_full %>% 
+  count(year, per_cln) %>% 
+  pivot_wider(names_from = year, values_from = n)
+
+# selected journals
+per_names <- c("БдЧ", "ЛПРИ", "СО", "Совр", "ОЗ")
+```
+
+```{r}
+#length(unique(per_full$year))
+
+per_names <- c("БдЧ", "ЛПРИ", "СО", "Совр", "ОЗ")
+
+x <- NULL
+y <- NULL
+year1 <- NULL
+year2 <- NULL
+
+x1 <- NULL
+x2 <- NULL
+k <- NULL
+
+jou <- c("journal")
+years <- c("year")
+tau <- c("tau")
+
+for (i in 1:length(per_names)) {
+  
+  x <- per_full %>%
+    filter(per_cln == per_names[i])
+  
+  # print(per_names[i])
+  
+  for (j in 1:(length(unique(x$year))-1)) {
+    year1 <- unique(x$year)[j]
+    year2 <- year1 + 1
+
+    # print(c(year1, year2))
+    
+    y <- x %>% 
+      filter(!is.na(author)) %>% 
+      group_by(year) %>% 
+      count(author, sort = T) %>% 
+      mutate(rank = row_number()) %>% 
+      ungroup() %>% 
+      #filter(rank < 21) %>% 
+      filter(year %in% c(year1, year2)) %>% 
+      mutate(year = ifelse(year == year1, "year1", "year2")) %>% 
+      pivot_wider(id_cols = !n, names_from = year, values_from = rank) %>% 
+      drop_na
+
+    #print(y)
+    
+    x1 <- as.vector(y$year1)
+    x2 <- as.vector(y$year2)
+
+    print(c(per_names[i], year1, year2,  x1, "vs", x2))
+    
+    if (length(x1) > 0 & length(x2) > 0) {
+      k <- cor.test(x1, x2, method = "kendall")
+      
+      #print(unlist(k[[4]]))
+    
+      jou <- c(jou, per_names[i])
+      years <- c(years, paste0(year1, "_", year2))
+      tau <- c(tau, unlist(k[[4]]))
+    }
+  }
+}   
+```
+
+```{r}
+
+tibble(journal = jou, 
+       year = years,
+       tau_val = tau) %>% 
+  filter(journal != "journal") %>% 
+  mutate(tau_val = round(as.numeric(tau_val), 4)) %>% 
+  pivot_wider(names_from = year, values_from = tau_val)
+```
+
+```{r}
+per_names
+
+p <- NULL
+d <- NULL
+
+for (i in 1:length(per_names)) {
+  p <- per_names[i]
+  
+  d <- per_full %>% 
+    filter(!is.na(author)) %>% 
+    filter(per_cln == p) %>% 
+    count(year, author) %>% 
+    mutate(n = 1) %>% 
+    pivot_wider(names_from = year, values_from = n, values_fill = 0) %>% 
+    mutate(total = rowSums(select_if(., is.numeric))) %>% 
+    arrange(desc(total))
+  
+  print(d)
+  
+}
 
 
-
-k <- cor.test(c(2,3,5,6,9,14,16), c(1,12,7,8,2,11,13), method = "kendall")
-k
 ```

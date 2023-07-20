@@ -8,6 +8,147 @@ editor: visual
 library(tidyverse)
 ```
 
+# Collections
+
+```{r}
+lf <- list.files("../../data/cols_test/",
+                 pattern = ".txt", 
+                 full.names = TRUE)
+
+head(lf)
+
+dat <- tibble(path = lf,
+              text = sapply(lf, read_file))
+
+str(dat)
+```
+
+## Extract metadata
+
+```{r}
+dat_meta <- dat %>% 
+  # extract metadata tags
+  mutate(col_id = str_extract(text, "<id: .*?>"), 
+         year = str_extract(text, "<year: .*?>"),
+         descr = str_extract(text, "<descr: .*?>")) %>% 
+  # clean metadata tags
+  mutate(col_id = str_remove_all(col_id, "<|id:|>|\\s"),
+         col_id = paste0("C_", col_id),
+         year = str_remove_all(year, "<year:|>|\\s"),
+         descr = str_remove_all(descr, "<descr:\\s?|>")) %>% 
+  
+  # remove metadata from the texts
+  mutate(text = str_remove_all(text, 
+                               "<id:.*?>|<year:.*?>|<descr:.*?>")) 
+
+str(dat_meta)
+rm(dat)
+```
+
+## Text separation
+
+```{r}
+dat_cln <- dat_meta %>% 
+  # remove unnecessary spaces left after metadata removal
+  mutate(text = str_remove(text, "^\n\n\n\n\n?")) %>% 
+  
+  # add separator between each text id tag
+  mutate(text = str_replace_all(text, "<title:", "<new_text><title:")) %>% 
+  
+  # separate each text to a row
+  separate_rows(text, sep = "<new_text>") %>% 
+  # remove empty rows
+  filter(text != "") %>% 
+  filter(str_detect(text, "<title:")) %>% 
+  
+  # extract text title and subtitle
+  mutate(# extraction
+         title = str_extract(text, "<title:.*?>"),
+         subtitle = ifelse(str_detect(title, "\\|\\|sub:"),
+                           str_extract(title, "\\|\\|sub:\\s?.*?>"),
+                           ""),
+         # cleaning
+         title = str_remove_all(title, "\\|\\|sub:.*?>"),
+         title = str_remove_all(title, "<title:\\s?|>"),
+         subtitle = str_remove_all(subtitle, "\\|\\|sub:\\s?|>"),
+         
+         # clean text from tag
+         text_cln = str_remove_all(text, "<title:.*?>")
+         ) %>% 
+  
+  # extract pages of the text
+  mutate(pages = str_extract(text, "<pages:.*?>"),
+         pages = str_remove_all(pages, "<pages:|\\s|>"),
+         text_cln = str_remove_all(text_cln, "<pages:.*?>")
+         ) %>% 
+  
+  # extract notes & authors for almanack-type editions
+  mutate( #extraction
+    notes = str_extract(text, "<notes:.*?>"),
+    author = ifelse(str_detect(notes, "\\|\\|author:"),
+                         str_extract(notes, "\\|\\|author:.*?>"),
+                         ""),
+    
+    # cleaning
+    author = str_remove_all(author, "\\|\\|author:\\s?|>"),
+    author = str_replace_all(author, "NA", "Unknown"),
+    notes = str_remove_all(notes, "<notes:\\s?|\\|\\|author:.*?>|>"),
+    # text cln from notes
+    text_cln = str_remove_all(text_cln, "<notes:.*?>")
+    ) %>% 
+  
+  # extract genre_title
+  mutate(genre_title = str_extract(text, "<genre title:.*?>"),
+         genre_title = str_remove_all(genre_title, "<genre title:\\s|>"),
+         text_cln = str_remove_all(text_cln, "<genre title:.*?>")) %>% 
+  
+  # final text cleaning from \n\n
+  mutate(text_cln = str_remove_all(text_cln, "^\\n\\n\\n?|\\n?\\n?\\n?$")) %>% 
+  
+  # add text_id
+  group_by(col_id) %>% 
+  mutate(text_id = paste0(col_id, "__", row_number())) %>% 
+  ungroup() %>% 
+  
+  # create path for separate files:
+  mutate(path_text = paste0("../../data/cols_test/texts//", text_id, ".txt" )) %>% 
+  
+  # create first line column
+  mutate(first_line = ifelse(!str_detect(text_cln, "^<"),
+           str_extract(text_cln, "^.*?\\n"),
+           str_extract(text_cln, "\\n.*?\\n")
+           ),
+         first_line = str_remove(first_line, "^\\n|\\n$")) %>% 
+  
+  select(path, path_text, col_id, year, author, 
+         text_id, title, subtitle, genre_title, first_line, pages, notes, 
+         text_cln, text, descr)
+  
+str(dat_cln)
+```
+
+## Write texts and metadata
+
+```{r}
+#getwd()
+
+# write texts 
+for (i in 1:nrow(dat_cln)) {
+  write_file(x = dat_cln$text_cln[i], file = dat_cln$path_text[i])
+}
+
+# write metadata
+# str(dat_cln)
+write.csv(dat_cln %>% select(-text, -text_cln), 
+          file = "../../meta/collections_texts_meta.csv") 
+```
+
+```{r}
+dat_cln %>% 
+  filter(text_id == "C_69__21") %>% 
+  select(text_cln) %>% pull
+```
+
 # Periodicals
 
 ## Load data
@@ -41,14 +182,14 @@ dat_cln <- dat %>%
   # extract ids
   mutate(id = str_extract(text, "<id:.*?>")) %>% 
   # check if other tags are present
-  mutate(other_tags = str_extract(text, "<.*?>")) %>% 
+  mutate(other_tags = str_extract(text, "<\\w+:.*?>")) %>% 
     
   # main cleaning: 
   # edit id-s from numbers to text id-s
   mutate(id = str_remove_all(id, "<|>|id:\\s?"),
          path = paste0("P_", id, ".txt"),
          # remove all tags from texts (everything in <>)
-         text = str_remove_all(text, "<.*?>"),
+         text = str_remove_all(text, "<\\w+:.*?>"),
          # remove newline(s) from the text beginning
          text = str_remove(text, "^\n\n?|\n\n\n?$")
          )
@@ -68,7 +209,7 @@ print(c(
   ))
 
 # show duplicates
-dat_cln[duplicated(dat_cln$id),]
+# dat_cln[duplicated(dat_cln$id),]
 
 # check paths
 head(unique(dat_cln$path))
@@ -78,7 +219,7 @@ head(unique(dat_cln$path))
 
 ```{r}
 getwd()
-setwd("../../misc/raw_ocr/per_raw/telescope/")
+setwd("../../misc/raw_ocr/per_raw/mn/")
 
 for (i in 1:nrow(dat_cln)) {
   write_file(x = dat_cln$text[i], file = dat_cln$path[i])
@@ -90,11 +231,6 @@ for (i in 1:nrow(dat_cln)) {
 ## test: attach per to meta
 
 ```{r}
-meta_todo <- read.csv("../../scr/02_chapter/per_todo.csv")
-glimpse(meta_todo)
-```
-
-```{r}
 lf <- list.files(path = "../../misc/raw_ocr/per_add/",
                  pattern = ".txt",
                  full.names = F)
@@ -102,11 +238,6 @@ head(lf)
 length(lf)
 
 test_vec <- str_remove_all(lf, ".txt")
-
-meta_todo %>% 
-  filter(!id %in% test_vec) %>% 
-  count(PER_ID)
-
 ```
 
 ```{r}
@@ -120,16 +251,6 @@ per_texts <- read.csv("../../data/periodicals_lem.csv") %>% rename(text_ID = id)
 meta %>% 
   anti_join(per_texts, by = "text_ID") %>% # 468 texts to be added
   filter(!text_ID %in% test_vec) %>%  # 182 to go
-  #count(PER_ID, Year, sort = T)
-  filter(PER_ID == "МН")
-```
-
-```{r}
-lf <- list.files(path = "../../misc/raw_ocr/per_add/", 
-                 #full.names = T,
-                 pattern = ".txt")
-
-head(lf)
-
-
+  count(PER_ID, Year, sort = T)
+  #filter(PER_ID == "БдЧ")
 ```

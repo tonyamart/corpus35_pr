@@ -23,18 +23,60 @@ library(MetBrewer)
 # showtext_auto()
 ```
 
-Load data
+Load full metadata
 
 ```{r}
-# periodicals
-per <- read.csv("../../data/periodicals_lem.csv") %>% 
-            select(-X) %>% 
-            rename(author = Author_Initials,
-                  year = Year, 
-                  title = Text_title,
-                  first_line = First_line) %>% 
-            filter(year != 1834)
+per_full <- read.delim("../../meta/periodicals_texts.tsv", sep = "\t")
+glimpse(per_full)
+```
+
+Attach texts and fill the column for text existence
+
+```{r}
+# lf <- list.files(path = "../../data/periodicals/periodicals_united/",
+#                  full.names = T)
+# 
+# per_texts <- tibble(text_ID = str_remove_all(lf, 
+#                                 "../../data/periodicals/periodicals_united//|\\.txt"),
+#        text_done = "1",
+#        text_raw = sapply(lf, read_file))
+# 
+# glimpse(per_texts)
+```
+
+```{r}
+per_texts <- read.csv("../../data/periodicals_texts.csv") %>% 
+                  select(-X) %>% 
+                  mutate(text_ID = str_remove(text_ID, "\\.tx"))
+glimpse(per_texts)
+```
+
+Attach authors data
+
+```{r}
+authors <- read.delim("../../meta/authors.tsv", sep = "\t")
+glimpse(authors)
+```
+
+Combine all data together
+
+```{r}
+per <- per_full %>% 
+  select(-txt_raw, -text) %>% 
+  left_join(per_texts, by = "text_ID") %>% 
+  left_join(authors %>% rename(author_x = author), by = "A_ID") %>% 
+  # for poems with authors not in authors_meta add author == author_sign
+  mutate(author = ifelse((A_ID == "" & author == ""), author_sign, author))
+
 glimpse(per)
+
+# save(per, file = "periodicals_full_data.Rda")
+```
+
+```{r}
+per %>% 
+  #filter(text_raw != "") %>% 
+  count(year, sort = F)
 ```
 
 ```{r}
@@ -52,39 +94,46 @@ head(rnc_authors)
 #rm(c19)
 ```
 
+## 2.1. Periodicals vs RNC
+
+Comparison on number of authors
+
 ```{r}
 print("Total number of authors in periodicals:")
 per %>% 
-    filter(!is.na(A_ID) & !is.na(author)) %>% # 1095 poems are with known author
+    filter(A_ID != "" & author != "") %>% # 1455 poems are with known author
     select(author) %>% 
     count(author, sort = T) %>% nrow() 
 
 print("Number of authors with biography in RP:")
 per %>% 
-    filter(!is.na(RP_biography)) %>% 
-    select(RP_biography) %>% 
-    count(RP_biography, sort = T) %>% nrow() 
+    filter(RP != "") %>% # 1198 poems by authors known by RP
+    select(RP) %>% 
+    count(RP, sort = T) %>% nrow() 
 
 print("Number of authors included in RNC")
 per %>% 
-    filter(!is.na(author)) %>% 
+    filter(author != "") %>% 
     select(author) %>% 
-    mutate(author = str_replace_all(author, "(.*?[[:space:]])(\\w\\.\\w.)", "\\2\\1")) %>% 
+    mutate(author = str_replace_all(author, 
+                                    "(.*?[[:space:]])(\\w\\.\\w.)", 
+                                    "\\2\\1")) %>% 
     mutate(author = str_remove_all(author, "[[:space:]]|[[:punct:]]")) %>% 
     distinct() %>% 
-    filter(author %in% rnc_authors) %>% nrow()
+    filter(author %in% rnc_authors) %>% 
+    nrow()
 ```
 
-## Textual intersections between RNC & periodicals
+### Textual intersections between RNC & periodicals
 
 -   Create for each poem an id column containing two first lines
 -   Mark the intersection with a special tag
 
 ```{r}
 periodicals <- per %>% 
-    filter(n_lines > 3) %>%
     mutate(doublesCheck = str_extract(text_lemm, "^.*?\n.*?\n.*?\n")) %>% 
-    mutate(doublesCheck = str_remove_all(doublesCheck, "[[:punct:]]|[[:space:]]"))
+    mutate(doublesCheck = str_remove_all(doublesCheck, "[[:punct:]]|[[:space:]]")) %>% 
+    filter(text_raw != "") # remove empty lines
 
 glimpse(periodicals)
 ```
@@ -103,7 +152,7 @@ glimpse(nkrja19)
 ```{r}
 doubles_id <- periodicals %>% 
     inner_join(nkrja19, by = "doublesCheck") %>% 
-    select(index, id, year, author.x, author.y, doublesCheck, text_raw)
+    select(index, text_ID, year, author.x, author.y, doublesCheck, text_raw)
 
 doubles_id %>% select(-text_raw) %>% head
 ```
@@ -182,53 +231,12 @@ p2_2_1
 #       width = 8, height = 6, bg = "white")
 ```
 
-## Sources statistics
+## 2.2. Sources statistics
 
 Analysis of poems published in different sources (journals & newspapers) and by different authors
 
 ```{r}
 glimpse(per)
-```
-
-Load full metadata
-
-```{r}
-per_full <- read.delim("../../meta/database_poems_published_in_journals.tsv", sep = "\t") %>% 
-    rename(author = Author_Initials,
-                  year = Year, 
-                  title = Text_title,
-                  first_line = First_line) %>% 
-            filter(year != 1834)
-glimpse(per_full)
-```
-
-```{r}
-totals <- per_full %>% 
-    group_by(year, PER_ID) %>% 
-    count(sort = F) %>% 
-    ungroup() %>% 
-    rename(total_n = n) %>% 
-    mutate(source = paste0(year, "_", PER_ID)) %>% 
-    select(-year, -PER_ID)
-
-# current state of digitisation
-
-per %>% 
-    group_by(year, PER_ID) %>% 
-    count(sort = F) %>% 
-    ungroup() %>% 
-    mutate(source = paste0(year, "_", PER_ID)) %>% 
-    left_join(totals, by = "source") %>% 
-    select(-source) %>% 
-    mutate(to_digitise = total_n - n)
-```
-
-```{r}
-#todo <- per_full %>% 
-#    rename(id = text_ID) %>% 
-#    anti_join(per, by = "id")
-
-#write.csv(todo, "per_todo.csv")
 ```
 
 ```{r}
@@ -239,10 +247,25 @@ per %>% group_by(year, PER_ID) %>% count() %>%
 ### Plots 2.2.2
 
 ```{r}
-authors_sources <- per_full %>% 
+periodicals <- per %>% 
+  filter(!PER_ID %in% c("Молва", "МН", "Сев_пч"))
+
+years_total <- periodicals %>% 
+  count(year) %>% 
+  mutate(year_label = paste0(year, " (N = ", n, ")"))
+
+source_year_total <- periodicals %>% 
+  count(PER_ID, year)
+
+head(source_year_total)
+head(years_total)
+```
+
+```{r}
+authors_sources <- periodicals %>% 
     #filter(PER_ID != "Сев_пч") %>% 
     mutate(PER_ID = ifelse(str_detect(PER_ID,"СОиСА"), "СО", PER_ID)) %>% 
-    filter(!is.na(author)) %>% 
+    filter(author != "") %>% 
     
     # grouping by author, year and source
     group_by(year, PER_ID, author) %>% 
@@ -305,8 +328,16 @@ for (i in 1:length(unique(per_full$year))) {
 ```
 
 ```{r}
+years_total
+```
 
-png("plots/treemaps/2-2-2_1835.png", height = 600, width = 600)
+```{r}
+source_year_total %>% arrange(-desc(year))
+```
+
+```{r}
+
+png("plots/treemaps/2-2-2_1835_v2.png", height = 650, width = 650)
 
 authors_sources %>% 
         filter(year == 1835) %>% 
@@ -315,10 +346,10 @@ authors_sources %>%
             vSize = "n",
             type = "index",
             palette = met.brewer("Lakota"),
-            fontsize.labels = c(22, 16),
+            fontsize.labels = c(24, 16),
             #position.legend = "right",
             overlap.labels = 1,
-            title = "1835",
+            title = "1835 (N = 269)",
             fontsize.title = 22
         )
 
@@ -332,7 +363,7 @@ met.brewer("Klimt")
 ```
 
 ```{r}
-png("plots/treemaps/2-2-2_1836.png", height = 600, width = 600)
+png("plots/treemaps/2-2-2_1836_v2.png", height = 600, width = 600)
 
 authors_sources %>% 
         filter(year == 1836) %>% 

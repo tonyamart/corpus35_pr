@@ -27,7 +27,7 @@ pal <- c(wes_palette("Chevalier1")[4], # sand
 
 ```{r}
 # do not run
-# how`data/01_4 fil` was done
+# how`data/01_4 fil` was made
 #`meta/collections_meta.cs` is derived from `numbers_meta/biblio_poetry_1830_1850_short.numbers`
 # 
 # pb <- read.csv("../../meta/collections_meta.csv", sep = ";") %>%
@@ -686,6 +686,18 @@ pb_authors %>%
   select(id, COL_ID, A_ID, author_sign, title, year)
 
 # 36 NA-s! meaning no known author, not in the authors metadata
+```
+
+```{r}
+# glimpse(pb_authors)
+# 
+# pb_save <- pb_authors %>% 
+#   rename(author = author.x,
+#          author_full_name = author_full_name.x)
+# 
+# glimpse(pb_save[, 1:22])
+# 
+# write.csv(pb_save[,1:22], file = "../../meta/collections_meta.csv")
 ```
 
 #### RP authors vs NA

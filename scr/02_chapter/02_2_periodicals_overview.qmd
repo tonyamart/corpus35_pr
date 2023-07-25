@@ -3,10 +3,6 @@ title: 'Chapter 2.2. Poems in periodicals: statistics'
 jupyter: ir
 ---
 
-## Data load
-
-Load packages and periodicals data
-
 ```{r}
 library(tidyverse)
 
@@ -23,6 +19,14 @@ library(MetBrewer)
 # showtext_auto()
 ```
 
+```{r}
+MetBrewer::colorblind_palettes
+
+met.brewer(MetBrewer::colorblind_palettes[24])
+```
+
+## Data compilation
+
 Load full metadata
 
 ```{r}
@@ -36,12 +40,17 @@ Attach texts and fill the column for text existence
 # lf <- list.files(path = "../../data/periodicals/periodicals_united/",
 #                  full.names = T)
 # 
-# per_texts <- tibble(text_ID = str_remove_all(lf, 
+# per_texts <- tibble(text_ID = str_remove_all(lf,
 #                                 "../../data/periodicals/periodicals_united//|\\.txt"),
 #        text_done = "1",
 #        text_raw = sapply(lf, read_file))
 # 
 # glimpse(per_texts)
+# 
+# per_texts <- per_texts %>% 
+#   mutate(text_lemm = str_remove_all(text_raw, "<.*?>"))
+# 
+# write.csv(per_texts, file = "per.csv")
 ```
 
 ```{r}
@@ -73,10 +82,23 @@ glimpse(per)
 # save(per, file = "periodicals_full_data.Rda")
 ```
 
+## Data load
+
 ```{r}
+load("periodicals_full_data.Rda")
+glimpse(per)
+
+print(c("Number of texts:", per %>% filter(text_raw != "") %>% nrow))
+```
+
+```{r}
+
 per %>% 
-  #filter(text_raw != "") %>% 
-  count(year, sort = F)
+  mutate(text_done = ifelse(!is.na(text_raw), "text done", "only meta")) %>% 
+  count(year, text_done) %>% 
+  ggplot(aes(x = year, y = n, fill = text_done)) + 
+  geom_col(position = "dodge") + 
+  scale_fill_manual(values = met.brewer("NewKingdom")[1:3])
 ```
 
 ```{r}
@@ -210,10 +232,10 @@ counter_1835 %>% pivot_wider(names_from = year, values_from = n)
 p2_2_1 <- counter_1835 %>%
     ggplot(aes(x = year, y = n, fill = group)) + 
     geom_col(position = "dodge", width = 0.6) + 
-    scale_fill_manual(values = c(
-                                wes_palette("Zissou1")[4],
-                                wes_palette("Royal1")[1], 
-                                wes_palette("Royal1")[2])) + 
+    scale_fill_manual(values = c(met.brewer("Veronese")[7], # dark blue
+                                 met.brewer("Veronese")[4], # light blue
+                                 met.brewer("Veronese")[1] # dark red
+                                )) + 
     scale_x_continuous(breaks = 1835:1840) +
     theme(axis.text = element_text(size = 14),
          axis.title = element_text(size = 16),
@@ -241,7 +263,7 @@ glimpse(per)
 
 ```{r}
 per %>% group_by(year, PER_ID) %>% count() %>% 
-    ggplot(aes(x = year, y = n, fill = PER_ID)) + geom_col()
+    ggplot(aes(x = year, y = n, fill = PER_ID)) + geom_col() 
 ```
 
 ### Plots 2.2.2
@@ -256,9 +278,6 @@ years_total <- periodicals %>%
 
 source_year_total <- periodicals %>% 
   count(PER_ID, year)
-
-head(source_year_total)
-head(years_total)
 ```
 
 ```{r}
@@ -283,17 +302,17 @@ head(authors_sources)
 ```
 
 ```{r}
-# light_palette <- 
-#     c(wes_palette("Chevalier1")[1], 
-#     wes_palette("Chevalier1")[2], 
-#     wes_palette("Chevalier1")[3], 
-#     wes_palette("Darjeeling2")[1], 
-#     wes_palette("Darjeeling2")[2], 
-#     wes_palette("Darjeeling2")[3])
+MetBrewer::colorblind_palettes
 
+met.brewer("Archambault")
 
-met.brewer("Lakota")
-str(met.brewer("Lakota"))
+met.brewer("Egypt")
+
+met.brewer("Johnson")
+
+met.brewer("Kandinsky")
+
+met.brewer("Veronese")
 ```
 
 ```{r}
@@ -337,7 +356,12 @@ source_year_total %>% arrange(-desc(year))
 
 ```{r}
 
-png("plots/treemaps/2-2-2_1835_v2.png", height = 650, width = 650)
+png("plots/treemaps/2-2-2_1835_v2.png", height = 650, width = 600)
+
+tree_pal <- c(met.brewer("Veronese")[1], # BdCH
+              met.brewer("Veronese")[3], # LPRI
+              met.brewer("Veronese")[4], # SO
+              met.brewer("Kandinsky")[3]) # Telescop
 
 authors_sources %>% 
         filter(year == 1835) %>% 
@@ -345,7 +369,7 @@ authors_sources %>%
             index = c("PER_ID", "author_label"),
             vSize = "n",
             type = "index",
-            palette = met.brewer("Lakota"),
+            palette = tree_pal,
             fontsize.labels = c(24, 16),
             #position.legend = "right",
             overlap.labels = 1,
@@ -357,21 +381,17 @@ dev.off()
 ```
 
 ```{r}
-met.brewer("Lakota")
-met.brewer("Klimt")
-
-```
-
-```{r}
-png("plots/treemaps/2-2-2_1836_v2.png", height = 600, width = 600)
+png("plots/treemaps/2-2-2_1836_v2.png", height = 650, width = 600)
 
 authors_sources %>% 
         filter(year == 1836) %>% 
         select(PER_ID) %>% distinct() %>% arrange(-desc(PER_ID))
 
-tree_pal <- c(met.brewer("Lakota")[1:5], 
-              met.brewer("Klimt")[6], 
-              met.brewer("Lakota")[6])
+tree_pal <- c(met.brewer("Veronese")[1], # BdCH
+              met.brewer("Veronese")[3], # LPRI
+              met.brewer("Veronese")[4], # SO
+              met.brewer("Veronese")[7], # Sovr
+              met.brewer("Kandinsky")[3]) # Telescop
 
 authors_sources %>% 
         filter(year == 1836) %>% 
@@ -380,10 +400,10 @@ authors_sources %>%
             vSize = "n",
             type = "index",
             palette = tree_pal,
-            fontsize.labels = c(22, 16),
+            fontsize.labels = c(24, 16),
             #position.legend = "right",
             overlap.labels = 1,
-            title = "1836",
+            title = "1836 (N = 238)",
             fontsize.title = 22
         )
 
@@ -391,15 +411,16 @@ dev.off()
 ```
 
 ```{r}
-png("plots/treemaps/2-2-2_1837.png", height = 600, width = 600)
+png("plots/treemaps/2-2-2_1837_v2.png", height = 650, width = 600)
 
 authors_sources %>% 
         filter(year == 1837) %>% 
         select(PER_ID) %>% distinct() %>% arrange(-desc(PER_ID))
 
-tree_pal <- c(met.brewer("Lakota")[1:2],
-              met.brewer("Lakota")[5],
-              met.brewer("Klimt")[6])
+tree_pal <- c(met.brewer("Veronese")[1], # BdCH
+              met.brewer("Veronese")[3], # LPRI
+              met.brewer("Veronese")[4], # SO
+              met.brewer("Veronese")[7]) # Sovr 
 
 authors_sources %>%
         filter(year == 1837) %>%
@@ -408,10 +429,10 @@ authors_sources %>%
             vSize = "n",
             type = "index",
             palette = tree_pal,
-            fontsize.labels = c(22, 16),
+            fontsize.labels = c(24, 16),
             #position.legend = "right",
             overlap.labels = 1,
-            title = "1837",
+            title = "1837 (N = 282)",
             fontsize.title = 22
         )
 
@@ -419,15 +440,16 @@ dev.off()
 ```
 
 ```{r}
-png("plots/treemaps/2-2-2_1838.png", height = 600, width = 600)
+png("plots/treemaps/2-2-2_1838_v2.png", height = 650, width = 600)
 
 authors_sources %>% 
         filter(year == 1838) %>% 
         select(PER_ID) %>% distinct() %>% arrange(-desc(PER_ID))
 
-tree_pal <- c(met.brewer("Lakota")[1:2],
-              met.brewer("Lakota")[4:5],
-              met.brewer("Klimt")[6])
+tree_pal <- c(met.brewer("Veronese")[1], # BdCH
+              met.brewer("Veronese")[3], # LPRI
+              met.brewer("Veronese")[4], # SO
+              met.brewer("Veronese")[7]) # Sovr
 
 authors_sources %>%
         filter(year == 1838) %>%
@@ -436,10 +458,10 @@ authors_sources %>%
             vSize = "n",
             type = "index",
             palette = tree_pal,
-            fontsize.labels = c(22, 16),
+            fontsize.labels = c(24, 16),
             #position.legend = "right",
             overlap.labels = 1,
-            title = "1838",
+            title = "1838 (N = 288)",
             fontsize.title = 22
         )
 
@@ -447,16 +469,17 @@ dev.off()
 ```
 
 ```{r}
-png("plots/treemaps/2-2-2_1839.png", height = 600, width = 600)
+png("plots/treemaps/2-2-2_1839_v2.png", height = 650, width = 600)
 
 authors_sources %>% 
         filter(year == 1839) %>% 
         select(PER_ID) %>% distinct() %>% arrange(-desc(PER_ID))
 
-tree_pal <- c(met.brewer("Lakota")[1:2],
-              met.brewer("Klimt")[5],
-              met.brewer("Lakota")[5],
-              met.brewer("Klimt")[6])
+tree_pal <- c(met.brewer("Veronese")[1], # BdCH
+              met.brewer("Veronese")[3], # LPRI
+              met.brewer("Archambault")[2], # OZ
+              met.brewer("Veronese")[4], # SO
+              met.brewer("Veronese")[7]) # Sovr
 
 authors_sources %>%
         filter(year == 1839) %>%
@@ -465,10 +488,10 @@ authors_sources %>%
             vSize = "n",
             type = "index",
             palette = tree_pal,
-            fontsize.labels = c(22, 16),
+            fontsize.labels = c(24, 16),
             #position.legend = "right",
             overlap.labels = 1,
-            title = "1839",
+            title = "1839 (N = 312)",
             fontsize.title = 22
         )
 
@@ -476,17 +499,18 @@ dev.off()
 ```
 
 ```{r}
-png("plots/treemaps/2-2-2_1840.png", height = 600, width = 600)
+png("plots/treemaps/2-2-2_1840_v2.png", height = 650, width = 600)
 
 authors_sources %>% 
         filter(year == 1840) %>% 
         select(PER_ID) %>% distinct() %>% arrange(-desc(PER_ID))
 
-tree_pal <- c(met.brewer("Lakota")[1:2],
-              met.brewer("Klimt")[5],
-              met.brewer("Klimt")[1],
-              met.brewer("Lakota")[5],
-              met.brewer("Klimt")[6])
+tree_pal <- c(met.brewer("Veronese")[1], # BdCH
+              met.brewer("Veronese")[3], # LG
+              met.brewer("Archambault")[2], # OZ
+              met.brewer("Egypt")[2], # PRiVET
+              met.brewer("Veronese")[4], # SO
+              met.brewer("Veronese")[7]) # Sovr
 
 authors_sources %>%
         filter(year == 1840) %>%
@@ -495,10 +519,10 @@ authors_sources %>%
             vSize = "n",
             type = "index",
             palette = tree_pal,
-            fontsize.labels = c(22, 16),
+            fontsize.labels = c(24, 16),
             #position.legend = "right",
             overlap.labels = 1,
-            title = "1840",
+            title = "1840 (N = 378)",
             fontsize.title = 22
         )
 
@@ -579,12 +603,12 @@ tibble(years = years,
 
 ```{r}
 # unite some journal's names
-per_full <- per_full %>% 
+per <- per %>% 
   mutate(per_cln = ifelse(PER_ID == "СОиСА", "СО", PER_ID),
          per_cln = ifelse(PER_ID == "ЛГ", "ЛПРИ", per_cln))
 
 # quick look on journal's existence (in data)
-per_full %>% 
+per %>% 
   count(year, per_cln) %>% 
   pivot_wider(names_from = year, values_from = n)
 
@@ -674,8 +698,8 @@ d <- NULL
 for (i in 1:length(per_names)) {
   p <- per_names[i]
   
-  d <- per_full %>% 
-    filter(!is.na(author)) %>% 
+  d <- per %>% 
+    filter(author != "") %>% 
     filter(per_cln == p) %>% 
     count(year, author) %>% 
     mutate(n = 1) %>% 
@@ -688,4 +712,49 @@ for (i in 1:length(per_names)) {
 }
 
 
+```
+
+```{r}
+
+unique(per$year)
+unique(per$per_cln)
+
+x <- NULL
+x1 <- NULL
+y <- NULL
+p <- NULL
+years <- NULL
+sources <- NULL
+perc <- NULL
+
+for (i in 1:length(unique(per$year))) {
+  
+  y <- unique(per$year)[i]
+  
+  for (j in 1:length(per_names)) {
+    
+    p <- per_names[j]
+    
+    x <- per %>% 
+      filter(PER_ID == p & year %in% c(y) & author != "") %>% 
+      count(author, sort = T) %>% nrow
+
+    x1 <- per %>% 
+      filter(PER_ID == p & year %in% c(y) & author != "") %>% 
+      count(author, sort = T) %>% 
+      filter(n == 1) %>% nrow
+
+    
+    years <- c(years, y)
+    sources <- c(sources, p)
+    perc <- c(perc, (x1/x)*100)
+    
+  }
+  
+}
+
+tibble(year = years,
+       source = sources,
+       perc = perc) %>% 
+  ggplot(aes(x = year, y = perc, color = source)) + geom_point() + geom_line()
 ```

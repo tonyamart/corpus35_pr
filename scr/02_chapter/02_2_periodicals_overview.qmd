@@ -253,7 +253,7 @@ p2_2_1
 #       width = 8, height = 6, bg = "white")
 ```
 
-## 2.2. Sources statistics
+## 2.2.1. Sources statistics
 
 Analysis of poems published in different sources (journals & newspapers) and by different authors
 
@@ -532,8 +532,8 @@ dev.off()
 ### Authors rotation in journals
 
 ```{r}
-per_full %>% 
-  filter(PER_ID == "БдЧ" & !is.na(author)) %>% 
+per %>% 
+  filter(PER_ID == "БдЧ" & author != "") %>% 
   group_by(year) %>% 
   count(author, sort = T) %>% 
   mutate(rank = row_number()) %>% 
@@ -542,63 +542,6 @@ per_full %>%
   pivot_wider(!n, names_from = year, values_from = rank) %>% 
   select(author, `1835`, `1836`, `1837`, `1838`, `1839`, `1840`)
   #filter(year == 1835)
-```
-
-```{r}
-per_full %>% 
-    filter(author == "Баратынский Е.А.") 
-```
-
-```{r}
-x <- NULL
-y <- NULL
-k <- NULL
-years <- NULL
-tau <- NULL
-
-for (i in 1:(length(unique(per_full$year))-1)) {
-  year1 <- unique(per_full$year)[i]
-  year2 <- year1+1
-  
-  print(c(year1, year2))
-  
-  x <- per_full %>% 
-    filter(!is.na(author)) %>% 
-    group_by(year) %>% 
-    count(author, sort = T) %>% 
-    mutate(rank = row_number()) %>% 
-    ungroup() %>% 
-    filter(rank < 21) 
-  
-  y <- x %>% 
-    filter(year %in% c(year1, year2)) %>% 
-    #mutate(year = ifelse(year == year1, "year1", "year2")) %>% 
-    pivot_wider(id_cols = !n, names_from = year, values_from = rank) %>% 
-    drop_na()
-
-  print(y)
-  
-  y <- x %>% 
-    filter(year %in% c(year1, year2)) %>% 
-    mutate(year = ifelse(year == year1, "year1", "year2")) %>% 
-    pivot_wider(id_cols = !n, names_from = year, values_from = rank) %>% 
-    drop_na()
-
-  x1 <- as.vector(y$year1)
-  x2 <- as.vector(y$year2)
-
-  k <- cor.test(x1, x2, method = "kendall")
-
-  years <- c(years, paste0(year1, "_", year2))
-  tau <- c(tau, unlist(k[[4]]))
-
-}
-
-```
-
-```{r}
-tibble(years = years,
-       tau = tau)
 ```
 
 ```{r}
@@ -617,86 +560,86 @@ per_names <- c("БдЧ", "ЛПРИ", "СО", "Совр", "ОЗ")
 ```
 
 ```{r}
-#length(unique(per_full$year))
+# Kendall's ranking correlation calculation
 
-per_names <- c("БдЧ", "ЛПРИ", "СО", "Совр", "ОЗ")
-
-x <- NULL
-y <- NULL
-year1 <- NULL
-year2 <- NULL
-
-x1 <- NULL
-x2 <- NULL
-k <- NULL
-
-jou <- c("journal")
-years <- c("year")
-tau <- c("tau")
-
-for (i in 1:length(per_names)) {
-  
-  x <- per_full %>%
-    filter(per_cln == per_names[i])
-  
-  # print(per_names[i])
-  
-  for (j in 1:(length(unique(x$year))-1)) {
-    year1 <- unique(x$year)[j]
-    year2 <- year1 + 1
-
-    # print(c(year1, year2))
-    
-    y <- x %>% 
-      filter(!is.na(author)) %>% 
-      group_by(year) %>% 
-      count(author, sort = T) %>% 
-      mutate(rank = row_number()) %>% 
-      ungroup() %>% 
-      #filter(rank < 21) %>% 
-      filter(year %in% c(year1, year2)) %>% 
-      mutate(year = ifelse(year == year1, "year1", "year2")) %>% 
-      pivot_wider(id_cols = !n, names_from = year, values_from = rank) %>% 
-      drop_na
-
-    #print(y)
-    
-    x1 <- as.vector(y$year1)
-    x2 <- as.vector(y$year2)
-
-    print(c(per_names[i], year1, year2,  x1, "vs", x2))
-    
-    if (length(x1) > 0 & length(x2) > 0) {
-      k <- cor.test(x1, x2, method = "kendall")
-      
-      #print(unlist(k[[4]]))
-    
-      jou <- c(jou, per_names[i])
-      years <- c(years, paste0(year1, "_", year2))
-      tau <- c(tau, unlist(k[[4]]))
-    }
-  }
-}   
+# #length(unique(per_full$year))
+# 
+# per_names <- c("БдЧ", "ЛПРИ", "СО", "Совр", "ОЗ")
+# 
+# x <- NULL
+# y <- NULL
+# year1 <- NULL
+# year2 <- NULL
+# 
+# x1 <- NULL
+# x2 <- NULL
+# k <- NULL
+# 
+# jou <- c("journal")
+# years <- c("year")
+# tau <- c("tau")
+# 
+# for (i in 1:length(per_names)) {
+#   
+#   x <- per %>%
+#     filter(per_cln == per_names[i])
+#   
+#   # print(per_names[i])
+#   
+#   for (j in 1:(length(unique(x$year))-1)) {
+#     year1 <- unique(x$year)[j]
+#     year2 <- year1 + 1
+# 
+#     # print(c(year1, year2))
+#     
+#     y <- x %>% 
+#       filter(!is.na(author)) %>% 
+#       group_by(year) %>% 
+#       count(author, sort = T) %>% 
+#       mutate(rank = row_number()) %>% 
+#       ungroup() %>% 
+#       #filter(rank < 21) %>% 
+#       filter(year %in% c(year1, year2)) %>% 
+#       mutate(year = ifelse(year == year1, "year1", "year2")) %>% 
+#       pivot_wider(id_cols = !n, names_from = year, values_from = rank) %>% 
+#       drop_na
+# 
+#     #print(y)
+#     
+#     x1 <- as.vector(y$year1)
+#     x2 <- as.vector(y$year2)
+# 
+#     print(c(per_names[i], year1, year2,  x1, "vs", x2))
+#     
+#     if (length(x1) > 0 & length(x2) > 0) {
+#       k <- cor.test(x1, x2, method = "kendall")
+#       
+#       #print(unlist(k[[4]]))
+#     
+#       jou <- c(jou, per_names[i])
+#       years <- c(years, paste0(year1, "_", year2))
+#       tau <- c(tau, unlist(k[[4]]))
+#     }
+#   }
+# }   
+# tibble(journal = jou, 
+#        year = years,
+#        tau_val = tau) %>% 
+#   filter(journal != "journal") %>% 
+#   mutate(tau_val = round(as.numeric(tau_val), 4)) %>% 
+#   pivot_wider(names_from = year, values_from = tau_val)
 ```
 
 ```{r}
-
-tibble(journal = jou, 
-       year = years,
-       tau_val = tau) %>% 
-  filter(journal != "journal") %>% 
-  mutate(tau_val = round(as.numeric(tau_val), 4)) %>% 
-  pivot_wider(names_from = year, values_from = tau_val)
-```
-
-```{r}
-per_names
+# per_names
 
 p <- NULL
 d <- NULL
 
 for (i in 1:length(per_names)) {
   p <- per_names[i]
+  
+  print(p)
   
   d <- per %>% 
     filter(author != "") %>% 
@@ -736,14 +679,16 @@ for (i in 1:length(unique(per$year))) {
     p <- per_names[j]
     
     x <- per %>% 
-      filter(PER_ID == p & year %in% c(y) & author != "") %>% 
+      filter(per_cln == p & year %in% c(y) & author != "") %>% 
       count(author, sort = T) %>% nrow
 
     x1 <- per %>% 
-      filter(PER_ID == p & year %in% c(y) & author != "") %>% 
+      filter(per_cln == p & year %in% c(y) & author != "") %>% 
       count(author, sort = T) %>% 
       filter(n == 1) %>% nrow
-
+    
+    print(c("source: ", p, "year:", y, 
+            "total authors:", x, "onetimers:", x1, "perc:", round(x1/x*100,1)))
     
     years <- c(years, y)
     sources <- c(sources, p)
@@ -756,5 +701,180 @@ for (i in 1:length(unique(per$year))) {
 tibble(year = years,
        source = sources,
        perc = perc) %>% 
-  ggplot(aes(x = year, y = perc, color = source)) + geom_point() + geom_line()
+  mutate(perc = round(perc, 2)) %>% 
+  pivot_wider(names_from = year, values_from = perc)
+```
+
+### Plot 2.2.3
+
+```{r}
+tibble(year = years,
+       source = sources,
+       perc = perc) %>% 
+  ggplot(aes(x = year, y = perc, color = source)) + 
+  geom_point(size = 2) + 
+  geom_line(linewidth = 2, alpha = 0.7) + 
+  labs(#subtitle = "Доля авторов, опубликовавших только 1 стихотворение\nв течение года",
+       x = "Год",
+       y = "%") + 
+  scale_color_manual(values = c(met.brewer("Veronese")[1], # BdCH
+              met.brewer("Veronese")[3], # LPRI
+              met.brewer("Archambault")[2], # OZ
+              met.brewer("Veronese")[4], # SO
+              met.brewer("Veronese")[7])) + # Sovr 
+  scale_y_continuous(limits = c(0,100)) + 
+  theme(legend.position = "None",
+        axis.text = element_text(size = 12),
+        axis.title = element_text(size = 14), 
+        plot.subtitle = element_text(size = 16))
+
+# ggsave(filename = "plots/Fig_2-2-3-1.png", plot = last_plot(),
+#         width = 8, height = 6, dpi = 300, bg = "white")
+```
+
+```{r}
+
+p <- NULL
+y <- NULL
+
+intersection <- NULL
+total <- NULL
+
+sources <- NULL
+years <- NULL
+
+for (i in 1:length(unique(per$year))) {
+  
+  y <- unique(per$year)[i]
+  
+  if (y < 1840) {
+
+    for (j in 1:length(per_names)) {
+      
+      p <- per_names[j]
+  
+      authors_y1 <- per %>% 
+        filter(per_cln == p & year == y & author != "") %>% 
+        count(author) %>% pull(author)
+  
+      authors_y2 <- per %>% 
+        filter(per_cln == p & year == y+1 & author != "") %>% 
+        count(author) %>% pull(author)
+      
+      #intersect(authors_y1, authors_y2)
+      
+      sources <- c(sources, p)
+      
+      years <- c(years, paste0(y, " -> ", y+1))
+      
+      intersection <- c(intersection, length(intersect(authors_y1, authors_y2)))
+      
+      total <- c(total, length(c(authors_y1, authors_y2)))
+      
+      }
+  } 
+} 
+
+tibble(sources = sources,
+       years = years,
+       int = intersection,
+       total = total) %>% 
+  mutate(jaccard = round((int/total)*100, 2) ) %>% 
+  #drop_na() %>% 
+  select(sources, years, jaccard) %>% 
+  pivot_wider(names_from = years, values_from = jaccard)
+
+tibble(sources = sources,
+       years = years,
+       int = intersection,
+       total = total) %>% 
+  mutate(source = paste0(sources, "_", years)) %>% 
+  filter(!source %in% c("Совр_1835 -> 1836", "ОЗ_1838 -> 1839")) %>% 
+  mutate(jaccard = round((int/total)*100, 3) ) %>% 
+  drop_na() %>% 
+  ggplot(aes(x = years, y = jaccard, color = sources, group = sources)) + 
+    geom_point(size = 2) + 
+    geom_line(linewidth = 2, alpha = 0.7) + 
+    scale_y_continuous(limits = c(0, 100)) + 
+    scale_color_manual(values = c(met.brewer("Veronese")[1], # BdCH
+              met.brewer("Veronese")[3], # LPRI
+              met.brewer("Archambault")[2], # OZ
+              met.brewer("Veronese")[4], # SO
+              met.brewer("Veronese")[7])) + 
+  labs(color = "Источник",
+       x = "Годы", 
+       y = "Доля пересечения (коэфф. Жаккарда)") + 
+  theme(legend.text = element_text(size = 12),
+        legend.title = element_text(size = 14),
+        axis.text = element_text(size = 12),
+        axis.title = element_text(size = 14))
+
+ggsave(filename = "plots/Fig_2-2-3-2.png", plot = last_plot(),
+       width = 8, height = 6, dpi = 300, bg = "white")
+```
+
+### LPRI genre titles
+
+```{r}
+print("LPRI is the only source for these genres in all corpus:")
+genres_legeres <- per %>% 
+  #filter(PER_ID %in% c("ЛПРИ", "ЛГ")) %>% 
+  filter(str_detect(text_title, 
+                    "Шарада|Омоним|Анаграмма|Акростих|Логогриф|Эпиграмма|Загадка")) %>% 
+  count(PER_ID, year) %>% 
+  mutate(id = paste0(PER_ID, "_", year)) 
+
+print(genres_legeres)
+
+per %>% 
+  #filter(PER_ID %in% c("ЛПРИ", "ЛГ")) %>% 
+  filter(str_detect(text_title, 
+                    "шарада|омоним|анаграмма|акростих|логогриф|эпиграмма|загадка")) %>% 
+  count(PER_ID, year)
+
+per %>% 
+  #filter(PER_ID %in% c("ЛПРИ", "ЛГ")) %>% 
+  filter(str_detect(subtitle, 
+                    "Шарада|Омоним|Анаграмма|Акростих|Логогриф|Эпиграмма|Загадка")) %>% 
+  count(PER_ID, year)
+```
+
+```{r}
+print("Total number of poems in LPRI in 1835-1836")
+per %>% 
+  filter(PER_ID == "ЛПРИ") %>% 
+  count(PER_ID, year) %>% 
+  rename(total = n) %>% 
+  mutate(id = paste0(PER_ID, "_", year)) %>% 
+  select(id, total) %>% 
+  inner_join(genres_legeres %>% select(id, n), by = "id") %>% 
+  mutate(perc = round((n/total)*100, 1) )
+```
+
+## 2.2.2 Female poetry in journals
+
+```{r}
+per %>% 
+  count(year, gender) %>% 
+  #drop_na() %>% 
+  ggplot(aes(x = year, y = n, fill = gender)) + 
+    geom_col(position = "dodge")
+```
+
+```{r}
+per %>% 
+  group_by(per_cln) %>% 
+  count(year, gender) %>% 
+  drop_na() %>% 
+  pivot_wider(names_from = year, values_from = n)
+```
+
+```{r}
+print(c("Total number of poems written by women poets in periodicals:", 
+      per %>% filter(gender == "f") %>% nrow ) )
+
+per %>% 
+  filter(gender == "f") %>% 
+  count(author, sort = T) %>% 
+  mutate(perc = round((n/114)*100, 2))
 ```

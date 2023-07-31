@@ -723,7 +723,7 @@ tibble(year = years,
               met.brewer("Veronese")[4], # SO
               met.brewer("Veronese")[7])) + # Sovr 
   scale_y_continuous(limits = c(0,100)) + 
-  theme(legend.position = "None",
+  theme(#legend.position = "None",
         axis.text = element_text(size = 12),
         axis.title = element_text(size = 14), 
         plot.subtitle = element_text(size = 16))
@@ -813,6 +813,189 @@ ggsave(filename = "plots/Fig_2-2-3-2.png", plot = last_plot(),
        width = 8, height = 6, dpi = 300, bg = "white")
 ```
 
+### Jaccard for total top authors in each source
+
+```{r}
+
+t <- per %>% 
+  filter(author != "") %>% 
+  group_by(author, per_cln) %>% 
+  count(sort = T) %>% 
+  pivot_wider(names_from = per_cln, values_from = n)
+
+summary(t)
+```
+
+```{r}
+per %>% 
+  filter(author != "" & per_cln %in% per_names) %>% 
+  group_by(author, per_cln) %>% 
+  count() %>% 
+  ungroup() %>% 
+  filter(n > 3) %>% 
+  count(per_cln)
+
+x <- per %>% 
+  filter(author != "" & per_cln %in% per_names) %>% 
+  group_by(author, per_cln) %>% 
+  count() %>% 
+  ungroup() %>% 
+  filter(n > 3)
+
+x
+
+
+```
+
+```{r}
+
+source1 <- NULL
+source2 <- NULL
+a1 <- NULL
+a2 <- NULL
+sources <- NULL
+intersections <- NULL
+union <- NULL
+
+for (i in 1:length(per_names)) {
+  
+  for (j in 1:length(per_names)) {
+   
+    source1 <- per_names[i]
+    
+    if (j == length(per_names)) {
+      source2 <- per_names[1]
+    } else {source2 <- per_names[j+1]}
+    
+    a1 <- x %>% 
+      filter(per_cln == source1) %>% 
+      select(author) %>% 
+      distinct() %>% 
+      pull()
+     
+    a2 <- x %>% 
+      filter(per_cln == source2) %>% 
+      select(author) %>% 
+      distinct() %>% 
+      pull()
+    
+    sources <- c(sources, paste0(source1, "__", source2))
+    intersections <- c(intersections, length(intersect(a1, a2)))
+    union <- c(union, length(union(a1, a2)))
+    
+  }
+}
+
+tibble(sources = sources, 
+       int =  intersections, 
+       union = union) %>% 
+  mutate(jaccard = round(int/union, 3) ) %>% 
+  select(sources, jaccard) %>% 
+  separate(sources, into = c("s1", "s2"), sep = "__") %>% 
+  pivot_wider(names_from = s2, values_from = jaccard) %>% 
+  select(s1, БдЧ, ЛПРИ, СО, Совр, ОЗ)
+```
+
+```{r}
+tibble(sources = sources, 
+       int =  intersections, 
+       total = total) %>% 
+  mutate(jaccard = round(int/union, 3) ) %>% 
+  select(sources, jaccard) %>% 
+  filter(jaccard != 1) %>% 
+  ggplot(aes(y = jaccard)) + geom_boxplot()
+
+x <- tibble(sources = sources, 
+       int =  intersections, 
+       total = total) %>% 
+  mutate(jaccard = round(int/union, 3) ) %>% 
+  select(sources, jaccard) %>% 
+  filter(jaccard != 1)
+
+summary(x)
+```
+
+```{r}
+# x <- per %>% 
+#   filter(author != "" & per_cln %in% per_names) %>% 
+#   group_by(year, author, per_cln) %>% 
+#   count() %>% 
+#   ungroup() %>% 
+#   filter(n > 2)
+# 
+# k <- NULL
+# year <- NULL
+# source1 <- NULL
+# source2 <- NULL
+# a1 <- NULL
+# a2 <- NULL
+# 
+# t <- tibble(source = "NULL",
+#        int = 1,
+#        uni = 1)
+# 
+#   
+# 
+# 
+# 
+#   for (i in 1:length(per_names)) {
+#     
+#     for (j in 1:length(per_names)) {
+#       
+#       for (k in 1:length(unique(per$year))) {
+#   
+#       year <- unique(per$year)[k]
+#      
+#       source1 <- per_names[i]
+#       
+#       if (j == length(per_names)) {
+#         source2 <- per_names[1]
+#       } else {source2 <- per_names[j+1]}
+#       
+#       a1 <- x %>%
+#         filter(per_cln == source1) %>% 
+#         filter(year %in% year) %>%
+#         select(author) %>%
+#         distinct() %>%
+#         pull()
+# 
+#       a2 <- x %>%
+#         filter(per_cln == source2) %>% 
+#         filter(year %in% year) %>%
+#         select(author) %>%
+#         distinct() %>%
+#         pull()
+#        
+#   
+#       t <- t %>% 
+#         add_row(source = paste0(source1, "__", source2, "_", year), 
+#                 int = length(intersect(a1, a2)),
+#                 uni = length(union(a1, a2))
+#                 )
+#       
+#       # sources <- c(sources, paste0(source1, "__", source2, "_", year))
+#       # intersections <- c(intersections, length(intersect(a1, a2)))
+#       # union <- c(union, length(union(a1, a2)))
+#       
+#     }
+#   }
+# }
+# 
+# 
+# t
+
+# tibble(s = sources,
+#        int = intersections,
+#        union = union) #%>% 
+  #mutate(jccd = round(int/union, 4)) # %>% 
+  # select(s, jccd) %>% 
+  # separate(s, into = c("s1", "s2"), sep = "__") %>% 
+  # separate(s2, into = c("s2", "year"), sep = "_") %>% 
+  # filter(jccd != 1) %>% 
+  # filter(year == 1836) %>% 
+  # ggplot(aes(x = year, y = jccd)) + geom_point()
+```
+
 ### LPRI genre titles
 
 ```{r}
@@ -866,7 +1049,8 @@ per %>%
   group_by(per_cln) %>% 
   count(year, gender) %>% 
   drop_na() %>% 
-  pivot_wider(names_from = year, values_from = n)
+  pivot_wider(names_from = year, values_from = n, values_fill = 0 ) %>% 
+  mutate(total = rowSums(across(where(is.numeric)))) 
 ```
 
 ```{r}

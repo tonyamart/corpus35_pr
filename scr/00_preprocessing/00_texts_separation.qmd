@@ -11,7 +11,7 @@ library(tidyverse)
 # Collections
 
 ```{r}
-lf <- list.files("../../data/cols_test/",
+lf <- list.files("../../data/collections/",
                  pattern = ".txt", 
                  full.names = TRUE)
 
@@ -50,7 +50,7 @@ rm(dat)
 ```{r}
 dat_cln <- dat_meta %>% 
   # remove unnecessary spaces left after metadata removal
-  mutate(text = str_remove(text, "^\n\n\n\n\n?")) %>% 
+  mutate(text = str_remove(text, "^\n\n\n\n?\n?")) %>% 
   
   # add separator between each text id tag
   mutate(text = str_replace_all(text, "<title:", "<new_text><title:")) %>% 
@@ -103,7 +103,11 @@ dat_cln <- dat_meta %>%
          text_cln = str_remove_all(text_cln, "<genre title:.*?>")) %>% 
   
   # final text cleaning from \n\n
-  mutate(text_cln = str_remove_all(text_cln, "^\\n\\n\\n?|\\n?\\n?\\n?$")) %>% 
+  mutate(text_cln = str_remove_all(text_cln, "^\\n\\n\\n?|\\n?\\n?\\n?$"),
+         # some cleaning of "-" "'" for stress annotation
+         text_cln = str_replace_all(text_cln, "(\\w)-(\\w)", "\\1 - \\2"),
+         text_cln = str_remove_all(text_cln, "'")
+         ) %>% 
   
   # add text_id
   group_by(col_id) %>% 
@@ -111,7 +115,7 @@ dat_cln <- dat_meta %>%
   ungroup() %>% 
   
   # create path for separate files:
-  mutate(path_text = paste0("../../data/cols_test/texts//", text_id, ".txt" )) %>% 
+  mutate(path_text = paste0("../../data/collections/texts//", text_id, ".txt" )) %>% 
   
   # create first line column
   mutate(first_line = ifelse(!str_detect(text_cln, "^<"),
@@ -140,13 +144,109 @@ for (i in 1:nrow(dat_cln)) {
 # write metadata
 # str(dat_cln)
 write.csv(dat_cln %>% select(-text, -text_cln), 
-          file = "../../meta/collections_texts_meta.csv") 
+          file = "../../meta/collections_texts.csv") 
+```
+
+## Write metadata
+
+```{r}
+str(dat_meta)
+
+dat_meta_short <- dat_meta %>% 
+  select(-text) %>% 
+  mutate(id = str_replace_all(path, "../../data/collections//(\\d+)_\\d+\\.txt",
+                              "\\1"),
+         id = as.numeric(id)) %>% 
+  select(path, id, year, descr) %>% 
+  rename(true_year = year)
+
+dat_meta_short
+```
+
+Read metadata for collections
+
+```{r}
+cols_meta <- read.csv("../../meta/collections_meta.csv") %>% select(-X)
+glimpse(cols_meta)
+
+fem_cols <- cols_meta %>% 
+  filter(id %in% c(160, 185, 204, 209, 264, 269)) %>% 
+  mutate(path = "", 
+         true_year = 0, 
+         descr = "fem")
+
+glimpse(fem_cols)
+
+cols_dig <- cols_meta %>% 
+  # add one missed collection
+  add_row(id = 1027,
+          poetry_prose = "v",
+          book_type = "col",
+          genre = "lyr",
+          author_sign = "Кожухов Н.",
+          author = "Кожухов Н.C",
+          author_full_name = "Кожухов Николай Степанович",
+          title = "Стихотворения Н. Кожухова",
+          city = "М.",
+          publisher = "Ун. тип",
+          year = 1835, 
+          pages = 24,
+          size_fold = 8, 
+          size_cm = 20,
+          group = "Сборники стихотворений",
+          group_abbr = "col_lyr",
+          group_eng = "Lyric collections") %>% 
+  
+  inner_join(dat_meta_short, by = "id") %>% # filter only books which were digitized
+  
+  rbind(fem_cols) # add fem collections
 ```
 
 ```{r}
-dat_cln %>% 
-  filter(text_id == "C_69__21") %>% 
-  select(text_cln) %>% pull
+glimpse(cols_dig)
+
+cols_dig %>% 
+  count(year, group_abbr) %>% 
+  ggplot(aes(x = year, y = n, 
+             group = group_abbr,
+             fill = group_abbr)) + 
+  geom_col(position = "dodge")
+```
+
+```{r}
+# write.csv(cols_dig, "../../meta/collections_digitised_meta.csv")
+```
+
+### Attach female texts from separate folder
+
+```{r}
+f <- list.files(path = "../../data/collections/fem_cols/",
+                pattern = ".txt",
+                full.names = T,
+                recursive = T)
+
+fem_texts <- tibble(path = f,
+             text = sapply(f, read_file)) %>% 
+  mutate(id = str_extract(path, "C_\\d+"),
+         id = str_remove_all(id, "C_")) 
+
+str(fem_texts)
+
+# find old meta & attach first lines & titles
+# then attach all to main corpus
+# store as RDs & meta as csv-meta
+```
+
+```{r}
+
+```
+
+### Full meta for texts
+
+```{r}
+str(dat_cln)
+
+
 ```
 
 # Periodicals

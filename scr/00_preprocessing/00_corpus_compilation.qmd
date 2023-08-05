@@ -1,0 +1,278 @@
+---
+title: "00_corpus_compilation"
+format: html
+editor: visual
+---
+
+This notebook shows how main metadata tables were compiled
+
+```{r}
+library(tidyverse)
+```
+
+## Periodicals
+
+```{r}
+per_meta <- read.delim("../../meta/periodicals_texts.tsv", sep = "\t") %>% select(-txt_raw, -text)
+glimpse(per_meta)
+```
+
+Filter from the metadata only digitised texts
+
+```{r}
+pf <- list.files(path = "../../data/corpus1835/periodicals/raw_texts/periodicals_united/")
+
+pf_cln <- str_remove_all(pf, "\\.txt?")
+
+per_meta_texts <- per_meta %>% filter(text_ID %in% pf_cln)
+```
+
+Check whether all poems were stressed
+
+```{r}
+pf_st <- list.files(path = "../../data/corpus1835/periodicals/per_stressed/united/",
+                    #pattern = ".txt",
+                    full.names = F)
+
+head(pf_st)
+
+pf_st_cln <- str_remove_all(pf_st, "\\.accented\\.txt")
+
+setdiff(per_meta_texts$text_ID, pf_st_cln)
+```
+
+Attach stressed poems to metadata
+
+```{r}
+pf_st <- list.files(path = "../../data/corpus1835/periodicals/per_stressed/united/",
+                    pattern = ".txt",
+                    full.names = T) 
+
+head(pf_st)
+
+per_texts <- tibble(path = pf_st,
+       text_ID = str_extract(path, "P_\\d+"),
+       text_acc = sapply(path, read_file))
+
+glimpse(per_texts)
+
+per_texts <- per_texts %>% 
+  mutate(text_acc = str_remove_all(text_acc, "<.*?>"),
+         text_cln = str_remove_all(text_acc, "'")) 
+
+glimpse(per_texts)
+```
+
+Attach lemmatised texts
+
+```{r}
+per_lemm <- read.csv("../../data/corpus1835/periodicals_texts.csv") %>% select(-X)
+glimpse(per_lemm)
+glimpse(per_texts)
+
+per_lemm <- per_lemm %>% 
+  left_join(per_texts %>% select(text_ID, text_acc), by = "text_ID")
+
+glimpse(per_lemm)
+
+# write.csv(per_lemm, "../../data/corpus1835/periodicals_texts_lemm_acc.csv")
+```
+
+Save periodicals metadata & data in Rda
+
+```{r}
+# glimpse(per_meta_texts) # in this meta author != author_sign if author is unknown 
+
+per_corpus <- per_meta_texts %>% 
+  left_join(per_lemm, by = "text_ID")
+
+glimpse(per_corpus) # this is the main table with all data united
+
+per_meta_full <- per_meta # store full metadata just in case
+per_texts <- per_lemm # renaming
+
+save(per_meta_full, per_meta_texts, per_texts, per_corpus, 
+     file = "../../data/corpus1835/periodicals_corpus.Rda")
+```
+
+## Collections
+
+### upd metadata
+
+```{r}
+col_meta <- read.csv("../../meta/collections_texts.csv") %>% 
+  select(-X) %>% 
+  filter(text_id != "C_125__1") %>%  # remove one empty text block
+  mutate(text_id = str_replace_all(text_id, "И", "11")) # replace one id typo
+
+  
+glimpse(col_meta)
+```
+
+Attach separately store women's poetry collections
+
+```{r}
+# read data
+fem_meta <- read.csv("../../meta/meta_fem_collections.csv", sep = ";") %>% 
+  # create new columns
+  mutate(path = "",
+         path_text = "",
+         col_id = str_remove_all(text_id, "__\\d+$"),
+         author = author_sign,
+         genre_title = "",
+         notes = noes,
+         descr = "") %>% 
+  # rearrange
+  select(path, path_text, col_id, year, author, text_id,
+         title, subtitle, genre_title, first_line, pages, notes, descr)
+  
+glimpse(fem_meta)
+```
+
+```{r}
+# attachment
+
+cols_meta <- rbind(col_meta, fem_meta)
+glimpse(cols_meta)
+```
+
+```{r}
+# rm(col_meta, fem_meta)
+
+# write.csv(cols_meta, file = "../../meta/collections_texts.csv")
+```
+
+#### metadata join with collection's full meta
+
+```{r}
+cols_meta <- read.csv("../../meta/collections_texts.csv") %>% select(-X)
+```
+
+```{r}
+cols_full_meta <- read.csv("../../meta/collections_digitised_meta.csv") %>% 
+  select(-X) %>% 
+  mutate(col_id = paste0("C_", id)) %>% 
+  rename(pages_total = pages,
+         title_book = title,
+         descr_book = descr)
+
+glimpse(cols_full_meta)
+```
+
+```{r}
+#glimpse(cols_meta)
+
+cols_meta_united <- cols_meta %>% 
+  select(-path, -path_text, -author, -year) %>% 
+  left_join(cols_full_meta, by = "col_id") 
+
+glimpse(cols_meta_united)
+```
+
+```{r}
+# write.csv(cols_meta_united, "../../meta/collections_texts_with_full_meta.csv")
+```
+
+### read texts
+
+```{r}
+
+cf <- list.files(path = "../../data/corpus1835/collections/raw_texts/united_texts/",
+                 pattern = ".txt",
+                 full.names = T)
+
+cf_acc <- list.files(path = "../../data/corpus1835/collections/accented/",
+                 pattern = ".txt",
+                 full.names = T)
+
+head(cf)
+head(cf_acc)
+
+cols_texts <- tibble(
+  path_raw = cf,
+  path_acc = cf_acc,
+  text_id = str_extract(cf, "C_\\d+__\\d+"),
+  col_id = str_extract(cf, "C_\\d+"),
+  
+  text_raw = sapply(path_raw, read_file),
+  text_acc = sapply(path_acc, read_file)
+)
+
+glimpse(cols_texts)
+```
+
+Some cleaning before lemmatisation
+
+```{r}
+cols_texts <- cols_texts %>% 
+  mutate(text_acc = str_remove_all(text_acc, "<.*?>"),
+         text_cln = str_remove_all(text_raw, "<.*?>"))
+
+# write.csv(cols_texts, "cols_texts.csv")
+```
+
+```{r}
+# upload lemmatised texts
+cols_lemm <- read.csv("cols_texts.csv") %>% select(-X)
+glimpse(cols_lemm)
+
+# setdiff(cols_texts$text_id, cols_lemm$text_id)
+```
+
+### store files
+
+Write a simple .csv for quick search
+
+```{r}
+write.csv(cols_texts %>% select(-path_raw, -path_acc), 
+          file = "../../data/corpus1835/collections_texts_lemm_acc.csv")
+```
+
+Write Rda with full dataset
+
+```{r}
+cols_corpus <- cols_meta_united %>% 
+  left_join(cols_texts %>% select(-path_raw, -path_acc),
+            by = "text_id")
+
+glimpse(cols_corpus)
+
+# cols_corpus %>% 
+#   filter(is.na(text_raw))
+
+save(cols_meta, cols_texts, cols_meta_united, cols_corpus,
+     file = "../../data/corpus1835/collections_corpus.Rda")
+```
+
+## full corpus saving
+
+```{r}
+load("../../data/corpus1835/periodicals_corpus.Rda")
+
+glimpse(per_corpus)
+```
+
+**Periodicals**: 4 files
+
+-   per_corpus - full data frame with metadata & texts attached;
+
+-   per_meta_texts - metadata for texts available (author != author_sign);
+
+-   per_meta_full - full metadata, including missing texts;
+
+-   per_texts - data frame with texts only;
+
+```{r}
+load("../../data/corpus1835/collections_corpus.Rda")
+
+```
+
+"Collections" corpus (poetry books): 3 files
+
+-   cols_corpus - full data frame with metadata & texts attached;
+
+-   cols_meta_united - metadata for each text merged with collections' metadata;
+
+-   cols_meta - only metadata for texts;
+
+-   cols_texts - dataframe with texts only;

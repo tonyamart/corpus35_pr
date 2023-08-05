@@ -1,0 +1,156 @@
+---
+title: "00_metrical_annotation"
+format: html
+editor: visual
+---
+
+```{r}
+library(tidyverse)
+library(tidytext)
+```
+
+```{r}
+library(e1071)
+
+source("classifier/calculate_regularity.R")
+classifier <- readRDS("classifier/fitted_svm_radial.Rds")
+```
+
+```{r}
+s <- corpus_1835 %>% 
+  select(text_id, text_acc) %>% 
+  rename(doc_id = text_id)
+
+glimpse(s)
+```
+
+Accented texts to binary notation
+
+```{r}
+binarised <- to_binary(s, document = "doc_id", text = "text_acc")
+
+glimpse(binarised)
+```
+
+Count intervals freq for each text
+
+```{r}
+i <- extract_intervals(binarised,
+                       no_anacrusis = F,
+                       no_clausula = T)
+
+head(i)
+
+# nb this function wants 'doc_id' column
+int_count <- rhythm_inequality(i,
+                               raw_values = T,
+                               drop_rare = T)
+
+head(int_count)
+```
+
+```{r}
+tv <- int_count %>% 
+  ungroup() %>% 
+  select(doc_id) %>% 
+  distinct() %>% pull
+
+s %>% filter(!doc_id %in% tv) # no accents for P_233 & P_402 for some reason
+```
+
+Pivot for prediction
+
+```{r}
+dat <- int_count %>% 
+  #ungroup() %>% 
+  pivot_wider(names_from = no_stress,
+              values_from = n, 
+              values_fill = 0) %>% 
+  select(-doc_id)
+
+head(dat)
+```
+
+```{r}
+p <- predict(classifier, newdata = dat[,-1])
+
+head(p)
+```
+
+```{r}
+t <- tibble(doc_id = dat$doc_id,
+       meter = p) %>% 
+  left_join(s, by = "doc_id") %>% 
+  sample_n(100) 
+
+write.csv(t, "annot_test.csv")
+```
+
+```{r}
+tibble(doc_id = dat$doc_id,
+       meter = p) %>% 
+  count(meter) %>% 
+  mutate(perc = round(n/4147*100, 1) )
+```
+
+```{r}
+load("../../data/corpus1835/corpus_1835.Rda")
+
+glimpse(corpus_1835)
+```
+
+```{r}
+corpus_1835 %>% 
+  count(year, corpus) %>% 
+  ggplot(aes(x = year, y = n, fill = corpus)) + geom_col(position = "dodge")
+
+corpus_1835 %>% 
+  count(year, corpus) %>% 
+  ggplot(aes(x = year, y = n, fill = corpus)) + geom_col(position = "stack")
+
+```
+
+```{r}
+tokens <- corpus_1835 %>% 
+  select(corpus, year, text_lemm) %>% 
+  unnest_tokens(input = text_lemm, output = word, token = "words") %>% 
+  count(corpus, year)
+  
+tokens %>%  
+  ggplot(aes(x = year, y = n, fill = corpus)) + geom_col(position = "dodge")
+
+tokens %>% 
+  ggplot(aes(x = year, y = n, fill = corpus)) + geom_col(position = "stack")
+
+sum(tokens$n)
+```
+
+```{r}
+corpus_1835 %>%
+  mutate(author = ifelse(author == "", author_sign, author)) %>% 
+  filter(author != "") %>% 
+  count(author, corpus, sort = T)
+
+corpus_1835 %>%
+  mutate(author = ifelse(author == "", author_sign, author)) %>% 
+  filter(author != "") %>% 
+  count(author, corpus, sort = T) %>% 
+  ggplot(aes(x = reorder_within(author, -n, -n), y = n, fill = corpus)) + geom_col()
+```
+
+```{r}
+corpus_1835 %>%
+  mutate(author = ifelse(author == "", author_sign, author)) %>% 
+  filter(author != "") %>% 
+  select(author, corpus, text_lemm) %>% 
+  unnest_tokens(input = text_lemm, output = word, token = "words") %>%
+  count(author, sort = T)
+
+corpus_1835 %>%
+  mutate(author = ifelse(author == "", author_sign, author)) %>% 
+  filter(author != "") %>% 
+  select(author, corpus, text_lemm) %>% 
+  unnest_tokens(input = text_lemm, output = word, token = "words") %>%
+  count(author, corpus, sort = T) %>% 
+  ggplot(aes(x = reorder_within(author, -n, -n), y = n, fill = corpus)) + geom_col()
+```

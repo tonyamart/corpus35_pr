@@ -145,7 +145,11 @@ glimpse(cols_meta)
 #### metadata join with collection's full meta
 
 ```{r}
-cols_meta <- read.csv("../../meta/collections_texts.csv") %>% select(-X)
+cols_meta <- read.csv("../../meta/collections_texts.csv") %>% 
+  select(-X) %>% 
+  mutate(col_id = str_replace_all(col_id, "И", "11")) # fix typo
+
+glimpse(cols_meta)
 ```
 
 ```{r}
@@ -224,23 +228,37 @@ glimpse(cols_lemm)
 Write a simple .csv for quick search
 
 ```{r}
-write.csv(cols_texts %>% select(-path_raw, -path_acc), 
+write.csv(cols_lemm %>% select(-path_raw, -path_acc), 
           file = "../../data/corpus1835/collections_texts_lemm_acc.csv")
 ```
 
 Write Rda with full dataset
 
 ```{r}
+cols_lemm <- read.csv("../../data/corpus1835/collections_texts_lemm_acc.csv") %>% select(-X)
+
+glimpse(cols_lemm)
+```
+
+```{r}
+cols_meta_united <- read.csv("../../meta/collections_texts_with_full_meta.csv") %>%
+  select(-X)
+glimpse(cols_meta_united)
+```
+
+```{r}
 cols_corpus <- cols_meta_united %>% 
-  left_join(cols_texts %>% select(-path_raw, -path_acc),
+  select(-col_id) %>% 
+  left_join(cols_lemm,
             by = "text_id")
 
-glimpse(cols_corpus)
+# fix missing collections
+cols_corpus <- cols_corpus %>% 
+  mutate(year = ifelse(col_id == "C_42", 1837, year),
+         author = ifelse(col_id == "C_42", "Бороздна И.П.", author))
 
-# cols_corpus %>% 
-#   filter(is.na(text_raw))
 
-save(cols_meta, cols_texts, cols_meta_united, cols_corpus,
+save(cols_meta, cols_lemm, cols_meta_united, cols_corpus,
      file = "../../data/corpus1835/collections_corpus.Rda")
 ```
 
@@ -275,4 +293,48 @@ load("../../data/corpus1835/collections_corpus.Rda")
 
 -   cols_meta - only metadata for texts;
 
--   cols_texts - dataframe with texts only;
+-   cols_lemm - dataframe with texts only;
+
+## corpus merging & save
+
+```{r}
+# glimpse(per_corpus)
+
+per_tomerge <- per_corpus %>% 
+  mutate(corpus = "per",
+         genre_title = "") %>% 
+  rename(text_id = text_ID,
+         source = PER_ID) %>% 
+  select(text_id, corpus, 
+         A_ID, author, author_sign,
+         text_title, first_line, subtitle, genre_title,
+         source, year, 
+         text_raw, text_lemm, text_acc)
+
+glimpse(per_tomerge)
+```
+
+```{r}
+#glimpse(cols_corpus)
+
+cols_tomerge <- cols_corpus %>% 
+  mutate(corpus = "cols") %>% 
+  rename(source = col_id,
+         text_title = title) %>% 
+  select(text_id, corpus, 
+         A_ID, author, author_sign,
+         text_title, first_line, subtitle, genre_title,
+         source, year, 
+         text_raw, text_lemm, text_acc)
+
+glimpse(cols_tomerge)
+```
+
+Save
+
+```{r}
+corpus_1835 <- rbind(cols_tomerge, per_tomerge)
+glimpse(corpus_1835)
+
+save(corpus_1835, file = "../../data/corpus1835/corpus_1835.Rda")
+```

@@ -4,6 +4,8 @@ format: html
 editor: visual
 ---
 
+## Load packages
+
 ```{r}
 library(tidyverse)
 library(tidytext)
@@ -16,6 +18,12 @@ source("classifier/calculate_regularity.R")
 classifier <- readRDS("classifier/fitted_svm_radial.Rds")
 ```
 
+## Load data
+
+```{r}
+load("../../data/corpus1835/corpus_1835.Rda")
+```
+
 ```{r}
 s <- corpus_1835 %>% 
   select(text_id, text_acc) %>% 
@@ -24,13 +32,18 @@ s <- corpus_1835 %>%
 glimpse(s)
 ```
 
-Accented texts to binary notation
+## Accents to binary notation
+
+Accented texts to binary notation (Acce'nted -\> 010)
 
 ```{r}
 binarised <- to_binary(s, document = "doc_id", text = "text_acc")
+# 161709 lines, 4147 poems
 
 glimpse(binarised)
 ```
+
+## Meter labels
 
 Count intervals freq for each text
 
@@ -93,10 +106,44 @@ tibble(doc_id = dat$doc_id,
   mutate(perc = round(n/4147*100, 1) )
 ```
 
-```{r}
-load("../../data/corpus1835/corpus_1835.Rda")
+### 
 
-glimpse(corpus_1835)
+```{r}
+glimpse(s)
+
+s_m <- tibble(doc_id = dat$doc_id, 
+              meter = p) %>% 
+  left_join(s, by = "doc_id")
+
+glimpse(s_m)
+```
+
+## Feet annotation
+
+```{r}
+head(binarised)
+
+feet_reg <- binarised %>% 
+  filter(!str_detect(doc_id, "P_233|P_402")) %>% 
+  # remove clausulas
+  mutate(n_syl = str_replace_all(stress_pattern, "0+$", "")) %>% 
+  mutate(n_syl = nchar(n_syl)) %>% 
+  group_by(doc_id, n_syl) %>%
+  count() %>%
+  ungroup() %>%
+  group_by(doc_id) %>%
+  summarise(doc_id = doc_id,
+            n_syl = n_syl, 
+            n_lines = n,
+            perc_feet = n/sum(n)) %>%
+  filter(perc_feet > 0.6) %>% 
+  slice_max(n = 1, perc_feet) %>% 
+  ungroup() 
+
+head(feet_reg)
+
+feet_reg %>% 
+  ggplot(aes(y = perc_feet)) + geom_boxplot()
 ```
 
 ```{r}

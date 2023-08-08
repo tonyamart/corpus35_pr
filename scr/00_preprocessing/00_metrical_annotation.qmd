@@ -22,6 +22,15 @@ classifier <- readRDS("classifier/fitted_svm_radial.Rds")
 
 ```{r}
 load("../../data/corpus1835/corpus_1835.Rda")
+glimpse(corpus_1835)
+```
+
+Check if some texts are not accented
+
+```{r}
+corpus_1835 %>% 
+  select(text_id, text_raw, text_lemm, text_acc) %>% 
+  filter(is.na(text_acc)|text_acc == "")
 ```
 
 ```{r}
@@ -38,7 +47,7 @@ Accented texts to binary notation (Acce'nted -\> 010)
 
 ```{r}
 binarised <- to_binary(s, document = "doc_id", text = "text_acc")
-# 161709 lines, 4147 poems
+# 161,754 lines
 
 glimpse(binarised)
 ```
@@ -62,15 +71,6 @@ int_count <- rhythm_inequality(i,
 head(int_count)
 ```
 
-```{r}
-tv <- int_count %>% 
-  ungroup() %>% 
-  select(doc_id) %>% 
-  distinct() %>% pull
-
-s %>% filter(!doc_id %in% tv) # no accents for P_233 & P_402 for some reason
-```
-
 Pivot for prediction
 
 ```{r}
@@ -90,14 +90,7 @@ p <- predict(classifier, newdata = dat[,-1])
 head(p)
 ```
 
-```{r}
-t <- tibble(doc_id = dat$doc_id,
-       meter = p) %>% 
-  left_join(s, by = "doc_id") %>% 
-  sample_n(100) 
-
-write.csv(t, "annot_test.csv")
-```
+Percentages of meters (preliminary)
 
 ```{r}
 tibble(doc_id = dat$doc_id,
@@ -106,25 +99,12 @@ tibble(doc_id = dat$doc_id,
   mutate(perc = round(n/4147*100, 1) )
 ```
 
-### 
-
-```{r}
-glimpse(s)
-
-s_m <- tibble(doc_id = dat$doc_id, 
-              meter = p) %>% 
-  left_join(s, by = "doc_id")
-
-glimpse(s_m)
-```
-
 ## Feet annotation
 
 ```{r}
 head(binarised)
 
 feet_reg <- binarised %>% 
-  filter(!str_detect(doc_id, "P_233|P_402")) %>% 
   # remove clausulas
   mutate(n_syl = str_replace_all(stress_pattern, "0+$", "")) %>% 
   mutate(n_syl = nchar(n_syl)) %>% 
@@ -138,12 +118,130 @@ feet_reg <- binarised %>%
             perc_feet = n/sum(n)) %>%
   filter(perc_feet > 0.6) %>% 
   slice_max(n = 1, perc_feet) %>% 
-  ungroup() 
+  ungroup() %>% 
+  select(-n_lines)
 
 head(feet_reg)
+nrow(feet_reg) # 3,080 regular feet poems
 
 feet_reg %>% 
   ggplot(aes(y = perc_feet)) + geom_boxplot()
+
+feet_reg %>% 
+  filter(is.na(n_syl))
+```
+
+Unite meters & syllable number
+
+```{r}
+glimpse(s)
+
+s_m_syl <- tibble(doc_id = dat$doc_id, 
+              meter = p) %>% # return data from the meter classifier
+  left_join(s, by = "doc_id") %>% # attach accented texts
+  left_join(feet_reg, by = "doc_id") # attach syllables count
+
+glimpse(s_m_syl)
+
+unique(s_m_syl$meter)
+```
+
+```{r}
+# combine meters & feet
+metrical_annotation <- s_m_syl %>% 
+  
+  # add number for feet division (n_syl / 2 for binary, n_syl/3 for ternary)
+  mutate(binary_ternary = ifelse(meter %in% c("Iamb", "Trochee"), 2, 3)) %>% 
+  
+  # return removed clausulas for feet count
+  mutate(n_syl = ifelse(meter %in% c("Trochee", "Amphibrach"), n_syl+1, n_syl),
+         n_syl = ifelse(meter == "Dactyl", n_syl+2, n_syl),
+         
+         # divide for number of feets
+         feet = n_syl/binary_ternary,
+         
+         # mark non-regular as "other", store regularity in a sep column
+         feet = ifelse(is.na(feet), "other", feet)) %>% 
+  mutate(feet_reg = ifelse(is.na(feet), "unreg", "reg"),
+         
+         # create 'formula' column
+         formula = paste0(meter, "_", feet),) %>% 
+  
+  # attach vector with stress annotation collapsed in one char line
+  
+  left_join(
+    binarised %>% 
+      ungroup() %>% 
+      group_by(doc_id) %>% 
+      summarise(stress_pattern = paste0(stress_pattern, collapse = ", ")),
+    by = "doc_id"
+    ) %>% 
+  
+  # select resulting columns only
+  select(doc_id, text_acc, meter, feet, formula, feet_reg, stress_pattern)
+
+head(metrical_annotation)
+```
+
+### Add n_lines
+
+```{r}
+# count number of lines
+t <- metrical_annotation 
+t_lines <- t %>% 
+  separate_rows(text_acc, sep = "\n") %>% 
+  filter(text_acc != "") %>% 
+  count(doc_id) %>% 
+  rename(n_lines = n) 
+
+# some brief test to check distribution
+t_lines %>% ggplot(aes(x = n_lines)) + geom_boxplot()
+mean(t_lines$n_lines)
+median(t_lines$n_lines)
+
+# attach to metadata tibble
+metrical_annotation <- metrical_annotation %>% 
+  left_join(t_lines, by = "doc_id")
+
+glimpse(metrical_annotation)
+```
+
+## Save
+
+Store data in a separate .csv & make samples for annotation check
+
+```{r}
+write.csv(metrical_annotation,
+          "../../data/corpus1835/corpus1835_metrical_annotation.csv")
+
+t <- metrical_annotation %>% 
+  select(-stress_pattern) %>% 
+  filter(n_lines < 50) %>% 
+  sample_n(50) 
+
+write.csv(t, "annot_test_2.csv")
+```
+
+```{r}
+m <- read.csv("../../data/corpus1835/corpus1835_metrical_annotation.csv")
+glimpse(m)
+```
+
+```{r}
+m %>% 
+  count(formula, sort = T) %>% 
+  mutate(perc = round(n/4149*100, 1) )
+```
+
+```{r}
+unique(corpus_1835$subcorpus)
+
+corpus_1835 %>% 
+  filter(subcorpus == "alm") %>% head(20)
+```
+
+```{r}
+glimpse(corpus_1835)
 ```
 
 ```{r}

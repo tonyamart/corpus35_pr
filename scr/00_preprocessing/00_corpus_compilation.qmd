@@ -262,7 +262,23 @@ save(cols_meta, cols_lemm, cols_meta_united, cols_corpus,
      file = "../../data/corpus1835/collections_corpus.Rda")
 ```
 
+## almanacs authors
+
+Some additional work with identification of authors from almanacs
+
+```{r}
+# select distinct authors and assign A_IDs manually
+alm_authors <- cols_meta %>% 
+  filter(!is.na(author)) %>% 
+  select(author) %>% 
+  distinct()
+
+write.csv(alm_authors, "alm_authors.csv")
+```
+
 ## full corpus saving
+
+### periodicals
 
 ```{r}
 load("../../data/corpus1835/periodicals_corpus.Rda")
@@ -280,9 +296,10 @@ glimpse(per_corpus)
 
 -   per_texts - data frame with texts only;
 
+### poetry books
+
 ```{r}
 load("../../data/corpus1835/collections_corpus.Rda")
-
 ```
 
 "Collections" corpus (poetry books): 3 files
@@ -301,11 +318,11 @@ load("../../data/corpus1835/collections_corpus.Rda")
 # glimpse(per_corpus)
 
 per_tomerge <- per_corpus %>% 
-  mutate(corpus = "per",
+  mutate(corpus = "per", subcorpus = "per",
          genre_title = "") %>% 
   rename(text_id = text_ID,
          source = PER_ID) %>% 
-  select(text_id, corpus, 
+  select(text_id, corpus, subcorpus, 
          A_ID, author, author_sign,
          text_title, first_line, subtitle, genre_title,
          source, year, 
@@ -315,13 +332,14 @@ glimpse(per_tomerge)
 ```
 
 ```{r}
-#glimpse(cols_corpus)
+glimpse(cols_corpus)
 
 cols_tomerge <- cols_corpus %>% 
-  mutate(corpus = "cols") %>% 
+  mutate(corpus = "cols",
+         subcorpus = group_abbr) %>% 
   rename(source = col_id,
          text_title = title) %>% 
-  select(text_id, corpus, 
+  select(text_id, corpus, subcorpus,
          A_ID, author, author_sign,
          text_title, first_line, subtitle, genre_title,
          source, year, 
@@ -335,6 +353,152 @@ Save
 ```{r}
 corpus_1835 <- rbind(cols_tomerge, per_tomerge)
 glimpse(corpus_1835)
+```
 
+Fix some missing texts
+
+```{r}
+corpus_1835 %>% 
+  select(text_id, text_raw, text_lemm, text_acc) %>% 
+  filter(text_acc == "")
+
+corpus_1835 %>% 
+  select(text_id, text_raw, text_lemm, text_acc) %>% 
+  filter(is.na(text_acc))
+
+corpus_1835 %>% 
+  select(text_id, text_raw, text_lemm, text_acc) %>% 
+  filter(text_id %in% c("P_233", "P_402"))
+
+```
+
+Fill gaps
+
+```{r}
+# insert missed texts
+corpus_1835 <- corpus_1835 %>% 
+  mutate(text_raw = ifelse(text_id == "P_233", 
+                           "Матушка голубушка,
+                            Солнышко мое!
+                            Пожалей родимая —
+                            Я дитя твое !
+                            Словно змея лютая.
+                            Так грудь и сосет,
+                            И целую ноченьку
+                            Мне спать не дает.
+                            Все мне что-то грезится ,
+                            Будто на яву,
+                            Уж когда ложуся я,
+                            Молитву творю,
+                            То залётной пташечки
+                            Песенка слышна:
+                            Ну, сердце замирает,
+                            Так сладка она!
+                            То мне что-то видится ,
+                            Размечуся я;
+                            Сердечко истоскуется —
+                            В огне лежу я!
+                            Ни игры, забавушки
+                            Не веселы мне;
+                            Всё тоска , кручинушка
+                            В яве и во сне.
+                            Что это родимушка
+                            Сталося со мной ?
+                            Стало приключился мне
+                            Злой недуг какой?
+                            Али нет, родимая,
+                            Зелья пособить ? —
+                            Знать приспело, дитятко,
+                            Времечко любить!",
+                           text_raw),
+         text_lemm = ifelse(text_id == "P_233",
+                            "матушка голубушка,
+                              солнышко мой!
+                              пожалеть родимый —
+                              я дитя твой !
+                              словно змея лютый.
+                              так грудь и сосать,
+                              и целый ноченька
+                              я спать не давать.
+                              все я что-то грезиться ,
+                              будто на ява,
+                              уж когда ложуся я,
+                              молитва творить,
+                              то залетный пташечка
+                              песенка слышный:
+                              ну, сердце замирать,
+                              так сладкий она!
+                              то я что-то видеться ,
+                              размечуся я;
+                              сердечко истосковаться —
+                              в огонь лежать я!
+                              ни игра, забавушка
+                              не веселый я;
+                              все тоска , кручинушка
+                              в ява и во сон.
+                              что это родимушка
+                              сталось со я ?
+                              становиться приключаться я
+                              злой недуг какой?
+                              али нет, родимый,
+                              зелье пособлять ? —
+                              знать приспевать, дитятко,
+                              времечко любить!",
+                            text_lemm),
+         text_acc = ifelse(text_id == "P_233",
+                           "Ма'тушка голу'бушка,
+                            Со'лнышко моё!
+                            Пожале'й роди'мая —
+                            Я дитя' твоё !
+                            Сло'вно змея' лю'тая.
+                            Так грудь и сосёт,
+                            И целу'ю но'ченьку
+                            Мне спать не даёт.
+                            Все мне что'-то гре'зится ,
+                            Бу'дто на яву',
+                            Уж когда' ложу'ся я,
+                            Моли'тву творю',
+                            То залётной пта'шечки
+                            Пе'сенка слышна':
+                            Ну, се'рдце замира'ет,
+                            Так сладка' она'!
+                            То мне что'-то ви'дится ,
+                            Разме'чуся я;
+                            Серде'чко истоску'ется —
+                            В огне' лежу' я!
+                            Ни и'гры, заба'вушки
+                            Не веселы' мне;
+                            Всё тоска' , кручи'нушка
+                            В я'ве и во сне.
+                            Что э'то роди'мушка
+                            Ста'лося со мной ?
+                            Ста'ло приключи'лся мне
+                            Злой неду'г како'й?
+                            Али' нет, роди'мая,
+                            Зе'лья пособи'ть ? —
+                            Знать приспе'ло, ди'тятко,
+                            Вре'мечко люби'ть!",
+                           text_acc)) %>% 
+  mutate(text_acc = ifelse(text_id == "P_402",
+                           "Ваш взор, как ве'стник исцеле'нья ,
+                            Как луч зари' в грома'дах скал —
+                            Мои' душе'вния му'ченья
+                            Отра'дным све'том разогна'л!
+                            Смотрю' на вас: — вы так же ми'лы !
+                            А я — все та же же'ртва дум —
+                            Поро'й насмешливо-'угрюм ,
+                            Поро'ю и'скренно уны'лый.
+                            Тепе'рь как бу'дто веселе'й;
+                            Но ме'жду все'ми — чужестра'нец,
+                            Я изменю'сь, как цвет поле'й ,
+                            Как че'й-то , по'мню я, румя'нец , —
+                            Когда' в час но'чи, ме'жду скал,
+                            Двои'х нас ме'сяц озаря'л. —",
+                           text_acc))
+```
+
+Final save
+
+```{r}
 save(corpus_1835, file = "../../data/corpus1835/corpus_1835.Rda")
 ```

@@ -1,0 +1,136 @@
+---
+title: "03_corpus_overview"
+format: html
+editor: visual
+---
+
+# Corpus overview
+
+## load pckg
+
+```{r}
+library(tidyverse)
+library(tidytext)
+
+library(MetBrewer)
+theme_set(theme_minimal())
+```
+
+## load data
+
+```{r}
+load("../../data/corpus1835/corpus_1835.Rda")
+glimpse(corpus_1835)
+```
+
+## total size
+
+```{r}
+print(paste0("Number of poems: ", nrow(corpus_1835)))
+
+print(paste0("Number of poems in periodicals: ", table(corpus_1835$corpus)[2]))
+print(paste0( "Number of poems in collections: ", table(corpus_1835$corpus)[1]))
+
+print("Number of lines:")
+corpus_1835 %>% 
+  select(corpus, text_raw) %>% 
+  separate_rows(text_raw, sep = "\n") %>% 
+  filter(text_raw != "") %>% nrow()
+
+corpus_1835 %>% 
+  select(corpus, text_raw) %>% 
+  separate_rows(text_raw, sep = "\n") %>% 
+  filter(text_raw != "") %>% 
+  count(corpus)
+
+
+print("Number of tokens:")
+corpus_1835 %>% 
+  select(corpus, text_lemm) %>% 
+  unnest_tokens(input = text_lemm, output = word, token = "words") %>% 
+  nrow()
+
+corpus_1835 %>% 
+  select(corpus, text_lemm) %>% 
+  unnest_tokens(input = text_lemm, output = word, token = "words") %>% 
+  count(corpus) 
+
+  
+print("Number of lemmas:")
+corpus_1835 %>% 
+  select(corpus, text_lemm) %>% 
+  unnest_tokens(input = text_lemm, output = word, token = "words") %>% 
+  count(word) %>% nrow
+
+corpus_1835 %>% 
+  select(corpus, text_lemm) %>% 
+  unnest_tokens(input = text_lemm, output = word, token = "words") %>% 
+  count(corpus, word) %>%
+  select(-n) %>%
+  ungroup() %>%
+  count(corpus)
+```
+
+## size - poems
+
+```{r}
+corpus_1835 %>% 
+  count(year, corpus) %>% 
+  ggplot(aes(x = year, y = n, fill = corpus)) + geom_col(position = "dodge")
+
+corpus_1835 %>% 
+  count(year, corpus) %>% 
+  ggplot(aes(x = year, y = n, fill = corpus)) + geom_col(position = "stack")
+
+```
+
+## size - tokens
+
+```{r}
+tokens <- corpus_1835 %>% 
+  select(corpus, year, text_lemm) %>% 
+  unnest_tokens(input = text_lemm, output = word, token = "words") %>% 
+  count(corpus, year)
+  
+tokens %>%  
+  ggplot(aes(x = year, y = n, fill = corpus)) + geom_col(position = "dodge")
+
+tokens %>% 
+  ggplot(aes(x = year, y = n, fill = corpus)) + geom_col(position = "stack")
+
+sum(tokens$n)
+```
+
+## size - authors' corpus
+
+Poems
+
+```{r}
+corpus_1835 %>%
+  mutate(author = ifelse(author == "", author_sign, author)) %>% 
+  filter(author != "") %>% 
+  count(author, corpus, sort = T)
+
+corpus_1835 %>%
+  mutate(author = ifelse(author == "", author_sign, author)) %>% 
+  filter(author != "") %>% 
+  count(author, corpus, sort = T) %>% 
+  ggplot(aes(x = reorder_within(author, -n, -n), y = n, fill = corpus)) + geom_col()
+```
+
+```{r}
+corpus_1835 %>%
+  mutate(author = ifelse(author == "", author_sign, author)) %>% 
+  filter(author != "") %>% 
+  select(author, corpus, text_lemm) %>% 
+  unnest_tokens(input = text_lemm, output = word, token = "words") %>%
+  count(author, sort = T)
+
+corpus_1835 %>%
+  mutate(author = ifelse(author == "", author_sign, author)) %>% 
+  filter(author != "") %>% 
+  select(author, corpus, text_lemm) %>% 
+  unnest_tokens(input = text_lemm, output = word, token = "words") %>%
+  count(author, corpus, sort = T) %>% 
+  ggplot(aes(x = reorder_within(author, -n, -n), y = n, fill = corpus)) + geom_col()
+```

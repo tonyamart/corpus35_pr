@@ -21,7 +21,7 @@ classifier <- readRDS("classifier/fitted_svm_radial.Rds")
 ## Load data
 
 ```{r}
-load("../../data/corpus1835/corpus_1835.Rda")
+load("../../data/corpus1835/corpus_1835_nometrics.Rda")
 glimpse(corpus_1835)
 ```
 
@@ -161,7 +161,8 @@ metrical_annotation <- s_m_syl %>%
          feet = n_syl/binary_ternary,
          
          # mark non-regular as "other", store regularity in a sep column
-         feet = ifelse(is.na(feet), "other", feet)) %>% 
+         feet = ifelse(is.na(feet), "other", feet),
+         feet = ifelse(meter == "Other?", "?", feet)) %>% 
   mutate(feet_reg = ifelse(is.na(feet), "unreg", "reg"),
          
          # create 'formula' column
@@ -206,96 +207,98 @@ metrical_annotation <- metrical_annotation %>%
 glimpse(metrical_annotation)
 ```
 
-## Save
+## Test samples
 
-Store data in a separate .csv & make samples for annotation check
+Make samples for annotation check
 
 ```{r}
-write.csv(metrical_annotation,
-          "../../data/corpus1835/corpus1835_metrical_annotation.csv")
 
-t <- metrical_annotation %>% 
-  select(-stress_pattern) %>% 
-  filter(n_lines < 50) %>% 
-  sample_n(50) 
+# t <- metrical_annotation %>% 
+#   select(-stress_pattern) %>% 
+#   filter(n_lines < 50) %>% 
+#   sample_n(50) 
 
-write.csv(t, "annot_test_2.csv")
+# write.csv(t, "annot_test_2.csv")
 ```
 
+Some cleaning
+
 ```{r}
-m <- read.csv("../../data/corpus1835/corpus1835_metrical_annotation.csv")
-glimpse(m)
+m <- metrical_annotation
 ```
 
 ```{r}
 m %>% 
   count(formula, sort = T) %>% 
-  mutate(perc = round(n/4149*100, 1) )
+  mutate(perc = round(n/4149*100, 1) ) 
+
+top_meters <- m %>% 
+  count(formula, sort = T) %>% 
+  mutate(perc = round(n/4149*100, 1) ) %>% 
+  slice_max(n = 20, order_by = n) %>% pull(formula)
+
+top_meters
 ```
 
 ```{r}
-unique(corpus_1835$subcorpus)
+half_formulas <- m %>% 
+  filter(str_detect(formula, "\\.5")) %>% 
+  count(formula, sort = T) %>% pull(formula)
 
-corpus_1835 %>% 
-  filter(subcorpus == "alm") %>% head(20)
+half_formulas
+
+# t <- m %>% 
+#   filter(formula %in% half_formulas)
+# 
+# write.csv(t, "half_formulas_test.csv")
 ```
+
+```{r}
+# NB there are also trimeters with 3.666 etc., should be fixed later
+half_transl <- tibble(
+  formula = half_formulas,
+  true_formula = c("Iamb_4", "Iamb_6", "Iamb_5", "Trochee_4", "Trochee_5", "Iamb_4", "Trochee_6")
+)
+
+m_cln <- m %>% 
+  left_join(half_transl, by = "formula") %>% 
+  mutate(formula = ifelse(!is.na(true_formula), true_formula, formula)) %>% 
+  select(-true_formula)
+```
+
+```{r}
+glimpse(m_cln)
+
+metrical_annotation <- m_cln
+
+metrical_annotation %>% 
+  count(formula, sort = T) %>% 
+  mutate(perc = round((n/4149)*100, 1))
+```
+
+## Save
+
+```{r}
+write.csv(metrical_annotation,
+          "../../data/corpus1835/corpus1835_metrical_annotation.csv")
+```
+
+### Attach to main corpus
 
 ```{r}
 glimpse(corpus_1835)
+glimpse(metrical_annotation)
+
+corpus_1835_metrics <- corpus_1835 %>% 
+  left_join(metrical_annotation %>% 
+              select(-text_acc, -feet_reg) %>% 
+              rename(text_id = doc_id),
+            by = "text_id") 
 ```
 
 ```{r}
-corpus_1835 %>% 
-  count(year, corpus) %>% 
-  ggplot(aes(x = year, y = n, fill = corpus)) + geom_col(position = "dodge")
+glimpse(corpus_1835_metrics)
 
-corpus_1835 %>% 
-  count(year, corpus) %>% 
-  ggplot(aes(x = year, y = n, fill = corpus)) + geom_col(position = "stack")
-
-```
-
-```{r}
-tokens <- corpus_1835 %>% 
-  select(corpus, year, text_lemm) %>% 
-  unnest_tokens(input = text_lemm, output = word, token = "words") %>% 
-  count(corpus, year)
-  
-tokens %>%  
-  ggplot(aes(x = year, y = n, fill = corpus)) + geom_col(position = "dodge")
-
-tokens %>% 
-  ggplot(aes(x = year, y = n, fill = corpus)) + geom_col(position = "stack")
-
-sum(tokens$n)
-```
-
-```{r}
-corpus_1835 %>%
-  mutate(author = ifelse(author == "", author_sign, author)) %>% 
-  filter(author != "") %>% 
-  count(author, corpus, sort = T)
-
-corpus_1835 %>%
-  mutate(author = ifelse(author == "", author_sign, author)) %>% 
-  filter(author != "") %>% 
-  count(author, corpus, sort = T) %>% 
-  ggplot(aes(x = reorder_within(author, -n, -n), y = n, fill = corpus)) + geom_col()
-```
-
-```{r}
-corpus_1835 %>%
-  mutate(author = ifelse(author == "", author_sign, author)) %>% 
-  filter(author != "") %>% 
-  select(author, corpus, text_lemm) %>% 
-  unnest_tokens(input = text_lemm, output = word, token = "words") %>%
-  count(author, sort = T)
-
-corpus_1835 %>%
-  mutate(author = ifelse(author == "", author_sign, author)) %>% 
-  filter(author != "") %>% 
-  select(author, corpus, text_lemm) %>% 
-  unnest_tokens(input = text_lemm, output = word, token = "words") %>%
-  count(author, corpus, sort = T) %>% 
-  ggplot(aes(x = reorder_within(author, -n, -n), y = n, fill = corpus)) + geom_col()
+corpus_1835 <- corpus_1835_metrics
+save(corpus_1835, file = "../../data/corpus1835/corpus_1835.Rda")
 ```

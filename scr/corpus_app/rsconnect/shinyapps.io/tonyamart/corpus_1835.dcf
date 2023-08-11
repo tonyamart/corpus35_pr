@@ -1,12 +1,12 @@
-name: corpus_app
-title: corpus_app
+name: corpus_1835
+title: corpus_1835
 username: tonyamart
 account: tonyamart
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
-appId: 9591978
-bundleId: 7558034
-url: https://tonyamart.shinyapps.io/corpus_app/
+appId: 9592015
+bundleId: 7558054
+url: https://tonyamart.shinyapps.io/corpus_1835/
 version: 1
 asMultiple: FALSE
 asStatic: FALSE

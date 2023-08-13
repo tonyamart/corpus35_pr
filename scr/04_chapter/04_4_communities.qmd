@@ -1,0 +1,471 @@
+---
+title: "04_4_communities"
+format: html
+editor: visual
+---
+
+## load pckg & data
+
+```{r}
+library(tidyverse)
+
+# networks
+library(igraph)
+library(tidygraph)
+library(ggraph)
+library(ggforce) # for geom_mark_hull annotation
+library(concaveman)
+
+
+# basic colouring and layout options
+library(wesanderson)
+library(patchwork)
+theme_set(theme_minimal())
+```
+
+```{r}
+# load model output
+load("data/lda75_output.Rda")
+
+# load code for edges calculation
+source("04_fn_calculate_edges.R")
+
+# function to extract topic lables:
+get_topic_labels = function(x, n_labels = 10) {
+  
+  #takes beta-matrix as an input
+  top_terms = x %>%
+    group_by(topic) %>%
+    top_n(20, beta) %>%
+    ungroup() %>%
+    arrange(topic, -beta)
+  
+  topic_labels = top_terms %>%
+    group_by(topic) %>%
+    top_n(n_labels, beta) %>%
+    summarise(label=paste(term, collapse=" ")) %>%
+    mutate(label = paste(topic, label, sep="_"))
+  
+  return(topic_labels)
+}
+
+# prepare gamma data
+gamma_rnc <- gamma %>% 
+    # select ONLY RNC connections & topics
+    filter(corpus == "N") %>% 
+    # add index for create_edges function
+    # mutate(index = paste0(corpus, "_", id)) %>% 
+    # fix typo
+    rename(author = first_line)
+
+gamma <- gamma %>% 
+  rename(author = first_line)
+
+glimpse(gamma)
+glimpse(gamma_rnc)
+
+```
+
+```{r}
+topic_labels <- get_topic_labels(beta, n_labels = 5)
+head(topic_labels)
+```
+
+### RNC communities
+
+```{r}
+edges_raw <- compute_edges(gamma_rnc,
+                           gamma_thresh = 0.05,
+                           time_slice = 5)
+
+# create links
+links <- edges_raw %>% 
+  mutate(meter = formula) %>%
+  # filter out only iambic hexameter
+  #filter(meter == "iamb_6") %>% 
+  # group and count edges
+  group_by(slice, meter, corpus) %>% 
+  count(slice, meter, edge_id, source, target, sort = T) %>% 
+  # filter non-frequent edges
+  filter(n > 2) %>% 
+  ungroup() 
+
+# quick check
+head(links)
+```
+
+```{r}
+edgelist <- links %>% 
+  select(source, target, n, meter, slice, corpus) %>% 
+  mutate(width = n/10) %>% 
+  filter(slice != 1850) %>% 
+  rename(N_connections = n) %>% 
+  mutate(facet_title = slice)
+
+nodelist <- tibble(source = unique(c(links$source, links$target))) %>% 
+  mutate(idn = as.numeric(str_extract(source, "^\\d+"))) 
+
+head(edgelist)
+head(nodelist) 
+
+summary(edgelist)
+```
+
+```{r}
+custom_edgelist <- function(edgelist_input, meter_v, slices, min_connections) {
+    edgelist_input %>% 
+    #filter time slice 
+    filter(slice %in% slices) %>% 
+    # select meter and connection frequency threshold
+    filter(meter == meter_v & N_connections > min_connections) %>% 
+    select(-slice) %>% 
+    mutate(source_target = paste0(source, "__", target)) %>% 
+    group_by(source_target) %>% 
+    # sum number of connections for the whole period (if more than 1 time slice is chosen)
+    summarise(sum_links = sum(N_connections)) %>% 
+    separate(source_target, into = c("source", "target"), sep = "__")
+}
+
+custom_nodelist <- function(source_vec, target_vec) {
+    x <- tibble(source = unique(c(source_vec,
+                                 target_vec)),
+               idn = as.numeric(str_replace(source, "^([0-9].*?)_.*", "\\1")))
+    return(x)
+}
+```
+
+### iamb 4
+
+#### rnc
+
+```{r}
+
+edgelist %>% 
+  filter(meter == "iamb_4") %>% 
+  ggplot(aes(x = N_connections)) + geom_boxplot()
+
+edgelist %>% filter(meter == "iamb_4") %>% select(N_connections) %>% pull %>% 
+  quantile(probs = c(0.1, 0.25, 0.5, 0.75, 0.9, 0.95, 0.97, 1))
+
+?quantile
+
+
+edgelist_i6 <- custom_edgelist(edgelist, 
+                               meter_v = "iamb_4", 
+                            # choices for the Fig. 2:
+                               slices = c(1815:1829), 
+                               min_connections = 8)
+head(edgelist_i6)
+nrow(edgelist_i6)
+nodelist_i6 <- custom_nodelist(edgelist_i6$source, edgelist_i6$target)
+head(nodelist_i6)
+```
+
+```{r}
+# create tidy graph
+net_t <- tbl_graph(nodes = nodelist_i6,
+                  edges = edgelist_i6,
+                  directed = FALSE)
+
+# detect communities with louvain method
+t_community <- net_t %>% 
+    activate(nodes) %>% 
+    mutate(community = as.factor(group_louvain())) 
+```
+
+```{r}
+t_community %>% 
+  activate(nodes) %>% 
+  #filter(community == 1)
+  select(community) %>% distinct() %>% pull
+
+t_community %>% 
+  activate(nodes) %>% 
+  filter(community == 1)
+```
+
+```{r}
+t_community %>% 
+  ggraph('kk') + geom_edge_link(aes(width = sum_links), 
+                   alpha = 0.5) + 
+  geom_node_point(aes(colour = community
+                       ), size = 10) + 
+  geom_node_text(aes(label = source), size = 5)
+```
+
+#### marginals
+
+```{r}
+edges_raw <- compute_edges(gamma,
+                           gamma_thresh = 0.05,
+                           time_slice = 5)
+
+
+head(edges_raw)
+
+# create links
+m_links <- edges_raw %>% 
+  filter(corpus == "M") %>% 
+  mutate(meter = formula) %>%
+  # filter out only iambic hexameter
+  #filter(meter == "iamb_6") %>% 
+  # group and count edges
+  group_by(slice, meter, corpus) %>% 
+  count(slice, meter, edge_id, source, target, sort = T) %>% 
+  # filter non-frequent edges
+  filter(n > 2) %>% 
+  ungroup() 
+
+# quick check
+head(m_links)
+
+
+m_edgelist <- m_links %>% 
+  select(source, target, n, meter, slice, corpus) %>% 
+  mutate(width = n/10) %>% 
+  filter(slice != 1850) %>% 
+  rename(N_connections = n) %>% 
+  mutate(facet_title = slice)
+
+m_nodelist <- tibble(source = unique(c(m_links$source, m_links$target))) %>% 
+  mutate(idn = as.numeric(str_extract(source, "^\\d+"))) 
+
+head(m_edgelist)
+head(m_nodelist) 
+
+summary(m_edgelist)
+
+
+```
+
+```{r}
+
+m_edgelist %>% filter(meter == "iamb_4") %>% select(N_connections) %>% pull %>% 
+  quantile(probs = c(0.1, 0.25, 0.5, 0.75, 0.9, 0.95, 0.97, 1))
+
+m_edgelist_i4 <- custom_edgelist(m_edgelist, 
+                               meter_v = "iamb_4", 
+                            # choices for the Fig. 2:
+                               slices = c(1835:1845), 
+                               min_connections = 13)
+head(m_edgelist_i4)
+nrow(m_edgelist_i4)
+m_nodelist_i4 <- custom_nodelist(m_edgelist_i4$source, m_edgelist_i4$target)
+head(m_nodelist_i4)
+```
+
+```{r}
+# create tidy graph
+net_m <- tbl_graph(nodes = m_nodelist_i4,
+                  edges = m_edgelist_i4,
+                  directed = FALSE)
+
+# detect communities with louvain method
+m_community <- net_m %>% 
+    activate(nodes) %>% 
+    mutate(community = as.factor(group_louvain())) 
+
+m_community %>% 
+  activate(nodes) %>% 
+  #filter(community == 1)
+  select(community) %>% distinct() %>% pull
+
+m_community %>% 
+  activate(nodes) %>% 
+  filter(community == 1)
+
+m_community %>% 
+  ggraph('kk') + 
+  # geom_mark_hull(aes(x,y, 
+  #                    fill = community,
+  #                    color = community)) + 
+  geom_edge_link(aes(width = sum_links), 
+                   alpha = 0.5) + 
+  geom_node_point(aes(colour = community
+                       ), size = 10) + 
+  geom_node_text(aes(label = source), size = 5)
+```
+
+### iamb-6
+
+#### rnc 
+
+```{r}
+edgelist %>% filter(meter == "iamb_6") %>% 
+  filter(slice > 1799 & slice < 1830) %>% 
+  select(N_connections) %>% 
+  pull %>% 
+  quantile(probs = c(0.1, 0.25, 0.5, 0.75, 0.9, 0.95, 0.97, 1))
+
+edgelist_i6 <- custom_edgelist(edgelist, 
+                               meter_v = "iamb_6", 
+                            # choices for the Fig. 2:
+                               slices = c(1800:1829), 
+                               min_connections = 5)
+head(edgelist_i6)
+nrow(edgelist_i6)
+nodelist_i6 <- custom_nodelist(edgelist_i6$source, edgelist_i6$target)
+head(nodelist_i6)
+```
+
+```{r}
+# create tidy graph
+net_t <- tbl_graph(nodes = nodelist_i6,
+                  edges = edgelist_i6,
+                  directed = FALSE)
+
+# detect communities with louvain method
+t_community <- net_t %>% 
+    activate(nodes) %>% 
+    mutate(community = as.factor(group_louvain())) 
+
+t_community %>% 
+  ggraph('kk') + geom_edge_link(aes(width = sum_links), 
+                   alpha = 0.5) + 
+  geom_node_point(aes(colour = community
+                       ), size = 10) + 
+  geom_node_text(aes(label = source), size = 5)
+```
+
+#### marginals
+
+```{r}
+m_edgelist %>% filter(meter == "iamb_6") %>% select(N_connections) %>% pull %>% 
+  quantile(probs = c(0.1, 0.25, 0.5, 0.75, 0.9, 0.95, 0.97, 1))
+
+m_edgelist_i4 <- custom_edgelist(m_edgelist, 
+                               meter_v = "iamb_6", 
+                            # choices for the Fig. 2:
+                               slices = c(1835:1845), 
+                               min_connections = 6)
+head(m_edgelist_i4)
+nrow(m_edgelist_i4)
+m_nodelist_i4 <- custom_nodelist(m_edgelist_i4$source, m_edgelist_i4$target)
+head(m_nodelist_i4)
+nrow(m_nodelist_i4)
+```
+
+```{r}
+# create tidy graph
+net_m <- tbl_graph(nodes = m_nodelist_i4,
+                  edges = m_edgelist_i4,
+                  directed = FALSE)
+
+# detect communities with louvain method
+m_community <- net_m %>% 
+    activate(nodes) %>% 
+    mutate(community = as.factor(group_louvain())) 
+
+m_community %>% 
+  activate(nodes) %>% 
+  #filter(community == 1)
+  select(community) %>% distinct() %>% pull
+
+m_community %>% 
+  activate(nodes) %>% 
+  filter(community == 1)
+
+m_community %>% 
+  ggraph('kk') + 
+  # geom_mark_hull(aes(x,y, 
+  #                    fill = community,
+  #                    color = community)) + 
+  geom_edge_link(aes(width = sum_links), 
+                   alpha = 0.5) + 
+  geom_node_point(aes(colour = community
+                       ), size = 10) + 
+  geom_node_text(aes(label = source), size = 5)
+```
+
+### trochee 4
+
+#### rnc
+
+```{r}
+edgelist %>% filter(meter == "trochee_4") %>% 
+  filter(slice > 1829 & slice < 1845) %>% 
+  select(N_connections) %>% 
+  pull %>% 
+  quantile(probs = c(0.1, 0.25, 0.5, 0.75, 0.9, 0.95, 0.97, 1))
+
+edgelist_i6 <- custom_edgelist(edgelist, 
+                               meter_v = "trochee_4", 
+                            # choices for the Fig. 2:
+                               slices = c(1830:1840), 
+                               min_connections = 5)
+head(edgelist_i6)
+nrow(edgelist_i6)
+
+nodelist_i6 <- custom_nodelist(edgelist_i6$source, edgelist_i6$target)
+head(nodelist_i6)
+nrow(nodelist_i6)
+```
+
+```{r}
+# create tidy graph
+net_t <- tbl_graph(nodes = nodelist_i6,
+                  edges = edgelist_i6,
+                  directed = FALSE)
+
+# detect communities with louvain method
+t_community <- net_t %>% 
+    activate(nodes) %>% 
+    mutate(community = as.factor(group_louvain())) 
+
+t_community %>% 
+  ggraph('kk') + geom_edge_link(aes(width = sum_links), 
+                   alpha = 0.5) + 
+  geom_node_point(aes(colour = community
+                       ), size = 10) + 
+  geom_node_text(aes(label = source), size = 5)
+```
+
+#### marginals
+
+```{r}
+m_edgelist %>% filter(meter == "trochee_4") %>% select(N_connections) %>% pull %>% 
+  quantile(probs = c(0.1, 0.25, 0.5, 0.75, 0.9, 0.95, 0.97, 1))
+
+m_edgelist_i4 <- custom_edgelist(m_edgelist, 
+                               meter_v = "trochee_4", 
+                            # choices for the Fig. 2:
+                               slices = c(1835:1845), 
+                               min_connections = 8)
+head(m_edgelist_i4)
+nrow(m_edgelist_i4)
+m_nodelist_i4 <- custom_nodelist(m_edgelist_i4$source, m_edgelist_i4$target)
+head(m_nodelist_i4)
+nrow(m_nodelist_i4)
+```
+
+```{r}
+# create tidy graph
+net_m <- tbl_graph(nodes = m_nodelist_i4,
+                  edges = m_edgelist_i4,
+                  directed = FALSE)
+
+# detect communities with louvain method
+m_community <- net_m %>% 
+    activate(nodes) %>% 
+    mutate(community = as.factor(group_louvain())) 
+
+m_community %>% 
+  activate(nodes) %>% 
+  #filter(community == 1)
+  select(community) %>% distinct() %>% pull
+
+m_community %>% 
+  activate(nodes) %>% 
+  filter(community == 1)
+
+m_community %>% 
+  ggraph('kk') + 
+  # geom_mark_hull(aes(x,y, 
+  #                    fill = community,
+  #                    color = community)) + 
+  geom_edge_link(aes(width = sum_links), 
+                   alpha = 0.5) + 
+  geom_node_point(aes(colour = community
+                       ), size = 10) + 
+  geom_node_text(aes(label = source), size = 5)
+```

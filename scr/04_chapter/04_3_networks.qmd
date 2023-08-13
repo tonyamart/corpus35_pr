@@ -1,0 +1,934 @@
+---
+title: "04_3_networks"
+format: html
+editor: visual
+---
+
+# 4.2. Networks building
+
+## load pckg
+
+```{r}
+library(tidyverse)
+
+# networks
+library(igraph)
+library(ggraph)
+
+# basic colouring and layout options
+library(wesanderson)
+library(patchwork)
+theme_set(theme_minimal())
+```
+
+## load data
+
+```{r}
+# load model output
+load("data/lda75_output.Rda")
+
+# load code for edges calculation
+source("04_fn_calculate_edges.R")
+
+# function to extract topic lables:
+get_topic_labels = function(x, n_labels = 10) {
+  
+  #takes beta-matrix as an input
+  top_terms = x %>%
+    group_by(topic) %>%
+    top_n(20, beta) %>%
+    ungroup() %>%
+    arrange(topic, -beta)
+  
+  topic_labels = top_terms %>%
+    group_by(topic) %>%
+    top_n(n_labels, beta) %>%
+    summarise(label=paste(term, collapse=" ")) %>%
+    mutate(label = paste(topic, label, sep="_"))
+  
+  return(topic_labels)
+}
+
+# prepare gamma data
+gamma_rnc <- gamma %>% 
+    # select ONLY RNC connections & topics
+    filter(corpus == "N") %>% 
+    # add index for create_edges function
+    # mutate(index = paste0(corpus, "_", id)) %>% 
+    # fix typo
+    rename(author = first_line)
+
+gamma <- gamma %>% 
+  rename(author = first_line)
+
+glimpse(gamma)
+glimpse(gamma_rnc)
+
+```
+
+### extract topic labels
+
+```{r}
+topic_labels <- get_topic_labels(beta, n_labels = 5)
+head(topic_labels)
+
+# write.csv(topic_labels, file = "data/topic_labels.csv")
+```
+
+# RNC
+
+## Create edges
+
+### compute edges
+
+```{r}
+edges_raw <- compute_edges(gamma_rnc,
+                           gamma_thresh = 0.05,
+                           time_slice = 5)
+
+head(edges_raw)
+```
+
+### calc top meters
+
+```{r}
+# select top meters
+meter_counts <- gamma %>% 
+  mutate(year_span = floor(as.numeric(year)/5)*5) %>% 
+  rename("meter" = "formula") %>% 
+  filter(!str_detect(meter, "other")) %>% 
+  group_by(year_span, meter) %>% 
+  count(sort = T) %>% 
+  ungroup() %>% 
+  filter(n > 10 & year_span != 1850)
+
+head(meter_counts)
+```
+
+```{r}
+# group meter counts in a variable
+top_meters <- meter_counts %>% 
+  group_by(meter) %>%
+  summarise(total = sum(n)) %>% 
+  arrange(desc(total))
+
+head(top_meters, 15)
+```
+
+### create links
+
+```{r}
+# create links
+links <- edges_raw %>% 
+  mutate(meter = formula) %>%
+  # filter out only 8 most interesting meters
+  filter(meter %in% top_meters$meter[1:8]) %>% 
+  # group and count edges
+  group_by(slice, meter, corpus) %>% 
+  count(slice, meter, edge_id, source, target, sort = T) %>% 
+  # filter non-frequent edges
+  filter(n > 2) %>% 
+  ungroup() 
+
+# quick check
+head(links)
+     
+```
+
+### create edgelist
+
+```{r}
+edgelist <- links %>% 
+  select(source, target, n, meter, slice, corpus) %>% 
+  mutate(width = n/10) %>% 
+  filter(slice != 1850) %>% 
+  rename(N_connections = n) %>% 
+  mutate(facet_title = slice)
+
+nodelist <- tibble(source = unique(c(links$target, links$source))) %>% 
+  mutate(idn = as.numeric(str_replace(source, "^([0-9].*?)_.*", "\\1"))) 
+
+head(edgelist)
+head(nodelist) 
+nrow(nodelist)
+```
+
+## create network
+
+```{r}
+net <- graph_from_data_frame(d = edgelist, vertices = nodelist, directed = F)
+net
+```
+
+### viz fn
+
+```{r}
+# function for network visualisation
+
+# taken as input net, meter as a string & colour palette value
+
+network <- function(network, meter_value, palette_v) { 
+  ggraph(network, layout = "stress") +
+    geom_edge_fan(aes(color = meter,
+                      filter = meter %in% c(meter_value)
+                      #,
+                      #width = N_connections
+                     ),
+                      alpha = 0.5, width = 1) +
+    geom_node_point() +
+    #geom_node_text(aes(label=idn), 
+    #               hjust=0.1, 
+    #               vjust=-0.4, 
+    #               size=3, 
+    #               color="grey50") +
+    theme_void() + 
+    theme(strip.text = element_text(size = 12)) + 
+    scale_edge_color_manual(values = palette_v, aesthetics = "edge_colour") #+ 
+    #theme(legend.position = "None")
+}
+```
+
+```{r}
+unique(edgelist$meter)
+```
+
+### all RNC viz (check)
+
+```{r}
+all_nkrja <- network(net, c("iamb_6", "iamb_free", "iamb_4", "trochee_4"), 
+                     c(wes_palette("Darjeeling1")[2], 
+                       wes_palette("Moonrise3")[2],
+                       wes_palette("Darjeeling1")[3], 
+                       wes_palette("Darjeeling1")[1])) 
+                
+
+all_nkrja + facet_wrap(~slice, 
+                        scales="free_x", 
+                        drop=T,
+                        ncol = 5) + 
+    labs(edge_colour = "Meter") + 
+    theme(strip.text = element_text(size = 16),
+         legend.text = element_text(size = 14), 
+         legend.title = element_text(size = 16),
+         panel.spacing = unit(1.4, "lines"),
+         legend.position = "bottom")
+        
+```
+
+### iamb-4
+
+```{r}
+iamb_4 <- network(net, c("iamb_4"), wes_palette("Darjeeling1")[2])
+    
+iamb_4 + facet_wrap(~slice, 
+                 scales="free_x", 
+                 drop=T,
+                 ncol = 5) + 
+    theme(legend.position = "None",
+         strip.text = element_text(size = 16),
+         legend.text = element_text(size = 14), 
+         legend.title = element_text(size = 16))
+```
+
+### iamb-6
+
+```{r}
+iamb_6 <- network(net, c("iamb_6"), wes_palette("Darjeeling1")[3])
+iamb_6 + facet_wrap(~slice, 
+                 scales="free_x", 
+                 drop=T,
+                 ncol = 5) + 
+    theme(legend.position = "None",
+         strip.text = element_text(size = 16),
+         legend.text = element_text(size = 14), 
+         legend.title = element_text(size = 16))
+```
+
+### trochee-4
+
+```{r}
+trochee_4 <- network(net, c("trochee_4"), wes_palette("Darjeeling1")[1])
+trochee_4 + facet_wrap(~slice, 
+                 scales="free_x", 
+                 drop=T,
+                 ncol = 5) + 
+    theme(legend.position = "None",
+         strip.text = element_text(size = 16),
+         legend.text = element_text(size = 14), 
+         legend.title = element_text(size = 16))
+```
+
+## Network stats
+
+### density
+
+Calculate network density taking separately each time slice and each meter. The density of a graph is the ratio of the number of edges and the number of possible edges.
+
+```{r}
+density_vector <- function(formula) {
+    densities <- vector()
+    e1 <- NULL
+    for (i in 1:length(unique(edgelist$slice))) {
+        e1 <- edgelist %>% 
+            filter(meter == formula & slice == unique(edgelist$slice)[i] & corpus == "N")
+
+            net_test <- graph_from_data_frame(d = e1, vertices = nodelist, directed = F)
+
+            densities[i] <- edge_density(net_test, loops = F)
+    }
+    densities
+}
+```
+
+```{r}
+length(unique(edgelist$slice))
+```
+
+```{r}
+density_table <- tibble(meter = c(rep("iamb_4", 15), rep("iamb_6", 15), 
+                 rep("iamb_free", 15), rep("trochee_4", 15)),
+      slice = rep(unique(edgelist$slice), 4),
+      density = round(c(density_vector("iamb_4"),
+                       density_vector("iamb_6"),
+                       density_vector("iamb_free"), 
+                       density_vector("trochee_4")), 3)) %>% 
+    arrange(desc(-slice)) 
+
+density_table %>% 
+    # pivot for easier reading
+    pivot_wider(names_from = slice, values_from = density)
+```
+
+```{r}
+summary(density_table$density)
+
+density_table %>% 
+    ggplot(aes(x = meter, y = density, fill = meter)) + geom_boxplot() + 
+    scale_fill_manual(values = c(wes_palette("Darjeeling1")[2], 
+                                wes_palette("Darjeeling1")[4],
+                                wes_palette("Darjeeling1")[3],
+                                wes_palette("Darjeeling1")[1]))
+```
+
+# RNC vs marginal corpus
+
+```{r}
+glimpse(gamma)
+```
+
+```{r}
+t <- gamma %>% 
+  filter(index == "M_P_1733" & gamma > 0.05) %>% 
+  left_join(topic_labels, by = "topic")
+
+t
+
+gamma %>% 
+    filter(index == "M_P_1733") %>% 
+    ungroup() %>% 
+    ggplot(aes(x = topic, y = gamma)) + 
+        geom_line() + 
+        
+        # threshold line
+        geom_hline(yintercept = 0.05, 
+                   linetype = 2,
+                   linewidth = 1.5,
+                   colour = wes_palette("Darjeeling1")[2]) + 
+        
+        geom_point(data = gamma %>% filter(index == "M_P_1733" & gamma > 0.05), 
+                   size = 2) + 
+        geom_label(data = t,
+                   aes(label = label), 
+                   vjust = -0.3, hjust = 0.73,
+                  size = 5) + 
+        labs(x = "Topic", y = "Topic probability") + 
+        expand_limits(x = 80, y = 0.15) + 
+        scale_x_continuous(breaks = seq(10, 70, 10)) +
+        scale_y_continuous(breaks = seq(0, 0.15, 0.025)) + 
+        theme(axis.text = element_text(size = 14),
+             axis.title = element_text(size = 16))
+```
+
+```{r}
+topic_probs <- gamma %>%
+  group_by(topic) %>%
+  summarise(avg_gamma = mean(gamma)) %>% 
+  ungroup() %>% 
+  arrange(desc(avg_gamma))
+
+print("Most probable topics (avg)")
+
+head(topic_probs, 10)
+
+topic_probs %>% 
+  ggplot(aes(reorder(topic,-avg_gamma), avg_gamma)) + geom_col()
+
+gamma %>% 
+  mutate(year_span = floor(as.numeric(year)/5)*5) %>% 
+  group_by(year_span, topic) %>% 
+  summarise(gamma_avg = mean(gamma)) %>% 
+  top_n(10) %>% 
+  ggplot(aes(x = year_span, y = gamma_avg, fill = as.factor(topic))) + geom_col()
+```
+
+### sampling
+
+Check distribution in number of texts
+
+```{r}
+gamma %>% 
+  select(author, year, corpus, index) %>% 
+  distinct() %>% 
+  count(author, corpus, sort = T) %>% 
+  filter(author != "" & corpus == "M")
+
+gamma %>% 
+  select(author, year, corpus, index) %>% 
+  distinct() %>% 
+  count(author, corpus, sort = T) %>% 
+  filter(author != "" & corpus == "M") %>% summary
+
+gamma %>% 
+  select(author, year, corpus, index) %>% 
+  distinct() %>% 
+  count(author, corpus, sort = T) %>% 
+  filter(author != "" & corpus == "N")
+
+gamma %>% 
+  select(author, year, corpus, index) %>% 
+  distinct() %>% 
+  count(author, corpus, sort = T) %>% 
+  filter(author != "" & corpus == "N") %>% summary
+```
+
+Select top authors - rnc
+
+```{r}
+rnc_authors <- gamma %>% 
+    filter(corpus == "N") %>% 
+    mutate(decade = floor(as.numeric(year)/5)*5) %>% 
+    filter(decade %in% c(1830, 1835)) %>% 
+    group_by(author) %>% 
+    summarise(n_gamma = sum(n()),
+             n_texts = n_gamma/75) %>% 
+    arrange(desc(n_texts))
+
+rnc_authors %>% 
+    ungroup() %>%
+    summarise(total_texts = sum(n_texts))
+
+rnc_authors <- rnc_authors %>% 
+    mutate(percentage = n_texts/2519*100)
+
+head(rnc_authors, 20)
+summary(rnc_authors$n_texts)
+```
+
+```{r}
+# filter overpresented authors
+top_authors <- rnc_authors %>% 
+    filter(n_texts > 30) %>% select(author) # 19 authors
+
+top_authors
+
+# randomly select 30 texts by each author
+sampled_id <- gamma %>% 
+    filter(corpus == "N") %>% 
+    # select slice
+    filter(year > 1829 & year < 1840) %>%
+    select(index, author) %>% 
+    distinct() %>% 
+    filter(author %in% top_authors$author) %>% 
+    group_by(author) %>% 
+    sample_n(30) %>% 
+    ungroup() %>%
+    select(-author)
+
+# retrieve gamma values for samples for these authors
+gamma_top <- inner_join(sampled_id, gamma, by = "index", multiple = "all")
+```
+
+Select top authors - corpus_1830
+
+```{r}
+m_authors <- gamma %>% 
+    filter(corpus == "M" & author != "") %>% 
+    mutate(decade = floor(as.numeric(year)/5)*5) %>% 
+    filter(decade %in% c(1830, 1835)) %>% 
+    group_by(author) %>% 
+    summarise(n_gamma = sum(n()),
+             n_texts = n_gamma/75) %>% 
+    arrange(desc(n_texts))
+
+m_authors %>% 
+    ungroup() %>%
+    summarise(total_texts = sum(n_texts))
+
+m_authors <- m_authors %>% 
+    mutate(percentage = n_texts/3867*100)
+
+head(m_authors, 20)
+summary(m_authors$n_texts)
+
+m_top_authors <- m_authors %>% 
+  filter(n_texts > 30) %>% select(author) # 30 authors
+
+sampled_id_m <- gamma %>% 
+    filter(corpus == "M") %>% 
+    # select slice
+    filter(year > 1829 & year < 1840) %>%
+    select(index, author) %>% 
+    distinct() %>% 
+    filter(author %in% m_top_authors$author) %>% 
+    group_by(author) %>% 
+    sample_n(30) %>% 
+    ungroup() %>%
+    select(-author)
+
+m_gamma_top <- inner_join(sampled_id_m, gamma, by = "index", multiple = "all")
+```
+
+Merging
+
+```{r}
+# select texts from RNC by non-prevalent authors
+gamma_nontop <- gamma %>% 
+    filter(corpus == "N" & !author %in% top_authors$author) %>% 
+    filter(year > 1829 & year < 1840)
+
+# retrieve all the gamma values for texts from periodicals
+m_gamma_nontop <- gamma %>%
+    filter(corpus == "M" & !author %in% m_top_authors$author) %>%
+    filter(year > 1829 & year < 1840)
+
+# merge the three together
+gamma1830 <- rbind(gamma_top, gamma_nontop, 
+                   m_gamma_top, m_gamma_nontop)
+
+head(gamma1830)
+
+print("Number of texts in each corpus after sampling:")
+gamma1830 %>% 
+    select(index, corpus) %>% 
+    distinct() %>% 
+    group_by(corpus) %>% 
+    count()
+```
+
+```{r}
+gamma %>% 
+  filter(year > 1829 & year < 1840) %>% 
+  select(index, corpus) %>% 
+  distinct() %>% 
+  group_by(corpus) %>% 
+  count()
+```
+
+```{r}
+save(gamma1830, file = "data/gamma_1830_sampled.Rda")
+```
+
+### corpus stats
+
+```{r}
+glimpse(gamma1830)
+```
+
+```{r}
+print("Total number of unique poems in marginals corpus (after sampling):")
+gamma1830 %>% 
+    filter(corpus == "M") %>%  
+    select(index) %>% 
+    distinct() %>%
+    nrow()
+```
+
+### meter counts
+
+#### iamb_other == iamb_free
+
+```{r}
+gamma1830 <- gamma1830 %>% 
+  mutate(formula = ifelse(formula == "iamb_other", "iamb_free", formula)) 
+```
+
+```{r}
+# temporary make all iamb_other == iamb_free
+
+counts_main <- gamma1830 %>% 
+    select(index, corpus, formula) %>% 
+    filter(formula %in% c("iamb_4", "iamb_6", "iamb_free", "trochee_4")) %>% 
+    distinct() %>% 
+    group_by(corpus, formula) %>% 
+    count(sort = T) %>% 
+    pivot_wider(names_from = formula, values_from = n)
+
+rnc_others <- gamma1830 %>% 
+    select(index, corpus, formula) %>% 
+    distinct() %>% 
+    filter(corpus == "N" & !formula %in% c("iamb_4", "iamb_6", "iamb_free", "trochee_4")) %>% 
+    count() %>% 
+    pull()
+
+m_others <- gamma1830 %>% 
+    select(index, corpus, formula) %>% 
+    distinct() %>% 
+    filter(corpus == "M" & !formula %in% c("iamb_4", "iamb_6", "iamb_free", "trochee_4")) %>% 
+    count() %>% 
+    pull()
+
+counts <- cbind(counts_main, other = c(rnc_others, m_others))
+
+counts_fin <- counts %>% 
+    ungroup() %>% 
+    rowwise(corpus) %>% mutate(total = sum(across(where(is.numeric))))
+
+counts_fin
+
+counts_fin[2,7][[1]]
+
+counts_fin %>% 
+    pivot_longer(!corpus, names_to = "formula", values_to = "n") %>% 
+    group_by(corpus, formula) %>% 
+    mutate(perc = ifelse(corpus == "N",
+               round(n/counts_fin[2,7][[1]]*100,1),
+               round(n/counts_fin[1,7][[1]]*100,1)))
+
+```
+
+### network
+
+### topic labels & edges
+
+```{r}
+topic_labels <- get_topic_labels(beta, n_labels = 5)
+head(topic_labels)
+
+edges_1830 <- compute_edges(gamma1830,
+                           gamma_thresh = 0.05,
+                           time_slice = 5)
+
+head(edges_1830)
+```
+
+```{r}
+# select top meters
+meter_counts_1830 <- gamma1830 %>% 
+  rename("meter" = "formula") %>% 
+  filter(!str_detect(meter, "other") & meter != "NA") %>% 
+  group_by(meter, corpus) %>% 
+  count(sort = T) %>% 
+  mutate(n_texts = n/75) %>%
+  ungroup() %>% 
+  filter(n > 10)
+
+top_meters_1830 <- meter_counts_1830 %>% 
+  group_by(meter) %>%
+  summarise(total = sum(n)) %>% 
+  arrange(desc(total))
+
+top_meters_1830$meter[1:8]
+```
+
+```{r}
+links_1830 <- edges_1830 %>% 
+  mutate(meter = formula) %>%
+  # filter out only 8 most interesting meters
+  filter(meter %in% top_meters_1830$meter[1:8]) %>% 
+  # group and count edges
+  group_by(meter, corpus) %>% 
+  count(meter, edge_id, source, target, sort = T) %>% 
+  # filter non-frequent edges
+  filter(n > 2) %>% 
+  ungroup() 
+
+# quick check
+head(links_1830)
+```
+
+```{r}
+edges_rnc <- links_1830 %>% 
+    mutate(meter_edge = paste0(meter, "__", edge_id)) %>% 
+    filter(corpus == "N") %>% 
+    pull(meter_edge)
+
+edges_m <- links_1830 |> 
+    mutate(meter_edge = paste0(meter, "__", edge_id)) %>% 
+    filter(corpus == "M") %>% 
+    pull(meter_edge)
+
+head(edges_rnc)
+head(edges_m)
+
+edges_intersection <- intersect(edges_rnc, edges_m)
+print("Intersection between built edges:")
+head(edges_intersection)
+
+length(edges_rnc)
+length(edges_m)
+
+length(edges_intersection)
+```
+
+### edgelist & nodelist
+
+```{r}
+
+edgelist <- links_1830 %>% 
+    mutate(meter_edge = paste0(meter, "__", edge_id),
+           # create a column indicating if an edge is present in both corpora
+          group = ifelse(meter_edge %in% edges_intersection, "Both corpora", "Unique edge")) %>% 
+    select(source, target, n, meter, corpus, group) %>% 
+    mutate(width = n/10,
+          corpus_fullname = ifelse(corpus == "M", "corpus_1830", "RNC"))
+
+nodelist <- tibble(source = unique(c(links_1830$target, links_1830$source))) %>% 
+  mutate(idn = as.numeric(str_replace(source, "^([0-9].*?)_.*", "\\1"))) 
+
+head(edgelist)
+head(nodelist) 
+nrow(nodelist)
+```
+
+## Network viz
+
+```{r}
+net1830 <- graph_from_data_frame(d = edgelist, vertices = nodelist, directed = F)
+net1830
+```
+
+### viz fn
+
+```{r}
+# function for network visualisation
+
+# taken as input net, meter as a string & colour palette value
+
+network <- function(network, meter_value, palette_v) {
+  ggraph(network, layout = "kk") +
+    # one layer for edges which are unique for each corpus (RNC or Periodicals)
+    geom_edge_fan(aes(color = group,
+                      filter = meter %in% c(meter_value) & group == "Unique edge", 
+                      width = n), 
+                      alpha = 0.4) +
+    
+    # second layer for intersected edges
+    geom_edge_fan(aes(color = group,
+                      filter = meter %in% c(meter_value) & group == "Both corpora", 
+                      width = n), 
+                      alpha = 1) +
+    
+    geom_node_point() +
+    #geom_node_text(aes(label=idn), 
+    #               hjust=0.1, 
+    #               vjust=-0.4, 
+    #               size=3, 
+    #               color="grey50") +
+    theme_void() + 
+    theme(strip.text = element_text(size = 18)) +
+    facet_wrap(~corpus_fullname, 
+               scales="free_x", 
+               drop=T,
+               ncol = 2) + 
+    scale_edge_color_manual(values = palette_v) + 
+    #labs(title = meter_value) + 
+    theme(legend.position = "None")
+}
+```
+
+### iamb-4
+
+```{r}
+network(net1830, "iamb_4", c(wes_palette("Darjeeling1")[2], wes_palette("Royal1")[1]))
+```
+
+### iamb-6
+
+```{r}
+network(net1830, "iamb_6", c(wes_palette("Darjeeling1")[3], wes_palette("Royal1")[1]))
+```
+
+### trochee-4
+
+```{r}
+network(net1830, "trochee_4", c(wes_palette("Darjeeling1")[1], wes_palette("Royal1")[1]))
+```
+
+### comparison of connections
+
+```{r}
+links_n <- links_1830 %>% 
+  filter(corpus == "N" & meter %in% c("iamb_4", "iamb_6", "iamb_free", "trochee_4")) %>% 
+  mutate(connection = paste0(meter, "__", edge_id)) %>% 
+  select(connection) 
+
+links_m <- links_1830 %>% 
+  filter(corpus == "M" & meter %in% c("iamb_4", "iamb_6", "iamb_free", "trochee_4")) %>% 
+  mutate(connection = paste0(meter, "__", edge_id)) %>% 
+  select(connection) 
+  
+t <- intersect(links_n$connection, links_m$connection)
+
+head(t)
+length(t)
+
+
+```
+
+```{r}
+links_1830 %>% 
+  filter(meter %in% c("iamb_4", "iamb_6", "iamb_free", "trochee_4")) %>% 
+  mutate(connection = paste0(meter, "__", edge_id)) %>% 
+  mutate(corpus_new = ifelse(connection %in% t, "Both corpora", corpus)) %>% 
+  mutate(corpus_new = recode(corpus_new, 
+                           "N" = "National corpus only", 
+                           "M" = "Marginals only")) %>% 
+  # first select unique connections and assign to both/P/N
+  group_by(corpus_new, meter, edge_id) %>%
+  count() %>% 
+  select(-n) %>% 
+  distinct() %>%
+  # ungroup & count by large groups again
+  ungroup() %>% 
+  group_by(corpus_new, meter) %>% 
+  count(sort = T) %>% 
+  arrange(desc(meter)) %>% 
+  ggplot(aes(x = meter,
+           y = n,
+           group = corpus_new,
+           fill = corpus_new)) +
+  geom_col(position = "dodge") +
+  labs(x = "Meter",
+       y = "", 
+       fill = "Corpus",
+       subtitle = "Number of unique connections found in RNC vs Periodicals") + 
+  scale_fill_manual(values = c(wes_palette("Rushmore1")[3:5])) + 
+  theme(axis.text = element_text(size = 11), 
+        plot.subtitle = element_text(hjust = 0.5))
+```
+
+## No-sampling data
+
+```{r}
+topic_labels <- get_topic_labels(beta, n_labels = 5)
+head(topic_labels)
+
+glimpse(gamma)
+
+gamma1830_ns <- gamma %>% 
+  filter(year > 1829 & year < 1841)
+
+edges_1830_ns <- compute_edges(gamma1830_ns,
+                           gamma_thresh = 0.05,
+                           time_slice = 5)
+
+head(edges_1830_ns)
+```
+
+```{r}
+edges_1830_ns %>% 
+  filter(index == "M_P_1733") 
+
+gamma %>% 
+  filter(index == "M_P_1733" & topic == 73) 
+
+
+demo_edges <- edges_1830_ns %>% 
+  ungroup() %>% 
+  filter(index == "M_P_1733") %>% 
+  select(source, target) 
+
+demo_nodes <- tibble(source = unique(c(demo_edges$source, demo_edges$target)),
+                     idn = str_extract(source, "^\\d+"))
+
+demo_net <- graph_from_data_frame(demo_edges, demo_nodes, directed = F)
+
+demo_graph <- ggraph(demo_net, "stress") + 
+    geom_edge_fan(width = 1) + 
+    geom_node_point(colour = wes_palette("Darjeeling1")[2], size = 14) + 
+    geom_node_text(aes(label = idn), size = 8, colour = "white") + 
+    scale_x_continuous(expand = c(0,0.7)) + 
+    scale_y_continuous(expand = c(0, 0.7))
+
+demo_graph
+```
+
+```{r}
+
+top_meters <- c("iamb_4", "iamb_free", "trochee_4", "iamb_6")
+
+
+links_1830_ns <- edges_1830_ns %>% 
+  mutate(meter = formula) %>%
+  # filter out only 8 most interesting meters
+  filter(meter %in% top_meters) %>% 
+  # group and count edges
+  group_by(meter, corpus) %>% 
+  count(meter, edge_id, source, target, sort = T) %>% 
+  # filter non-frequent edges
+  filter(n > 2) %>% 
+  ungroup() 
+
+# quick check
+head(links_1830_ns)
+```
+
+```{r}
+edges_rnc <- links_1830_ns %>% 
+    mutate(meter_edge = paste0(meter, "__", edge_id)) %>% 
+    filter(corpus == "N") %>% 
+    pull(meter_edge)
+
+edges_m <- links_1830_ns %>% 
+    mutate(meter_edge = paste0(meter, "__", edge_id)) %>% 
+    filter(corpus == "M") %>% 
+    pull(meter_edge)
+
+head(edges_rnc)
+head(edges_m)
+
+edges_intersection <- intersect(edges_rnc, edges_m)
+print("Intersection between built edges:")
+head(edges_intersection)
+
+length(edges_rnc)
+length(edges_m)
+length(edges_intersection)
+
+```
+
+```{r}
+edgelist_ns <- links_1830_ns %>% 
+    mutate(meter_edge = paste0(meter, "__", edge_id),
+           # create a column indicating if an edge is present in both corpora
+          group = ifelse(meter_edge %in% edges_intersection, 
+                         "Both corpora", 
+                         "Unique edge")) %>% 
+    select(source, target, n, meter, corpus, group) %>% 
+    mutate(width = n/10,
+          corpus_fullname = ifelse(corpus == "M", "Marginals", "RNC"))
+
+nodelist_ns <- tibble(source = unique(c(links_1830_ns$target, links_1830_ns$source))) %>% 
+  mutate(idn = as.numeric(str_replace(source, "^([0-9].*?)_.*", "\\1"))) 
+
+head(edgelist_ns)
+head(nodelist_ns) 
+nrow(nodelist_ns)
+```
+
+```{r}
+net1830_ns <- graph_from_data_frame(d = edgelist_ns, vertices = nodelist_ns, directed = F)
+net1830_ns
+```
+
+```{r}
+network(net1830_ns, "iamb_4", c(wes_palette("Darjeeling1")[2], wes_palette("Royal1")[1]))
+```
+
+```{r}
+network(net1830_ns, "iamb_6", c(wes_palette("Darjeeling1")[3], wes_palette("Royal1")[1]))
+```
+
+```{r}
+network(net1830_ns, "trochee_4", c(wes_palette("Darjeeling1")[1], wes_palette("Royal1")[1]))
+```

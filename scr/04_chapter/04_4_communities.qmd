@@ -751,7 +751,7 @@ ggsave("plots/i6_m.png", plot = last_plot(),
 
 ```{r}
 edgelist %>% filter(meter == "trochee_4") %>% 
-  filter(slice > 1829 & slice < 1845) %>% 
+  filter(slice > 1800 & slice < 1845) %>% 
   select(N_connections) %>% 
   pull %>% 
   quantile(probs = c(0.1, 0.25, 0.5, 0.75, 0.9, 0.95, 0.97, 1))
@@ -759,7 +759,7 @@ edgelist %>% filter(meter == "trochee_4") %>%
 edgelist_i6 <- custom_edgelist(edgelist, 
                                meter_v = "trochee_4", 
                             # choices for the Fig. 2:
-                               slices = c(1830:1840), 
+                               slices = c(1780:1841), 
                                min_connections = 5)
 head(edgelist_i6)
 nrow(edgelist_i6)
@@ -796,15 +796,20 @@ t_community %>%
 t_community %>% 
   activate(nodes) %>% 
   filter(community == 3)
+
+t_community %>% 
+  activate(nodes) %>% 
+  filter(community == 4)
 ```
 
 ```{r}
 labels <- tibble(
-  community = c(1,2,3),
-  label = c("Басня(?)", "Стихия", "Патриотические темы"),
-  descr = c("15_лев волк зверь говорить становиться\n17_де два точно хорошо очень\n28_видеть глаз новый увидеть взглядывать\n33_день забывать помнить память былой\n40_слава век великий герой славный\n61_дом стоять стена окно дверь",
+  community = c(1,2,3,4),
+  label = c("Басня(?)", "Стихия", "Патриотические темы", "Песня"),
+  descr = c("15_лев волк зверь говорить становиться\n17_де два точно хорошо очень\n28_видеть глаз новый увидеть взглядывать\n33_день забывать помнить память былой\n40_слава век великий герой славный",
 "10_волна море берег вода брег\n3_луч свет солнце блеск мрак\n55_небо звезда солнце луч светлый\n71_туча гром буря ветер небо",
-"30_царь народ русский царство слава\n52_знать другой иной бывать говорить\n39_враг меч бой брань битва"
+"30_царь народ русский царство слава\n52_знать другой иной бывать говорить\n39_враг меч бой брань битва",
+"14_красота природа краса вид прелесть\n70_петь песня звук струна песнь"
   )
   ) %>% 
   mutate(community = as.factor(community))
@@ -821,7 +826,7 @@ t_community %>%
                      label = label,
                      description = descr,
                      filter = community == 1),
-                   label.buffer = unit(7, 'mm'),
+                   label.buffer = unit(0, 'mm'),
                    label.minwidth = 100,
                    label.fontsize = c(18,12),
                    con.cap = 1
@@ -832,7 +837,7 @@ t_community %>%
                      label = label,
                      description = descr,
                      filter = community == 2),
-                   label.buffer = unit(1, 'mm'),
+                   label.buffer = unit(40, 'mm'),
                    label.minwidth = 100,
                    label.fontsize = c(18,12),
                    con.cap = 1
@@ -843,7 +848,18 @@ t_community %>%
                      label = label,
                      description = descr,
                      filter = community == 3),
-                   label.buffer = unit(7, 'mm'),
+                   label.buffer = unit(10, 'mm'),
+                   label.minwidth = 100,
+                   label.fontsize = c(18,12),
+                   con.cap = 1
+                  ) + 
+  
+  geom_mark_hull(aes(x,y, fill = community,
+                     color = community,
+                     label = label,
+                     description = descr,
+                     filter = community == 4),
+                   label.buffer = unit(-5, 'mm'),
                    label.minwidth = 100,
                    label.fontsize = c(18,12),
                    con.cap = 0

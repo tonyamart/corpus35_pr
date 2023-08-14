@@ -14,6 +14,7 @@ library(tidyverse)
 # networks
 library(igraph)
 library(ggraph)
+library(ggrepel)
 
 # basic colouring and layout options
 library(wesanderson)
@@ -318,7 +319,7 @@ glimpse(gamma)
 
 ```{r}
 t <- gamma %>% 
-  filter(index == "M_P_1733" & gamma > 0.05) %>% 
+  filter(index == "M_P_1733" & gamma > 0.04) %>% 
   left_join(topic_labels, by = "topic")
 
 t
@@ -330,23 +331,39 @@ gamma %>%
         geom_line() + 
         
         # threshold line
-        geom_hline(yintercept = 0.05, 
+        geom_hline(yintercept = 0.044, 
                    linetype = 2,
                    linewidth = 1.5,
                    colour = wes_palette("Darjeeling1")[2]) + 
         
-        geom_point(data = gamma %>% filter(index == "M_P_1733" & gamma > 0.05), 
+        geom_point(data = gamma %>% filter(index == "M_P_1733" & gamma > 0.04), 
                    size = 2) + 
-        geom_label(data = t,
-                   aes(label = label), 
-                   vjust = -0.3, hjust = 0.73,
-                  size = 5) + 
+  
+        geom_label_repel(data = t %>% filter(topic == "73"),
+                   aes(label = label ),
+                   nudge_y = 0.055,
+                   nudge_x = -0.5
+                  ) + 
+        geom_label_repel(data = t %>% filter(topic == "56"),
+                   aes(label = label ),
+                   nudge_y = 0.025,
+                   nudge_x = -5
+                  ) + 
+        geom_label_repel(data = t %>% filter(!topic %in% c("56", "73")),
+                   aes(label = label ),
+                   nudge_y = 0.01,
+                   nudge_x = 0.5
+                  ) + 
+        
         labs(x = "Topic", y = "Topic probability") + 
         expand_limits(x = 80, y = 0.15) + 
         scale_x_continuous(breaks = seq(10, 70, 10)) +
         scale_y_continuous(breaks = seq(0, 0.15, 0.025)) + 
         theme(axis.text = element_text(size = 14),
              axis.title = element_text(size = 16))
+
+#ggsave("plots/demo.png", plot = last_plot(), dpi = 300,
+#       bg = "white", width = 8, height = 6)
 ```
 
 ```{r}
@@ -818,6 +835,11 @@ glimpse(gamma)
 gamma1830_ns <- gamma %>% 
   filter(year > 1829 & year < 1841)
 
+gamma1830_ns %>% 
+  select(index, corpus) %>% 
+  distinct() %>% 
+  count(corpus)
+
 edges_1830_ns <- compute_edges(gamma1830_ns,
                            gamma_thresh = 0.05,
                            time_slice = 5)
@@ -906,7 +928,7 @@ edgelist_ns <- links_1830_ns %>%
                          "Unique edge")) %>% 
     select(source, target, n, meter, corpus, group) %>% 
     mutate(width = n/10,
-          corpus_fullname = ifelse(corpus == "M", "Marginals", "RNC"))
+          corpus_fullname = ifelse(corpus == "M", "Корпус-1835", "НКРЯ"))
 
 nodelist_ns <- tibble(source = unique(c(links_1830_ns$target, links_1830_ns$source))) %>% 
   mutate(idn = as.numeric(str_replace(source, "^([0-9].*?)_.*", "\\1"))) 
@@ -923,12 +945,21 @@ net1830_ns
 
 ```{r}
 network(net1830_ns, "iamb_4", c(wes_palette("Darjeeling1")[2], wes_palette("Royal1")[1]))
+
+ggsave("plots/Fig_4-2-4_iamb4.png", plot = last_plot(), bg = "white",
+      dpi = 300, width = 8, height = 4)
 ```
 
 ```{r}
 network(net1830_ns, "iamb_6", c(wes_palette("Darjeeling1")[3], wes_palette("Royal1")[1]))
+
+ggsave("plots/Fig_4-2-4_iamb6.png", plot = last_plot(), bg = "white",
+      dpi = 300, width = 8, height = 4)
 ```
 
 ```{r}
 network(net1830_ns, "trochee_4", c(wes_palette("Darjeeling1")[1], wes_palette("Royal1")[1]))
+
+ggsave("plots/Fig_4-2-4_trochee4.png", plot = last_plot(), bg = "white",
+      dpi = 300, width = 8, height = 4)
 ```

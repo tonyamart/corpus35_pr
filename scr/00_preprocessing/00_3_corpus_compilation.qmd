@@ -186,28 +186,6 @@ Shorten metadata for merging with book data
 glimpse(corpus_per)
 ```
 
-```{r}
-corpus_per[is.na(corpus_per)] <- ""
-
-corpus_per_short <- corpus_per %>% 
-  mutate(source_text = paste0(PER_ID, ". ", year),
-         source_text = ifelse(vol != "", 
-                              paste0(source_text, ". ", vol),
-                              source_text),
-         
-         source_text = ifelse(num != "", 
-                              paste0(source_text, ". №", num),
-                              source_text),
-         source_text = paste0(source_text, ". C. ", text_pages)) %>% 
-  # add 'corpus' column
-  mutate(corpus = "per") %>% 
-  # remove merged and some other columns
-  select(-PER_ID, -vol, -num, -text_pages, -notes)
-
-glimpse(corpus_per_short)
-
-```
-
 ## books
 
 Load Rds with metadata & raw texts
@@ -246,4 +224,203 @@ corpus_books %>%
 ```{r}
 glimpse(corpus_per)
 glimpse(corpus_books)
+```
+
+### attach acc texts
+
+```{r}
+# list files from accented dir
+lf <- list.files(path = "../../data/corpus1835/collections/accented/",
+                 full.names = T,
+                 pattern = "\\.txt")
+
+# read files and extract text_id for join
+acc_corpus <- tibble(
+  path = lf,
+  text_acc = sapply(lf, read_file),
+  text_id = str_extract(lf, "C_\\d+__\\d+")
+)
+
+corpus_books <- corpus_books %>% 
+  left_join(acc_corpus %>% select(text_id, text_acc), by = "text_id")
+
+rm(acc_corpus, lf)
+```
+
+```{r}
+corpus_books %>% 
+  filter(text_acc == "" | is.na(text_acc))
+```
+
+### n lines check
+
+```{r}
+raw_lines <- corpus_books %>% 
+  select(text_id, text_raw) %>% 
+  separate_rows(text_raw, sep = "\n") %>% 
+  filter(text_raw != "") %>% 
+  count(text_id) %>% 
+  rename(nlines_raw = n)
+
+head(raw_lines)
+
+lem_lines <- corpus_books %>% 
+  select(text_id, text_lemm) %>% 
+  separate_rows(text_lemm, sep = "\n") %>% 
+  filter(text_lemm != "") %>% 
+  count(text_id) %>% 
+  rename(nlines_lemm = n)
+
+acc_lines <- corpus_books %>% 
+  select(text_id, text_acc) %>% 
+  separate_rows(text_acc, sep = "\n") %>% 
+  filter(text_acc != "") %>% 
+  count(text_id) %>% 
+  rename(nlines_acc = n)
+
+head(acc_lines)
+
+# join results
+
+nlines <- raw_lines %>% 
+  left_join(lem_lines, by = "text_id") %>% 
+  left_join(acc_lines, by = "text_id") 
+
+errors_acc <- nlines %>% 
+  filter(nlines_raw != nlines_acc)
+
+errors_acc
+```
+
+### \<\> cleaning
+
+```{r}
+corpus_books <- corpus_books %>% 
+  mutate(text_cln = str_remove_all(text_raw, "<.*?>"),
+         text_lemm = str_remove_all(text_lemm, "<.*?>"),
+         text_acc = str_remove_all(text_acc, "<.*?>")) 
+```
+
+### save
+
+```{r, eval = F}
+# save all texts in a .csv
+
+corpus_texts <- corpus_books %>% 
+  select(text_id, text_raw, text_cln, text_lemm, text_acc)
+
+write.csv(corpus_texts, "../../data/corpus1835/collections/books_texts_lemm_acc.csv")
+
+# save all periodicals data in Rds
+saveRDS(corpus_books, file = "../../data/corpus1835/collections/books_corpus_lemm_acc.Rds")
+```
+
+# merge corpora
+
+Take prepared books & periodicals corpora and merge them together (metadata shortened)
+
+### books prep
+
+```{r}
+corpus_books <- readRDS("../../data/corpus1835/collections/books_corpus_lemm_acc.Rds")
+
+glimpse(corpus_books)
+```
+
+Shorten the metadata
+
+```{r}
+corpus_books[is.na(corpus_books)] <- ""
+
+corpus_books_short <- corpus_books %>% 
+  # subcorpus tag (either per or col)
+  mutate(corpus = "col") %>% 
+  
+  # paste text source
+  mutate(source_text = paste0(author_book, " ", book_title, ". ", city, ": ", 
+                         publisher, ", ", year, ". C. ", text_pages)) %>% 
+  
+  # select & reorder columns
+  select(text_id, A_ID,
+         author_text, author_sign,
+         text_title, text_subtitle, first_line, 
+         year, path_text, 
+         source_text, COL_ID, corpus, 
+         
+         text_raw, text_cln, text_lemm, text_acc
+         )
+
+glimpse(corpus_books_short)
+```
+
+### per prep
+
+Load data
+
+```{r}
+corpus_per <- readRDS("../../data/corpus1835/periodicals/periodicals_corpus_lemm_acc.Rds")
+
+glimpse(corpus_per)
+```
+
+Shortening
+
+```{r}
+corpus_per[is.na(corpus_per)] <- ""
+
+# create a new variable for merging
+corpus_per_short <- corpus_per %>% 
+  mutate(source_text = paste0(PER_ID, ". ", year),
+         source_text = ifelse(vol != "", 
+                              paste0(source_text, ". ", vol),
+                              source_text),
+         
+         source_text = ifelse(num != "", 
+                              paste0(source_text, ". №", num),
+                              source_text),
+         source_text = paste0(source_text, ". C. ", text_pages)) %>% 
+  # add 'corpus' column & col_id (needed for books corpus sometimes)
+  mutate(corpus = "per",
+         COL_ID = "") %>% 
+  # rename to join with corpus_books true paths
+  rename(path_text = path) %>% 
+  # select & reorder
+  select(text_id, A_ID,
+         author_text, author_sign,
+         text_title, text_subtitle, first_line, 
+         year, path_text, 
+         source_text, COL_ID, corpus, 
+         
+         text_raw, text_cln, text_lemm, text_acc
+         )
+
+glimpse(corpus_per_short)
+```
+
+### merge
+
+```{r}
+corpus_1835 <- rbind(corpus_per_short, corpus_books_short)
+```
+
+### save
+
+Save whole corpus as Rds
+
+```{r, eval = F}
+saveRDS(corpus_1835, file = "../../data/corpus1835/corpus1835_nometrics.Rds")
+```
+
+Save texts & metadata separately in csv
+
+```{r, eval = F}
+corpus1835_meta <- corpus_1835 %>% 
+  select(-text_raw, -text_cln, -text_lemm, -text_acc)
+
+write.csv(corpus1835_meta, file = "../../meta/texts_all_corpus1835.csv")
+
+corpus1835_texts <- corpus_1835 %>% 
+  select(text_id, text_raw, text_cln, text_lemm, text_acc)
+
+write.csv(corpus1835_texts, file = "../../data/corpus1835/corpus1835_texts_lemm_acc.csv")
 ```

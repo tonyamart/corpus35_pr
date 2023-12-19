@@ -1,0 +1,569 @@
+---
+title: "00_corpus_compilation"
+format: html
+editor: visual
+---
+
+This notebook shows how main metadata tables were compiled
+
+## load pckg
+
+```{r}
+library(tidyverse)
+```
+
+## Periodicals
+
+```{r}
+per_meta <- read.delim("../../meta/periodicals_texts.tsv", sep = "\t") %>% select(-txt_raw, -text)
+glimpse(per_meta)
+```
+
+Filter from the metadata only digitised texts
+
+```{r}
+pf <- list.files(path = "../../data/corpus1835/periodicals/raw_texts/periodicals_united/")
+
+pf_cln <- str_remove_all(pf, "\\.txt?")
+
+per_meta_texts <- per_meta %>% filter(text_ID %in% pf_cln)
+```
+
+Check whether all poems were stressed
+
+```{r}
+pf_st <- list.files(path = "../../data/corpus1835/periodicals/per_stressed/united/",
+                    #pattern = ".txt",
+                    full.names = F)
+
+head(pf_st)
+
+pf_st_cln <- str_remove_all(pf_st, "\\.accented\\.txt")
+
+setdiff(per_meta_texts$text_ID, pf_st_cln)
+```
+
+Attach stressed poems to metadata
+
+```{r}
+pf_st <- list.files(path = "../../data/corpus1835/periodicals/per_stressed/united/",
+                    pattern = ".txt",
+                    full.names = T) 
+
+head(pf_st)
+
+per_texts <- tibble(path = pf_st,
+       text_ID = str_extract(path, "P_\\d+"),
+       text_acc = sapply(path, read_file))
+
+glimpse(per_texts)
+
+per_texts <- per_texts %>% 
+  mutate(text_acc = str_remove_all(text_acc, "<.*?>"),
+         text_cln = str_remove_all(text_acc, "'")) 
+
+glimpse(per_texts)
+```
+
+Attach lemmatised texts
+
+```{r}
+per_lemm <- read.csv("../../data/corpus1835/periodicals_texts.csv") %>% select(-X)
+glimpse(per_lemm)
+glimpse(per_texts)
+
+per_lemm <- per_lemm %>% 
+  left_join(per_texts %>% select(text_ID, text_acc), by = "text_ID")
+
+glimpse(per_lemm)
+
+# write.csv(per_lemm, "../../data/corpus1835/periodicals_texts_lemm_acc.csv")
+```
+
+Save periodicals metadata & data in Rda
+
+```{r}
+# glimpse(per_meta_texts) # in this meta author != author_sign if author is unknown 
+
+per_corpus <- per_meta_texts %>% 
+  left_join(per_lemm, by = "text_ID")
+
+glimpse(per_corpus) # this is the main table with all data united
+
+per_meta_full <- per_meta # store full metadata just in case
+per_texts <- per_lemm # renaming
+
+save(per_meta_full, per_meta_texts, per_texts, per_corpus, 
+     file = "../../data/corpus1835/periodicals_corpus.Rda")
+```
+
+## Collections
+
+### upd metadata
+
+```{r}
+col_meta <- read.csv("../../meta/collections_texts.csv") %>% 
+  select(-X) %>% 
+  filter(text_id != "C_125__1") %>%  # remove one empty text block
+  mutate(text_id = str_replace_all(text_id, "И", "11")) # replace one id typo
+
+  
+glimpse(col_meta)
+```
+
+Attach separately stored women's poetry collections
+
+```{r}
+# read data
+fem_meta <- read.csv("../../meta/meta_fem_collections.csv", sep = ";") %>% 
+  # create new columns
+  mutate(path = "",
+         path_text = "",
+         col_id = str_remove_all(text_id, "__\\d+$"),
+         author = author_sign,
+         genre_title = "",
+         notes = noes,
+         descr = "") %>% 
+  # rearrange
+  select(path, path_text, col_id, year, author, text_id,
+         title, subtitle, genre_title, first_line, pages, notes, descr)
+  
+glimpse(fem_meta)
+```
+
+```{r}
+# attachment
+
+cols_meta <- rbind(col_meta, fem_meta)
+glimpse(cols_meta)
+```
+
+```{r}
+rm(col_meta, fem_meta)
+
+write.csv(cols_meta, file = "../../meta/collections_texts.csv")
+```
+
+#### metadata join with collection's full meta
+
+```{r}
+cols_meta <- read.csv("../../meta/collections_texts.csv") %>% 
+  select(-X) %>% 
+  mutate(col_id = str_replace_all(col_id, "И", "11")) # fix typo
+
+glimpse(cols_meta)
+```
+
+```{r}
+cols_book_meta <- read.csv("../../meta/collections_digitised_meta.csv") %>% 
+  select(-X) %>% 
+  mutate(col_id = paste0("C_", id)) %>% 
+  rename(pages_total = pages,
+         title_book = title,
+         descr_book = descr)
+
+glimpse(cols_book_meta)
+```
+
+```{r}
+#glimpse(cols_meta)
+
+cols_meta_united <- cols_meta %>% 
+  rename(author_text = author) %>% 
+  select(-path, -path_text, -year) %>% 
+  left_join(cols_book_meta, by = "col_id") %>% 
+  mutate(author_text = ifelse(is.na(author_text), author, author_text)) %>% 
+  rename(author_book = author)
+
+glimpse(cols_meta_united)
+```
+
+## almanacs authors
+
+Some additional work with identification of authors from almanacs
+
+```{r}
+# select distinct authors and assign A_IDs manually
+alm_authors <- cols_meta %>% 
+  filter(!is.na(author)) %>% 
+  select(author) %>% 
+  distinct()
+
+#write.csv(alm_authors, "alm_authors.csv")
+```
+
+```{r}
+alm_authors <- read.csv("alm_authors.csv", sep = ";") %>% select(-X) %>% 
+  rename(author_text = author)
+glimpse(alm_authors)
+
+authors <- read.delim("../../meta/authors.tsv", sep = "\t")
+glimpse(authors)
+
+alm_authors_tomerge <- alm_authors %>% 
+  left_join(authors, by = "A_ID") %>% 
+  select(A_ID, author, author_text) %>% 
+  mutate(author = ifelse(is.na(author), author_text, author)) %>% 
+  rename(A_ID_new = A_ID) %>% 
+  filter(author != "" & !is.na(author))
+  
+alm_authors_tomerge
+
+glimpse(cols_meta_united_t)
+cols_meta_united_t <- cols_meta_united %>% 
+  # attach almanacs authors by author signs
+  left_join(alm_authors_tomerge, by = "author_text") %>% 
+  
+  # change author sign to the true sign of a text
+  mutate(author_sign = ifelse(author_text != author_sign, author_text, author_sign),
+         # change author_text to the unified author's name
+         author_text = ifelse(!is.na(author), author, author_text),
+         # change A_ID for texts in almanacs (for known authors)
+         A_ID = ifelse(!is.na(A_ID_new), A_ID_new, A_ID)) %>% 
+  select(-author, -A_ID_new)
+```
+
+```{r}
+write.csv(cols_meta_united_t, "../../meta/collections_texts_with_full_meta.csv")
+```
+
+## read texts
+
+```{r}
+
+cf <- list.files(path = "../../data/corpus1835/collections/raw_texts/united_texts/",
+                 pattern = ".txt",
+                 full.names = T)
+
+cf_acc <- list.files(path = "../../data/corpus1835/collections/accented/",
+                 pattern = ".txt",
+                 full.names = T)
+
+head(cf)
+head(cf_acc)
+
+cols_texts <- tibble(
+  path_raw = cf,
+  path_acc = cf_acc,
+  text_id = str_extract(cf, "C_\\d+__\\d+"),
+  col_id = str_extract(cf, "C_\\d+"),
+  
+  text_raw = sapply(path_raw, read_file),
+  text_acc = sapply(path_acc, read_file)
+)
+
+glimpse(cols_texts)
+```
+
+Some cleaning before lemmatisation
+
+```{r}
+cols_texts <- cols_texts %>% 
+  mutate(text_acc = str_remove_all(text_acc, "<.*?>"),
+         text_cln = str_remove_all(text_raw, "<.*?>"))
+
+# write.csv(cols_texts, "cols_texts.csv")
+```
+
+```{r}
+# upload lemmatised texts
+cols_lemm <- read.csv("cols_texts.csv") %>% select(-X)
+glimpse(cols_lemm)
+
+# setdiff(cols_texts$text_id, cols_lemm$text_id)
+```
+
+### store files
+
+Write a simple .csv for quick search
+
+```{r}
+write.csv(cols_lemm %>% select(-path_raw, -path_acc), 
+          file = "../../data/corpus1835/collections_texts_lemm_acc.csv")
+```
+
+### write Rda with full dataset
+
+```{r}
+cols_lemm <- read.csv("../../data/corpus1835/collections_texts_lemm_acc.csv") %>% select(-X)
+
+glimpse(cols_lemm)
+```
+
+```{r}
+cols_meta_united <- read.csv("../../meta/collections_texts_with_full_meta.csv") %>%
+  select(-X)
+glimpse(cols_meta_united)
+```
+
+Unite meta with texts & do some cleaning
+
+```{r}
+cols_corpus <- cols_meta_united %>% 
+  select(-col_id) %>% 
+  left_join(cols_lemm,
+            by = "text_id")
+
+glimpse(cols_corpus)
+
+cols_corpus %>% 
+  filter(!is.na(genre_title)) %>% 
+  select(subtitle, genre_title)
+
+cols_corpus <- cols_corpus %>% 
+  mutate(subtitle = ifelse(!is.na(genre_title), genre_title, subtitle)) %>% 
+  select(-genre_title)
+```
+
+```{r}
+# fix missing collections
+cols_corpus <- cols_corpus %>% 
+  mutate(year = ifelse(col_id == "C_42", 1837, year),
+         author_book = ifelse(col_id == "C_42", "Бороздна И.П.", author_book))
+
+glimpse(cols_corpus)
+
+save(cols_book_meta, cols_lemm, cols_meta_united, cols_corpus,
+     file = "../../data/corpus1835/collections_corpus.Rda")
+```
+
+## full corpus saving
+
+### periodicals
+
+```{r}
+load("../../data/corpus1835/periodicals_corpus.Rda")
+
+glimpse(per_corpus)
+```
+
+Fix some lost texts
+
+```{r}
+# per_corpus <- per_corpus %>% 
+#   rename(text_id = text_ID) %>% 
+#   mutate(text_raw = ifelse(text_id == "P_233", 
+#                            "Матушка голубушка,
+#                             Солнышко мое!
+#                             Пожалей родимая —
+#                             Я дитя твое !
+#                             Словно змея лютая.
+#                             Так грудь и сосет,
+#                             И целую ноченьку
+#                             Мне спать не дает.
+#                             Все мне что-то грезится ,
+#                             Будто на яву,
+#                             Уж когда ложуся я,
+#                             Молитву творю,
+#                             То залётной пташечки
+#                             Песенка слышна:
+#                             Ну, сердце замирает,
+#                             Так сладка она!
+#                             То мне что-то видится ,
+#                             Размечуся я;
+#                             Сердечко истоскуется —
+#                             В огне лежу я!
+#                             Ни игры, забавушки
+#                             Не веселы мне;
+#                             Всё тоска , кручинушка
+#                             В яве и во сне.
+#                             Что это родимушка
+#                             Сталося со мной ?
+#                             Стало приключился мне
+#                             Злой недуг какой?
+#                             Али нет, родимая,
+#                             Зелья пособить ? —
+#                             Знать приспело, дитятко,
+#                             Времечко любить!",
+#                            text_raw),
+#          text_lemm = ifelse(text_id == "P_233",
+#                             "матушка голубушка,
+#                               солнышко мой!
+#                               пожалеть родимый —
+#                               я дитя твой !
+#                               словно змея лютый.
+#                               так грудь и сосать,
+#                               и целый ноченька
+#                               я спать не давать.
+#                               все я что-то грезиться ,
+#                               будто на ява,
+#                               уж когда ложуся я,
+#                               молитва творить,
+#                               то залетный пташечка
+#                               песенка слышный:
+#                               ну, сердце замирать,
+#                               так сладкий она!
+#                               то я что-то видеться ,
+#                               размечуся я;
+#                               сердечко истосковаться —
+#                               в огонь лежать я!
+#                               ни игра, забавушка
+#                               не веселый я;
+#                               все тоска , кручинушка
+#                               в ява и во сон.
+#                               что это родимушка
+#                               сталось со я ?
+#                               становиться приключаться я
+#                               злой недуг какой?
+#                               али нет, родимый,
+#                               зелье пособлять ? —
+#                               знать приспевать, дитятко,
+#                               времечко любить!",
+#                             text_lemm),
+#          text_acc = ifelse(text_id == "P_233",
+#                            "Ма'тушка голу'бушка,
+#                             Со'лнышко моё!
+#                             Пожале'й роди'мая —
+#                             Я дитя' твоё !
+#                             Сло'вно змея' лю'тая.
+#                             Так грудь и сосёт,
+#                             И целу'ю но'ченьку
+#                             Мне спать не даёт.
+#                             Все мне что'-то гре'зится ,
+#                             Бу'дто на яву',
+#                             Уж когда' ложу'ся я,
+#                             Моли'тву творю',
+#                             То залётной пта'шечки
+#                             Пе'сенка слышна':
+#                             Ну, се'рдце замира'ет,
+#                             Так сладка' она'!
+#                             То мне что'-то ви'дится ,
+#                             Разме'чуся я;
+#                             Серде'чко истоску'ется —
+#                             В огне' лежу' я!
+#                             Ни и'гры, заба'вушки
+#                             Не веселы' мне;
+#                             Всё тоска' , кручи'нушка
+#                             В я'ве и во сне.
+#                             Что э'то роди'мушка
+#                             Ста'лося со мной ?
+#                             Ста'ло приключи'лся мне
+#                             Злой неду'г како'й?
+#                             Али' нет, роди'мая,
+#                             Зе'лья пособи'ть ? —
+#                             Знать приспе'ло, ди'тятко,
+#                             Вре'мечко люби'ть!",
+#                            text_acc)) %>% 
+#   mutate(text_acc = ifelse(text_id == "P_402",
+#                            "Ваш взор, как ве'стник исцеле'нья ,
+#                             Как луч зари' в грома'дах скал —
+#                             Мои' душе'вния му'ченья
+#                             Отра'дным све'том разогна'л!
+#                             Смотрю' на вас: — вы так же ми'лы !
+#                             А я — все та же же'ртва дум —
+#                             Поро'й насмешливо-'угрюм ,
+#                             Поро'ю и'скренно уны'лый.
+#                             Тепе'рь как бу'дто веселе'й;
+#                             Но ме'жду все'ми — чужестра'нец,
+#                             Я изменю'сь, как цвет поле'й ,
+#                             Как че'й-то , по'мню я, румя'нец , —
+#                             Когда' в час но'чи, ме'жду скал,
+#                             Двои'х нас ме'сяц озаря'л. —",
+#                            text_acc))
+# 
+# # check
+# per_corpus %>% 
+#   select(text_id, text_raw, text_lemm, text_acc) %>% 
+#   filter(text_id %in% c("P_233", "P_402"))
+# 
+# save(per_meta_full, per_meta_texts, per_texts, per_corpus, 
+#      file = "../../data/corpus1835/periodicals_corpus.Rda")
+```
+
+**Periodicals**: 4 files
+
+-   per_corpus - full data frame with metadata & texts attached;
+
+-   per_meta_texts - metadata for texts available (author != author_sign);
+
+-   per_meta_full - full metadata, including missing texts;
+
+-   per_texts - data frame with texts only;
+
+### poetry books
+
+```{r}
+load("../../data/corpus1835/collections_corpus.Rda")
+```
+
+"Collections" corpus (poetry books): 3 files
+
+-   cols_corpus - full data frame with metadata & texts attached;
+
+-   cols_meta_united - metadata for each text merged with collections' metadata;
+
+-   cols_books_meta - only metadata for books (90);
+
+-   cols_lemm - dataframe with texts only;
+
+```{r}
+glimpse(cols_corpus)
+```
+
+## corpus merging & save
+
+```{r}
+# glimpse(per_corpus)
+
+per_tomerge <- per_corpus %>% 
+  mutate(corpus = "per", subcorpus = "per",
+         
+         source = paste0(PER_ID, ". ", year, ". ", vol, ". ", num, ". С. ", pages),
+         source = str_replace_all(source, "\\. \\.", "."),
+         source = str_replace_all(source, "С\\. стлб", "Стлб")) %>% 
+  #rename(text_id = text_ID) %>% 
+  select(text_id, corpus, subcorpus, 
+         A_ID, author, author_sign,
+         text_title, first_line, subtitle, 
+         source, year, 
+         text_raw, text_lemm, text_acc)
+
+glimpse(per_tomerge)
+```
+
+```{r}
+glimpse(cols_corpus)
+
+cols_tomerge <- cols_corpus %>% 
+  mutate(corpus = "cols",
+         subcorpus = group_abbr,
+         source = paste0(author_book, ". ", title_book, ". ", city, ": ", publisher,
+                         ", ", year, ". C. ", pages),
+         source = str_remove_all(source, "(\\. \\.)|(^\\.\\s)"),
+         source = str_replace_all(source, "\\.\\.", "\\.")
+         ) %>%
+  rename(text_title = title,
+         author = author_text) %>% 
+  select(text_id, corpus, subcorpus,
+         A_ID, author, author_sign,
+         text_title, first_line, subtitle, 
+         source, year, 
+         text_raw, text_lemm, text_acc)
+
+glimpse(cols_tomerge)
+```
+
+Save
+
+```{r}
+corpus_1835 <- rbind(cols_tomerge, per_tomerge)
+glimpse(corpus_1835)
+```
+
+Check if some texts are missing
+
+```{r}
+corpus_1835 %>% 
+  select(text_id, text_raw, text_lemm, text_acc) %>% 
+  filter(text_acc == "")
+
+corpus_1835 %>% 
+  select(text_id, text_raw, text_lemm, text_acc) %>% 
+  filter(is.na(text_acc))
+```
+
+Final save
+
+```{r}
+save(corpus_1835, file = "../../data/corpus1835/corpus_1835_nometrics.Rda")
+```

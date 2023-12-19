@@ -1,0 +1,798 @@
+---
+title: "1 Collections - text separation & cleaning"
+format: md
+editor: visual
+---
+
+This notebook shows how the long files (1 file = 1 book) were separated into text files & the metadata for each text extracted.
+
+```{r, warning=FALSE}
+library(tidyverse)
+```
+
+# I. read files
+
+```{r}
+# NB unzip files before reading
+# read all long files (1 txt = 1 book)
+lf <- list.files("../../data/corpus1835/collections/raw_texts/unseparated_cols/",
+                 pattern = ".txt", 
+                 full.names = TRUE)
+
+head(lf)
+
+# create a tibble  with full collections as rows based on the path
+dat <- tibble(path = lf,
+              text = sapply(lf, read_file))
+
+str(dat)
+```
+
+## extract metadata
+
+The book-level and text-level metadata is stored in \<tags\>.
+
+The code below extracts and store the book's metadata and remove if from the text files.
+
+```{r}
+corpus_books <- dat %>% 
+  # extract metadata tags
+  mutate(col_id = str_extract(text, "<id: .*?>"), 
+         year = str_extract(text, "<year: .*?>"),
+         descr = str_extract(text, "<descr: .*?>")) %>% 
+  # clean metadata tags
+  mutate(col_id = str_remove_all(col_id, "<|id:|>|\\s"),
+         col_id = paste0("C_", col_id),
+         year = str_remove_all(year, "<year:|>|\\s"),
+         descr = str_remove_all(descr, "<descr:\\s?|>")) %>% 
+  
+  # remove metadata from the texts
+  mutate(text = str_remove_all(text, 
+                               "<id:.*?>|<year:.*?>|<descr:.*?>")) 
+
+glimpse(corpus_books)
+rm(dat, lf)
+```
+
+Quick check if regex extracted data from all files (the output should be empty)
+
+```{r}
+corpus_books %>% 
+  select(-text) %>% 
+  distinct() %>% 
+  filter(is.na(col_id))
+
+corpus_books %>% 
+  select(-text) %>% 
+  distinct() %>% 
+  filter(is.na(year))
+```
+
+## text separation
+
+Turn books into separate texts based on the tags & retrieve text's metadata (titles, pages, etc.)
+
+```{r}
+corpus_texts <- corpus_books %>% 
+  # remove unnecessary spaces left after metadata removal
+  mutate(text = str_remove(text, "^\n\n\n\n?\n?")) %>% 
+  
+  # add separator between each text id tag
+  mutate(text = str_replace_all(text, "<title:", "<new_text><title:")) %>% 
+  
+  # separate each text to a row
+  separate_rows(text, sep = "<new_text>") %>% 
+  # remove empty rows
+  filter(text != "") %>% 
+  filter(str_detect(text, "<title:")) %>% 
+  
+  # extract text title and subtitle
+  mutate(# extraction
+         title = str_extract(text, "<title:.*?>"),
+         subtitle = ifelse(str_detect(title, "\\|\\|sub:"),
+                           str_extract(title, "\\|\\|sub:\\s?.*?>"),
+                           ""),
+         # cleaning
+         title = str_remove_all(title, "\\|\\|sub:.*?>"),
+         title = str_remove_all(title, "<title:\\s?|>"),
+         subtitle = str_remove_all(subtitle, "\\|\\|sub:\\s?|>"),
+         
+         # clean text from tag
+         text_cln = str_remove_all(text, "<title:.*?>")
+         ) %>% 
+  
+  # extract pages of the text
+  mutate(pages = str_extract(text, "<pages:.*?>"),
+         pages = str_remove_all(pages, "<pages:|\\s|>"),
+         text_cln = str_remove_all(text_cln, "<pages:.*?>")
+         ) %>% 
+  
+  # extract notes & authors for almanack-type editions
+  mutate( #extraction
+    notes = str_extract(text, "<notes:.*?>"),
+    author = ifelse(str_detect(notes, "\\|\\|author:"),
+                         str_extract(notes, "\\|\\|author:.*?>"),
+                         ""),
+    
+    # cleaning
+    author = str_remove_all(author, "\\|\\|author:\\s?|>"),
+    author = str_replace_all(author, "NA", "Unknown"),
+    notes = str_remove_all(notes, "<notes:\\s?|\\|\\|author:.*?>|>"),
+    # text cln from notes
+    text_cln = str_remove_all(text_cln, "<notes:.*?>")
+    ) %>% 
+  
+  # extract genre_title
+  mutate(genre_title = str_extract(text, "<genre title:.*?>"),
+         genre_title = str_remove_all(genre_title, "<genre title:\\s|>"),
+         text_cln = str_remove_all(text_cln, "<genre title:.*?>")) %>% 
+  
+  # final text cleaning from \n\n
+  mutate(text_cln = str_remove_all(text_cln, "^\\n\\n\\n?|\\n?\\n?\\n?$"),
+         
+         # some cleaning of "-" "'" for stress annotation
+         text_cln = str_replace_all(text_cln, "(\\w)-(\\w)", "\\1 - \\2"),
+         text_cln = str_remove_all(text_cln, "'")
+         ) %>% 
+  
+  # add text_id
+  group_by(col_id) %>% 
+  mutate(text_id = paste0(col_id, "__", row_number())) %>% 
+  ungroup() %>% 
+  
+  # create path for separate files:
+  mutate(path_text = paste0(
+    "../../data/corpus1835/collections/raw_texts/separated_cols_texts//", 
+    text_id, ".txt" )) %>% 
+  
+  # create first line column
+  mutate(first_line = ifelse(!str_detect(text_cln, "^<"),
+           str_extract(text_cln, "^.*?\\n"),
+           str_extract(text_cln, "\\n.*?\\n")
+           ),
+         first_line = str_remove(first_line, "^\\n|\\n$")) %>% 
+  
+  select(path, path_text, col_id, year, author, 
+         text_id, title, subtitle, genre_title, first_line, pages, notes, 
+         text_cln, text, descr)
+  
+glimpse(corpus_texts)
+```
+
+## write texts and metadata
+
+```{r, eval = FALSE}
+#getwd()
+
+# write texts in the folder `separated_cols_texts`
+for (i in 1:nrow(corpus_texts)) {
+  write_file(x = corpus_texts$text_cln[i], file = corpus_texts$path_text[i])
+}
+
+# write metadata for each text in the books
+# str(dat_cln)
+write.csv(corpus_texts %>% select(-text, -text_cln),
+          file = "../../meta/working_files/texts_digitized.csv")
+```
+
+# II. metadata
+
+## book-level metadata
+
+```{r}
+glimpse(corpus_books)
+
+# write a shorter version of books metadata
+books_meta <- corpus_books %>% 
+  select(-text) %>%  # remove texts
+  mutate(id = str_replace_all(path, "../../data/corpus1835/collections/raw_texts/unseparated_cols//(\\d+)_\\d+\\.txt",
+                              "\\1"),
+         id = as.numeric(id)) %>% 
+  select(path, id, year, descr) %>% 
+  rename(true_year = year)
+
+glimpse(books_meta)
+```
+
+Read full bibliography metadata for collections
+
+```{r}
+# read metadata from the bibliography (1830-1850)
+# 1:16 & 39:40 are the main bibliographical columns, discard the others
+bibliography <- read.delim("../../meta/bibliography_1830-1850.tsv", sep = "\t")[c(1:16,  39:40)] 
+
+glimpse(bibliography)
+```
+
+Store separately women's poetry books (digitised earlier & textst stored separately)
+
+```{r}
+fem_books <- bibliography %>% 
+  filter(id %in% c(160, 185, 204, 209, 264, 269)) %>% 
+  mutate(path = "", 
+         true_year = year, 
+         descr = "fem")
+
+fem_books # female poetry book-level metadata
+```
+
+Attach female collections to general books metadata
+
+```{r}
+books_dig <- bibliography %>% # from the full 1830-1850 meta
+  
+  inner_join(books_meta, by = "id") %>% # filter only books which were digitized
+  
+  rbind(fem_books) # add fem collections
+```
+
+Fix some conflicts: years
+
+```{r}
+# check previously missing value:
+books_dig %>% filter(id == 1027)
+
+# fix years:
+books_dig %>% 
+  filter(year != true_year) %>% 
+  select(id, title, year, true_year) 
+
+fy <- books_dig %>% 
+  filter(year != true_year) %>% 
+  select(id, title, year, true_year) %>% pull(id) # store ids for years to be fixed
+
+# rewrite years
+books_dig <- books_dig %>% 
+  mutate(year = ifelse(id %in% fy, true_year, year)) #%>% # check line below
+  #filter(id %in% fy) %>% select(id, title, year, true_year) 
+
+# should be empty
+books_dig %>% 
+  filter(year < 1835)
+```
+
+fix genres:
+
+```{r}
+# two multigenre ids
+books_dig %>% 
+  filter(genre == "lyr; nar")  
+
+books_dig <- books_dig %>% 
+  mutate(genre = ifelse(genre == "lyr; nar", "lyr", genre))
+
+books_dig %>% 
+  filter(genre == "lyr; nar")  # should be 0
+```
+
+Fast check with viz
+
+```{r}
+glimpse(books_dig) # 104 books
+
+# fast viz
+books_dig %>% 
+  mutate(group_abbr = ifelse(book_type != "alm", 
+                             paste0(book_type, "_", genre),
+                             book_type)) %>% 
+  count(year, group_abbr) %>% 
+  ggplot(aes(x = year, y = n, 
+             group = group_abbr,
+             fill = group_abbr)) + 
+  geom_col() + 
+  theme_bw() + 
+  labs(title = "Number of poetry books of each type by year")
+```
+
+#### cleaning
+
+```{r}
+glimpse(books_dig)
+```
+
+#### A_ID for books
+
+Fill author_full_name & add A_ID keys
+
+```{r}
+# fill empty cells by author's signs
+books_dig <- books_dig %>% 
+  mutate(
+    author = ifelse(author == "", author_sign, author),
+    author_full_name = ifelse(author_full_name == "", author, author_full_name)
+    )
+```
+
+Add A-ID
+
+```{r}
+# read author-A_ID key table
+a <- read.delim("../../meta/working_files/authors_cols.csv", sep = ";") %>% select(-X)
+
+a <- a %>% mutate(A_ID = paste0("A_", A_ID)) # fill the column
+glimpse(a)
+
+# attach to the books metadata table
+books_dig <- books_dig %>% 
+  left_join(a, by = "author")
+
+books_dig[is.na(books_dig)] <- "" # change NA produced by left_join to an empty ("") cell (consistency)
+```
+
+Check table data consistency
+
+```{r}
+length(unique(books_dig$id))
+
+# check authors
+authors <- books_dig %>% 
+  select(A_ID, author_sign, author, author_full_name)
+
+head(authors)
+
+##### multiple choice columns check
+table(books_dig$poetry_prose)
+table(books_dig$book_type)
+table(books_dig$genre)
+
+#####
+# fill one missed city:
+table(books_dig$city)
+books_dig %>% 
+  filter(city == "") %>% pull(descr)
+
+t <- books_dig %>% 
+  filter(city == "") %>% pull(id)
+
+books_dig <- books_dig %>% 
+  mutate(city = ifelse(id == t, "СПб.", city))
+
+table(books_dig$city)
+
+#####
+# books_dig %>% 
+#   count(publisher, sort = F)
+
+table(books_dig$year)
+
+rm(fy, t, a, authors)
+```
+
+Remove unnecessary columns:
+
+```{r}
+books_dig <- books_dig %>% 
+  select(-special_tag, -true_year, -descr)
+```
+
+Write book-level metadata
+
+```{r, eval = F}
+write.csv(books_dig, file = "../../meta/books_digitized.csv")
+```
+
+Remove obsolete variables
+
+```{r}
+rm(books_meta, corpus_books, bibliography)
+```
+
+## text-level metadata
+
+Prepare separated texts from books
+
+```{r}
+# this is essentialy the same metadata as written in the end of step I + columns with texts
+glimpse(corpus_texts)
+
+# some selecting & renaming for the furthure work
+corpus_texts <- corpus_texts %>% 
+  select(-text, -descr, -year) %>% 
+  rename(author_text = author,
+         text = text_cln)
+```
+
+### authors - texts
+
+Many (\~400) texts from almanacs has authors :
+
+```{r}
+corpus_texts %>% 
+  select(-text) %>% 
+  filter(!is.na(author_text) & author_text != "") %>% 
+  select(col_id, author_text, title) %>% head
+```
+
+Add A_ID
+
+```{r, eval = F}
+# select distinct authors and assign A_IDs manually
+alm_authors <- corpus_texts %>% 
+  select(author_text) %>% 
+  filter(!is.na(author_text) & author_text != "") %>% 
+  distinct()
+
+head(alm_authors)
+# ~ 179 authors, to be supplied 
+#write.csv(alm_authors, "../../meta/working_files/authors_alm.csv")
+```
+
+Read prepared .csv with authors supplied with A_ID
+
+```{r}
+alm_authors <- read.csv("../../meta/working_files/authors_alm.csv", sep = ";") %>% 
+  select(-X) %>% 
+  rename(author_text = author)
+
+glimpse(alm_authors) # look into author_sigh to A_ID connector
+
+# join A_ID for authors from almanacs
+corpus_texts <- corpus_texts %>% 
+  left_join(alm_authors, by = "author_text") 
+
+# rm(alm_authors)
+```
+
+## merge book & text level metadata
+
+```{r}
+# overview
+glimpse(corpus_texts)
+glimpse(books_dig)
+
+# rename some columns to avoid conflicts
+corpus_texts <- corpus_texts %>% 
+  rename(A_ID_text = A_ID,
+         text_title = title,
+         text_pages = pages)
+```
+
+Merge the data
+
+```{r}
+corpus_fullmeta <- corpus_texts %>% 
+  # add id column for the merge
+  rename(id = col_id) %>% select(-path) %>% 
+  # merge
+  left_join(books_dig %>% 
+              mutate(id = paste0("C_", id)) %>% 
+              select(-c(poetry_prose, size_fold, size_cm, 
+                        digital_copy, digital_copy_URL)) , 
+            by = "id") 
+
+# change NA to ""
+corpus_fullmeta[is.na(corpus_fullmeta)] <- ""
+
+glimpse(corpus_fullmeta)
+```
+
+### clean authors
+
+```{r}
+
+table(corpus_fullmeta$book_type)
+
+# replacements
+corpus_fullmeta <- corpus_fullmeta %>% 
+  
+  # replace empty author texts for author names from books meta (except for almanacs)
+  mutate(author_text = ifelse(book_type != "alm" & author_text == "", 
+                              author, 
+                              author_text),
+         # same replacement for A_ID
+         A_ID = ifelse(book_type != "alm" & A_ID_text == "", A_ID, A_ID_text)
+         ) %>% 
+  # replace "Unknown" to empty cell
+  mutate(author_text = ifelse(author_text == "Unknown", "", author_text)) %>% 
+  
+  select(-A_ID_text) %>% 
+  rename(author_book = author)
+
+glimpse(corpus_fullmeta)
+```
+
+Quick check for authors form almanacs
+
+```{r}
+corpus_fullmeta %>% 
+  filter(book_type == "alm") %>% 
+  select(A_ID, author_book, author_text) %>% distinct
+
+corpus_fullmeta %>% 
+  filter(book_type == "sep") %>% 
+  select(A_ID, author_book, author_text) %>% distinct
+```
+
+### clean genres
+
+Merge columns "genre title" and "subtitle" to one
+
+```{r}
+corpus_fullmeta <- corpus_fullmeta %>% 
+  # in case if both exist
+  mutate(
+         subtitle = ifelse(genre_title != "" & subtitle != "",
+                           paste0(subtitle, "; ", genre_title), # paste with ;
+                           subtitle
+                           ),
+  # in case subtitle is empty and genre title is not
+          subtitle = ifelse(genre_title != "" & subtitle == "", 
+                           genre_title, # paste genre title as subtitle
+                           subtitle)) 
+```
+
+Check if genre_title can be removed
+
+```{r}
+corpus_fullmeta %>% 
+  select(subtitle, genre_title) %>% 
+  filter(genre_title != "") %>% 
+  distinct()
+```
+
+Remove genre_title column, rename "pages" & "genre" columns & store as corpus_texts
+
+```{r}
+corpus_texts <- corpus_fullmeta %>% 
+  select(-genre_title) %>% 
+  rename(book_pages = pages,
+         book_genre = genre)
+```
+
+```{r}
+glimpse(corpus_texts)
+
+rm(corpus_fullmeta)
+```
+
+-   corpus fullmeta is ready to be merged with fem text meta
+
+-   save all as books_texts_meta (without texts)
+
+-   save the full df with texts as Rda
+
+-   rename this file as 01_books_preprocessing
+
+-   create separate file for periodicals
+
+-   store periodicals meta separately
+
+-   do acc & lemmatisation for everything
+
+-   write files !
+
+# III. female texts & meta from a different source
+
+Texts are in a separate folder as .txt, metadata is in the variable `fem_books`
+
+Read the text files:
+
+```{r}
+f <- list.files(path = "../../data/corpus1835/collections/raw_texts/fem_cols/",
+                pattern = ".txt",
+                full.names = T,
+                recursive = T)
+
+fem_texts <- tibble(path = f,
+             text = sapply(f, read_file),
+             ) %>% 
+  mutate(text_id = str_extract(path, "C_\\d+__\\d+"),
+         col_id = str_remove_all(text_id, "__\\d+"),
+         # first_line = str_extract(text, "^.*?\n"),
+         # first_line = str_remove(first_line, "[[:space:]]?\n"),
+         
+         # create a new path to write files together with the rest of collections
+         path_text = str_replace(path, "fem_cols//\\d+_\\d+_\\w+/", "separated_cols_texts//"))
+
+str(fem_texts)
+```
+
+### write fem texts
+
+Write female texts in the new folder (`separated_cols_texts`)
+
+```{r, eval = F}
+for (i in 1:nrow(fem_texts)) {
+  write_file(x = fem_texts$text[i], file = fem_texts$path_text[i])
+}
+```
+
+### read fem metadata
+
+```{r}
+# read data
+fem_meta <- read.csv("../../meta/working_files/meta_fem_collections.csv", sep = ";") 
+fem_texts <- fem_meta %>% 
+  
+  # create new columns
+  mutate(author_text = author_sign,
+         notes = noes) %>% 
+  
+  # merge with texts metadata
+  left_join(fem_texts, by = "text_id") %>% 
+  
+  # renaming
+  rename(text_title = title, 
+         text_pages = pages, 
+         id = col_id) %>% 
+  
+  # rearrange
+  select(path, path_text, id, author_text, text_id,
+         text_title, subtitle, first_line, text_pages, 
+         notes, text, A_ID)
+
+glimpse(fem_texts)
+```
+
+### join fem metadata & texts to the corpus
+
+```{r}
+# prepare fem_books (book level metadta) for join
+
+fem_books <- fem_books %>% 
+  mutate(id = paste0("C_", id)) %>% 
+  rename(book_genre = genre, 
+         author_book = author,
+         book_pages = pages
+         ) %>% 
+  select(id, COL_ID, 
+         book_type, book_genre, 
+         author_sign, author_book, author_full_name, 
+         title, city, publisher, year, 
+         book_pages) %>% glimpse
+
+glimpse(fem_books)
+```
+
+Join fem book-level metadata & text-lvl & attach to corpus_texts
+
+```{r}
+colnames(corpus_texts)
+
+fem_join <- fem_texts %>% 
+  left_join(fem_books, by = "id") %>% 
+  
+  # reorder for similarity with corpus_texts
+  select(path_text, id, 
+         # text-level data
+         author_text, 
+         text_id, text_title, subtitle, first_line, 
+         text_pages, notes, 
+         text,
+         # book_level data
+         COL_ID, book_type, book_genre, 
+         author_sign, author_book, author_full_name,
+         title, city, publisher, year, 
+         book_pages, path, A_ID)
+
+
+# rm na to ""
+fem_join[is.na(fem_join)] <- ""
+
+glimpse(fem_join)
+```
+
+### final merge
+
+```{r}
+# final colnames check
+colnames(corpus_texts) == colnames(fem_join)
+
+# join
+books_corpus <- rbind(corpus_texts, fem_join)
+```
+
+# IV. final cln & save
+
+### count N of poems in books
+
+```{r}
+n_texts <- books_corpus %>% 
+  select(id) %>% # leave only book id
+  count(id) %>%  # rename for join
+  rename(n_texts = n)
+
+head(n_texts)
+```
+
+Attach n poems
+
+```{r}
+books_corpus <- books_corpus %>% 
+  left_join(n_texts, by = "id")
+
+rm(n_texts)
+```
+
+### rename & reorder
+
+```{r}
+glimpse(books_corpus)
+
+colnames(books_corpus)
+
+# some renaming & column_reordering
+
+books_corpus <- books_corpus %>% 
+  
+  # remove errors (empty texts, if any)
+  filter(text != "") %>% 
+  
+  rename(book_id = id,
+         path_raw = path,
+         book_title = title,
+         text_subtitle = subtitle) %>% 
+  select(
+    book_id, text_id, # main id info
+    # text info
+    A_ID, author_text, 
+    text_title, text_subtitle, first_line, text_pages, notes,
+    
+    # text
+    text,
+    path_text,
+    
+    # book info
+    COL_ID, book_type, book_genre, 
+    n_texts,
+    author_sign, author_book, author_full_name, 
+    book_title, city, publisher, year,
+    book_pages, path_raw
+  )
+
+glimpse(books_corpus)
+```
+
+### save
+
+```{r, eval = F}
+books_texts_metadata <- books_corpus %>% 
+  select(-text, -notes)
+
+write.csv(books_texts_metadata, file = "../../meta/texts_books.csv")
+
+# write Rds with texts
+
+saveRDS(books_corpus, file = "../../data/corpus1835/collections/corpus_with_meta.Rds")
+```
+
+## write files for lemmatization & accentuation
+
+```{r, eval = F}
+# csv for lemmatization
+corpus <- readRDS("../../data/corpus1835/collections/corpus_with_meta.Rds")
+
+glimpse(corpus)
+
+corpus_s <- corpus %>% 
+  select(text_id, path_text, text)
+
+write.csv(corpus_s, "../../data/corpus1835/collections/books_corpus.csv")
+```
+
+New directory for accentuation (with '-' corrected & \<\> cleaned)
+
+```{r, eval = F}
+corpus <- readRDS("../../data/corpus1835/collections/corpus_with_meta.Rds")
+
+glimpse(corpus)
+
+corpus_to_acc <- corpus %>% 
+  select(text_id, path_text, text) %>% 
+  mutate( # edit filename to write new files
+    path_acc = str_replace(path_text, 
+                                "raw_texts/separated_cols_texts", 
+                                "accented"), 
+         # clean texts
+    text_cln = str_replace_all(text, 
+                           "-", " - ")#,
+    #text_cln = str_remove_all(text_cln, "<.*?>")
+         )
+
+glimpse(corpus_to_acc)
+
+
+for (i in 1:nrow(corpus_to_acc)) {
+  write_file(corpus_to_acc$text_cln[i], file = corpus_to_acc$path_acc[i])
+}
+```

@@ -1,0 +1,249 @@
+---
+title: "00_3 corpus compilation"
+format: md
+editor: visual
+---
+
+```{r}
+library(tidyverse)
+# library(tidytext)
+```
+
+# load data
+
+## periodicals
+
+Read Rds file with metadata & raw texts
+
+```{r}
+corpus_per <- readRDS("../../data/corpus1835/periodicals/per_corpus.Rds")
+
+glimpse(corpus_per)
+```
+
+```{r}
+# rename column
+corpus_per <- corpus_per %>% 
+  rename(text_raw = text) 
+```
+
+### attach lemmatized texts
+
+```{r}
+per_lemm <- read.csv("../../data/corpus1835/periodicals/per_corpus_lemm.csv")
+glimpse(per_lemm)
+
+corpus_per <- corpus_per %>% 
+  left_join(per_lemm %>% select(text_id, text_lemm),
+            by = "text_id")
+
+rm(per_lemm)
+```
+
+Check if all texts are available (both outputs should be 0 rows)
+
+```{r}
+corpus_per %>% 
+  filter(text_raw == "" | is.na(text_raw))
+
+corpus_per %>% 
+  filter(text_lemm == "" | is.na(text_lemm))
+```
+
+### attach acc texts
+
+```{r}
+# list files from accented dir
+lf <- list.files(path = "../../data/corpus1835/periodicals/accented/",
+                 full.names = T,
+                 pattern = "\\.txt")
+
+# read files and extract text_id for join
+acc_corpus <- tibble(
+  path = lf,
+  text_acc = sapply(lf, read_file),
+  text_id = str_extract(lf, "P_\\d+")
+)
+
+corpus_per <- corpus_per %>% 
+  left_join(acc_corpus %>% select(text_id, text_acc), by = "text_id")
+
+rm(acc_corpus, lf)
+```
+
+Check if all texts are available
+
+```{r}
+corpus_per %>% 
+  filter(text_acc == "" | is.na(text_acc))
+```
+
+### n lines check
+
+```{r}
+# count number of lines in each text columns
+
+raw_lines <- corpus_per %>% 
+  select(text_id, text_raw) %>% 
+  separate_rows(text_raw, sep = "\n") %>% 
+  filter(text_raw != "") %>% 
+  count(text_id) %>% 
+  rename(nlines_raw = n)
+
+head(raw_lines)
+
+lem_lines <- corpus_per %>% 
+  select(text_id, text_lemm) %>% 
+  separate_rows(text_lemm, sep = "\n") %>% 
+  filter(text_lemm != "") %>% 
+  count(text_id) %>% 
+  rename(nlines_lemm = n)
+
+acc_lines <- corpus_per %>% 
+  select(text_id, text_acc) %>% 
+  separate_rows(text_acc, sep = "\n") %>% 
+  filter(text_acc != "") %>% 
+  count(text_id) %>% 
+  rename(nlines_acc = n)
+
+head(acc_lines)
+
+# join results
+
+nlines <- raw_lines %>% 
+  left_join(lem_lines, by = "text_id") %>% 
+  left_join(acc_lines, by = "text_id") 
+
+errors_acc <- nlines %>% 
+  filter(nlines_raw != nlines_acc)
+
+errors_acc
+```
+
+rewrite errors, if needed
+
+```{r, eval = F}
+rewrite_errors <- corpus_per %>% 
+  select(path, text_id, text_cln) %>% 
+  filter(text_id %in% errors_acc$text_id) %>% 
+  mutate(path_new = str_replace(path, "per_raw", "err_accented"), # create this folder before run!
+         text_cln = str_replace(text_cln, "-", " - "),
+         text_cln = str_remove_all(text_cln, "'"))
+
+for (i in 1:nrow(rewrite_errors)) {
+  write_file(rewrite_errors$text_cln[i], file = rewrite_errors$path_new[i])
+}
+```
+
+### \<\> cleaning
+
+Remove everything in \<\> as it's not parts of the texts
+
+```{r}
+corpus_per <- corpus_per %>% 
+  mutate(text_cln = str_remove_all(text_raw, "<.*?>"),
+         text_lemm = str_remove_all(text_lemm, "<.*?>"),
+         text_acc = str_remove_all(text_acc, "<.*?>")) 
+
+# corpus_per %>% 
+#   filter(str_detect(text_acc, ">"))
+
+# reorder columns
+
+corpus_per <- corpus_per %>% 
+  rename(text_subtitle = subtitle,
+         text_pages = pages) %>% 
+  select(text_id,
+         A_ID,
+         author_text, author_sign,
+         # text data
+         text_title, first_line, text_subtitle, 
+         # text source data
+         PER_ID, year, vol, num, text_pages,
+         notes, path,
+         # text versions 
+         text_raw, text_cln, text_lemm, text_acc
+         ) 
+```
+
+### save
+
+```{r, eval = F}
+# save all texts in a .csv
+
+corpus_texts <- corpus_per %>% 
+  select(text_id, text_raw, text_cln, text_lemm, text_acc)
+
+write.csv(corpus_texts, "../../data/corpus1835/periodicals/per_texts_lemm_acc.csv")
+
+# save all periodicals data in Rds
+saveRDS(corpus_per, file = "../../data/corpus1835/periodicals/periodicals_corpus_lemm_acc.Rds")
+```
+
+Shorten metadata for merging with book data
+
+```{r}
+glimpse(corpus_per)
+```
+
+```{r}
+corpus_per[is.na(corpus_per)] <- ""
+
+corpus_per_short <- corpus_per %>% 
+  mutate(source_text = paste0(PER_ID, ". ", year),
+         source_text = ifelse(vol != "", 
+                              paste0(source_text, ". ", vol),
+                              source_text),
+         
+         source_text = ifelse(num != "", 
+                              paste0(source_text, ". №", num),
+                              source_text),
+         source_text = paste0(source_text, ". C. ", text_pages)) %>% 
+  # add 'corpus' column
+  mutate(corpus = "per") %>% 
+  # remove merged and some other columns
+  select(-PER_ID, -vol, -num, -text_pages, -notes)
+
+glimpse(corpus_per_short)
+
+```
+
+## books
+
+Load Rds with metadata & raw texts
+
+```{r}
+corpus_books <- readRDS("../../data/corpus1835/collections/corpus_with_meta.Rds")
+glimpse(corpus_books)
+```
+
+```{r}
+# rename text to text_raw
+corpus_books <- corpus_books %>% 
+  rename(text_raw = text)
+```
+
+### attach lemmatized texts
+
+```{r}
+# read lemmatized
+corpus_lemm <- read.csv("../../data/corpus1835/collections/books_corpus_lemm.csv")
+
+corpus_books <- corpus_books %>% 
+  left_join(corpus_lemm %>% select(text_id, text_lemm), by = "text_id")
+```
+
+Check
+
+```{r}
+corpus_books %>% 
+  filter(text_raw == "" | is.na(text_raw))
+
+corpus_books %>% 
+  filter(text_lemm == "" | is.na(text_lemm))
+```
+
+```{r}
+glimpse(corpus_per)
+glimpse(corpus_books)
+```

@@ -1,0 +1,111 @@
+---
+title: "00_2_periodicals"
+format: md
+editor: visual
+---
+
+# Periodicals
+
+## Load data
+
+Read all .txt files in a folder
+
+```{r}
+# unzip before listing
+
+fl <- list.files("../../data/corpus1835/periodicals/per_raw/", # select folder
+                 pattern = ".txt",
+                 full.names = T)
+
+per_texts <- tibble(
+            path = fl,
+            text = sapply(fl, read_file), # read files with sapply
+            text_id = str_extract(path, "P_\\d+") # extract id
+            ) 
+
+head(per_texts)
+```
+
+## Load metadata
+
+```{r}
+# direct output from numbers_meta/periodicals_texts.numbers working sheet
+# current vesions in in working_files/ meta
+per_meta <- read.delim("../../meta/working_files/texts_periodicals.tsv", sep = "\t") %>% 
+  rename(text_id = text_ID, 
+         notes = Comment, 
+         author_text = author) %>% 
+  select(-txt_raw, -text, -nkrja_id, -nkrja_author)
+
+glimpse(per_meta)
+```
+
+Merge texts with metadata
+
+```{r}
+per_corpus <- per_corpus %>% 
+  left_join(per_meta, by = "text_id")
+
+glimpse(per_corpus)
+```
+
+Check & clean
+
+```{r}
+per_corpus[is.na(per_corpus)] <- ""
+
+# fill authors with signatures if author is not known
+per_corpus <- per_corpus %>% 
+  mutate(author_text = ifelse(author_text == "" & A_ID == "", 
+                              author_sign, 
+                              author_text)) 
+
+# fast check
+table(per_corpus$year)
+table(per_corpus$PER_ID)
+```
+
+## write metadata & data for lemmatization & accentuation
+
+```{r, eval = F}
+
+# metadata (shortend according to the text digitization)
+per_meta <- per_corpus %>% select(-text, -notes)
+
+write.csv(per_meta, "../../meta/texts_periodicals.csv")
+
+# texts for lemmatization
+per_texts <- per_corpus %>% select(text_id, text)
+
+write.csv(per_texts, file = "../../data/corpus1835/periodicals/per_raw.csv")
+
+# full rds file
+saveRDS(per_corpus, file = "../../data/corpus1835/periodicals/per_corpus.Rds")s
+```
+
+write new files for accentuation
+
+```{r}
+corpus <- readRDS("../../data/corpus1835/periodicals/per_corpus.Rds")
+
+glimpse(corpus)
+
+corpus_to_acc <- corpus %>% 
+  select(text_id, path, text) %>% 
+  mutate( # edit filename to write new files
+    path_acc = str_replace(path, 
+                                "per_raw", 
+                                "accented"), 
+         # clean texts
+    text_cln = str_replace_all(text, 
+                           "-", " - ")#,
+    #text_cln = str_remove_all(text_cln, "<.*?>")
+         )
+
+glimpse(corpus_to_acc)
+
+
+for (i in 1:nrow(corpus_to_acc)) {
+  write_file(corpus_to_acc$text_cln[i], file = corpus_to_acc$path_acc[i])
+}
+```

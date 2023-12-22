@@ -24,6 +24,8 @@ theme_set(theme_minimal())
 
 ### RNC
 
+Upload RNC data (not publicly available)
+
 ```{r}
 load("../../data/nkrja_19th_lem.Rda")
 glimpse(c19)
@@ -36,7 +38,7 @@ Cleaning
 dat <- c19 %>% 
   filter(diff < 10) %>% # alternative to 'date_reliable' - remove texts with wide date ranges
   filter(year > 1774 & year < 1851) %>% # select roughly the 1st half of the 19th century
-  filter(verses > 1) # remove all one-line poems (these are mostly unfinished drafts included to the corpus)
+  filter(verses > 3) # remove all small, incl. one-line poems (these are mostly unfinished drafts included to the corpus)
 
 
 #### Cleaning ####
@@ -51,6 +53,7 @@ meters_count <- dat %>%
   count(sort = T)
 head(meters_count, 10)
 
+# store main meters as a vector
 meters <- as.vector(meters_count$meter[1:5])
 
 #### cleaning ####
@@ -72,7 +75,7 @@ head(unique(dat$feet_gr))
 
 Sampling
 
-```{r}
+```{r, warning=FALSE}
 ru19_fin <- sample_long(dat,
                         starting_n = 1,
                         sample_size = "corpus median",
@@ -120,24 +123,25 @@ glimpse(nkrja19)
 
 Save
 
-```{r}
-save(nkrja19, file = "data/nkrja_sampled_iam4_experiment.Rda")
+```{r, eval = F}
+saveRDS(nkrja19, file = "../../data/ch4/nkrja_sampled_iamb4_experiment.Rds")
 ```
 
 ### Corpus 1835
 
 ```{r}
-load("../../data/corpus1835/corpus_1835.Rda")
+corpus_1835 <- readRDS("../../data/corpus1835/corpus_1835.Rds")
 glimpse(corpus_1835)
 ```
 
-Select needed columns
+Select only needed columns
 
 ```{r}
 corpus_35_short <- corpus_1835 %>% 
   mutate(text_id = paste0("M_", text_id),# m for marginal
          verses = ""
          ) %>% 
+  rename(author = author_text) %>% 
   select(text_id, author, year, 
          text_raw, text_lemm, 
          n_lines, meter, feet, formula, verses)
@@ -152,7 +156,7 @@ Load RNC
 ```{r}
 load("../../data/nkrja_19th_lem.Rda")
 
-per_check <- corpus_35_short %>% 
+corpus1835_check <- corpus_35_short %>% 
     filter(n_lines > 3) %>%
     mutate(doublesCheck = str_extract(text_lemm, "^.*?\n.*?\n.*?\n")) %>% 
     mutate(doublesCheck = str_remove_all(doublesCheck, "[[:punct:]]|[[:space:]]")) %>% 
@@ -170,9 +174,11 @@ nkrja19_check <- c19 %>%
     select(Unnamed..0, author, year, doublesCheck, text_raw)
 
 doubles <- nkrja19_check %>% 
-  inner_join(per_check, by = "doublesCheck")  
+  inner_join(corpus1835_check, by = "doublesCheck")  
 
 glimpse(doubles)  
+
+# write.csv(doubles, file = "doubles.csv")
 ```
 
 ```{r}
@@ -188,6 +194,12 @@ doubles %>%
   count(corpus)
 ```
 
+```{r}
+# remove some issue with detecting Kulman's texts as doubles to Polezhaev
+doubles <- doubles %>% 
+  filter(author.y != "Елизавета Кульман")
+```
+
 Remove doubles from corpus_1835
 
 ```{r}
@@ -200,9 +212,9 @@ corpus_35_short_nd <- corpus_35_short %>%
 nrow(corpus_35_short_nd)
 ```
 
-#### sampling
+#### sampling corpus-1835
 
-```{r}
+```{r, warning=FALSE}
 corpus_1835_sampled <- sample_long(corpus_35_short_nd,
                             starting_n = 1,
                             sample_size = 22, # use the median size as in RNC
@@ -213,16 +225,16 @@ nrow(corpus_1835_sampled)
 
 Save
 
-```{r}
-save(corpus_1835_sampled, file = "data/corpus_1835_sampled.Rda")
-save(corpus_35_short_nd, file = "../../data/corpus1835/corpus_35_short_nd.Rda")
+```{r, eval = F}
+saveRDS(corpus_1835_sampled, file = "../../data/ch4/corpus_1835_sampled.Rds")
+saveRDS(corpus_35_short_nd, file = "../../data/ch4/corpus_35_short_nd.Rds")
 ```
 
 ## load data
 
 ```{r}
-load("data/nkrja_sampled_iam4_experiment.Rda")
-load("data/corpus_1835_sampled.Rda")
+nkrja19 <- readRDS("../../data/ch4/nkrja_sampled_iamb4_experiment.Rds")
+corpus_1835_sampled <- readRDS("../../data/ch4/corpus_1835_sampled.Rds")
 
 glimpse(nkrja19)
 glimpse(corpus_1835_sampled)
@@ -273,17 +285,21 @@ corpus_merged %>%
 # add two essential columns
 corpus_merged <- corpus_merged %>% 
   mutate(corpus = str_extract(id, "^\\w"),
+         year = as.numeric(year),
          decade = floor(year/5)*5)
 ```
 
-```{r}
-save(corpus_merged, file = "data/corpus_merged.Rda")
+```{r, eval = FALSE}
+# remove obsolete files
+rm(corpus_1835_sampled, nkrja19, c35_to_merge, rnc_to_merge)
+
+saveRDS(corpus_merged, file = "../../data/ch4/corpus_merged.Rds")
 ```
 
 ## Corpus size
 
 ```{r}
-load("data/corpus_merged.Rda")
+corpus_merged <- readRDS("../../data/ch4/corpus_merged.Rds")
 ```
 
 ### n poems
@@ -415,11 +431,19 @@ corpus_merged %>%
         theme(legend.position = "None")
 ```
 
+Iamb-3 unexpected presence in 1839:
+
+```{r}
+corpus_merged %>% 
+  filter(corpus == "M"& formula == "iamb_3", year == 1839) %>% 
+  select(author) %>% count(author)
+```
+
 ## DTM creation
 
 ```{r}
 # load stoplist
-ru_stop <- tibble(word = readLines("data/stopwords_ru.txt"))
+ru_stop <- tibble(word = readLines("../../data/stopwords_ru.txt"))
 
 # load data
 # load("../data/corpus_merged.Rda")
@@ -427,6 +451,13 @@ ru_stop <- tibble(word = readLines("data/stopwords_ru.txt"))
 
 ```{r}
 glimpse(corpus_merged)
+```
+
+Clean \n
+
+```{r}
+corpus_merged <- corpus_merged %>% 
+  mutate(text_lemm = str_replace_all(text_lemm, "\\\n", " ")) 
 ```
 
 Prepare id for dtm
@@ -460,6 +491,10 @@ tokens_count <- corpus_tokens %>%
   group_by(doc) %>% 
   count(word)
 
+# fast check distribution of words in documents
+tokens_count %>% 
+  summarise(total_w = sum(n)) %>% ggplot(aes(x = total_w)) + geom_density()
+
 # count 5k MFW
 ranks <- corpus_tokens %>% 
   count(word, sort = TRUE) %>% 
@@ -488,54 +523,5 @@ dtm_iamb4_experiment
 ```
 
 ```{r}
-save(dtm_iamb4_experiment, file = "data/dtm_iamb4_experiment.Rda")
-```
-
-```{r}
-# t35 <- corpus_35_short %>% 
-#   select(text_id, text_raw) %>% 
-#   mutate(twolines = str_extract(text_raw, "^.*?\\n.*?\\n"),
-#          twolines = tolower(twolines),
-#          twolines = str_remove_all(twolines, "[[:punct:]]|[[:space:]]|\\n")) %>% 
-#   select(-text_raw) %>% 
-#   head(10)
-# 
-# t_rnc <- c19 %>% 
-#   mutate(text_id = paste0("N_", Unnamed..0)) %>% 
-#   select(text_id, text_raw) %>% 
-#   mutate(twolines = str_extract(text_raw, "^.*?\\n.*?\\n"),
-#          twolines = tolower(twolines),
-#          twolines = str_remove_all(twolines, "[[:punct:]]|[[:space:]]|\\n")) %>% 
-#   select(-text_raw) %>% 
-#   filter(!is.na(twolines)) %>% 
-#   head(10)
-# 
-# head(t_rnc)
-# 
-# mean(nchar(t35$twolines))
-# mean(nchar(t_rnc$twolines))
-# 
-# 
-# 
-# x <- NULL
-# y <- NULL
-# dist <- NULL
-# 
-# for (i in 1:nrow(t35)) {
-#   
-#   for (j in 1:nrow(t_rnc)) {
-#     
-#     x <- c(x, t35$text_id[i])
-#     
-#     y <- c(y, t_rnc$text_id[j])
-#     
-#     dist <- c(dist, stringdist(t35$twolines[i], t_rnc$twolines[j], method = "lv"))
-#     
-#   }
-# }
-# 
-# tibble(x = x,
-#        y = y, 
-#        dist = dist) %>% 
-#   filter(dist < 20)
+saveRDS(dtm_iamb4_experiment, file = "../../data/ch4/dtm_iamb4_experiment.Rds")
 ```

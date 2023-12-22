@@ -1,0 +1,110 @@
+---
+title: "4.1 Meters: basic statistics"
+format: md
+editor: visual
+---
+
+## Basic statistics
+
+```{r}
+library(tidyverse)
+
+corpus_1835 <- readRDS("../../data/corpus1835/corpus_1835.Rds")
+
+glimpse(corpus_1835)
+```
+
+Small notebook counting number of poems of different meters
+
+### n poems in groups
+
+```{r}
+# number of texts from periodicals
+n_texts_per <- corpus_1835 %>% filter(corpus == "per") %>% nrow()
+n_texts_per
+
+# number of texts from books ("collections")
+n_texts_col <- corpus_1835 %>% filter(corpus == "col") %>% nrow()
+n_texts_col
+
+# total number of texts
+n_texts_total <- corpus_1835 %>% nrow()
+n_texts_total
+```
+
+### meters
+
+```{r}
+meters_total <- corpus_1835 %>% 
+  count(meter, sort = T) %>% 
+  mutate(perc = round((n/n_texts_total) * 100, 1))
+
+meters_total
+```
+
+Meters in periodicals
+
+```{r}
+meters_p <- corpus_1835 %>% 
+  filter(corpus == "per") %>% 
+  count(meter, sort = T) %>% 
+  mutate(perc = round((n / n_texts_per) * 100, 1 ))
+
+meters_p
+```
+
+Meters in books / collections
+
+```{r}
+meters_b <- corpus_1835 %>% 
+  filter(corpus == "col") %>% 
+  count(meter, sort = T) %>% 
+  mutate(perc = round( (n / n_texts_col) * 100, 1 ))
+
+meters_b
+```
+
+### formulas
+
+Main metrical variations:
+
+```{r}
+formula_main <- c("Iamb_3", "Iamb_4", "Iamb_5", "Iamb_6", "Iamb_other",
+                  "Trochee_4", "Amphibrach_4", "Anapest_2")
+
+corpus_formula <- corpus_1835 %>% 
+  select(corpus, formula) %>% 
+  mutate(formula = ifelse(formula %in% formula_main, formula, "Other"))
+
+```
+
+```{r}
+formula_total <- corpus_formula %>% 
+  select(formula) %>% 
+  count(formula, sort = T) %>% 
+  mutate(perc = round((n/n_texts_total)*100, 1))
+
+formula_total
+```
+
+formula periodicals
+
+```{r}
+formula_per <- corpus_formula %>% 
+  filter(corpus == "per") %>% 
+  count(formula, sort = T) %>% 
+  mutate(perc = round( (n/n_texts_per) *100, 1 ))
+
+formula_per
+```
+
+formula books
+
+```{r}
+formula_col <- corpus_formula %>% 
+  filter(corpus == "col") %>% 
+  count(formula, sort = T) %>% 
+  mutate(perc = round( (n/n_texts_col) *100, 1 ))
+
+formula_col
+```

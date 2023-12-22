@@ -1,6 +1,6 @@
 ---
 title: "04_3_networks"
-format: html
+format: md
 editor: visual
 ---
 
@@ -26,7 +26,7 @@ theme_set(theme_minimal())
 
 ```{r}
 # load model output
-load("data/lda75_output.Rda")
+load("../../data/ch4/lda75_output.Rda")
 
 # load code for edges calculation
 source("04_fn_calculate_edges.R")
@@ -175,7 +175,7 @@ network <- function(network, meter_value, palette_v) {
                       #,
                       #width = N_connections
                      ),
-                      alpha = 0.5, width = 1) +
+                      alpha = 0.6, width = 1) +
     geom_node_point() +
     #geom_node_text(aes(label=idn), 
     #               hjust=0.1, 
@@ -195,11 +195,14 @@ unique(edgelist$meter)
 
 ### all RNC viz (check)
 
+Meters without Iamb-4
+
 ```{r}
-all_nkrja <- network(net, c("iamb_6", "iamb_free", "iamb_4", "trochee_4"), 
-                     c(wes_palette("Darjeeling1")[2], 
-                       wes_palette("Moonrise3")[2],
-                       wes_palette("Darjeeling1")[3], 
+all_nkrja <- network(net, c("iamb_6", "iamb_free",# "iamb_4", 
+                            "trochee_4"), 
+                     c(wes_palette("Darjeeling1")[4], 
+                       wes_palette("Moonrise3")[1],
+                       #wes_palette("Darjeeling1")[3], 
                        wes_palette("Darjeeling1")[1])) 
                 
 
@@ -234,7 +237,7 @@ iamb_4 + facet_wrap(~slice,
 ### iamb-6
 
 ```{r}
-iamb_6 <- network(net, c("iamb_6"), wes_palette("Darjeeling1")[3])
+iamb_6 <- network(net, c("iamb_6"), wes_palette("Darjeeling1")[4])
 iamb_6 + facet_wrap(~slice, 
                  scales="free_x", 
                  drop=T,
@@ -307,7 +310,7 @@ density_table %>%
     ggplot(aes(x = meter, y = density, fill = meter)) + geom_boxplot() + 
     scale_fill_manual(values = c(wes_palette("Darjeeling1")[2], 
                                 wes_palette("Darjeeling1")[4],
-                                wes_palette("Darjeeling1")[3],
+                                wes_palette("Moonrise3")[1],
                                 wes_palette("Darjeeling1")[1]))
 ```
 
@@ -362,8 +365,8 @@ gamma %>%
         theme(axis.text = element_text(size = 14),
              axis.title = element_text(size = 16))
 
-#ggsave("plots/demo.png", plot = last_plot(), dpi = 300,
-#       bg = "white", width = 8, height = 6)
+# ggsave("plots/demo.png", plot = last_plot(), dpi = 300,
+#        bg = "white", width = 8, height = 6)
 ```
 
 ```{r}
@@ -421,6 +424,12 @@ gamma %>%
 Select top authors - rnc
 
 ```{r}
+n_texts_rnc <- gamma %>% 
+  filter(corpus == "N") %>% 
+  mutate(decade = floor(as.numeric(year)/5)*5) %>% 
+  filter(decade %in% c(1830, 1835)) %>% 
+  select(index) %>% distinct() %>% nrow()
+
 rnc_authors <- gamma %>% 
     filter(corpus == "N") %>% 
     mutate(decade = floor(as.numeric(year)/5)*5) %>% 
@@ -435,7 +444,7 @@ rnc_authors %>%
     summarise(total_texts = sum(n_texts))
 
 rnc_authors <- rnc_authors %>% 
-    mutate(percentage = n_texts/2519*100)
+    mutate(percentage = (n_texts/n_texts_rnc) *100)
 
 head(rnc_authors, 20)
 summary(rnc_authors$n_texts)
@@ -468,6 +477,7 @@ gamma_top <- inner_join(sampled_id, gamma, by = "index", multiple = "all")
 Select top authors - corpus_1830
 
 ```{r}
+
 m_authors <- gamma %>% 
     filter(corpus == "M" & author != "") %>% 
     mutate(decade = floor(as.numeric(year)/5)*5) %>% 
@@ -482,7 +492,7 @@ m_authors %>%
     summarise(total_texts = sum(n_texts))
 
 m_authors <- m_authors %>% 
-    mutate(percentage = n_texts/3867*100)
+    mutate(percentage = n_texts/3739*100)
 
 head(m_authors, 20)
 summary(m_authors$n_texts)
@@ -541,8 +551,8 @@ gamma %>%
   count()
 ```
 
-```{r}
-save(gamma1830, file = "data/gamma_1830_sampled.Rda")
+```{r, eval = F}
+saveRDS(gamma1830, file = "../../data/ch4/gamma_1830_sampled.Rds")
 ```
 
 ### corpus stats
@@ -963,3 +973,9 @@ network(net1830_ns, "trochee_4", c(wes_palette("Darjeeling1")[1], wes_palette("R
 ggsave("plots/Fig_4-2-4_trochee4.png", plot = last_plot(), bg = "white",
       dpi = 300, width = 8, height = 4)
 ```
+
+Note: calculate density for the corpus-1835 networks & see as ratio to the number or texts
+
+table: n_texts in a meter / n_edges (total) / n_unique edges / density
+
+this is an argument to the claim that thematic variability is a function of sample size =\> thus non-selective samples are needed in order to study semantic shifts inside meters?

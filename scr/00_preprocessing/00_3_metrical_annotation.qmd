@@ -324,9 +324,11 @@ corpus_1835_metrics <- corpus_1835 %>%
             by = "text_id") 
 ```
 
-```{r}
+```{r, eval = F}
 glimpse(corpus_1835_metrics)
 
 #corpus_1835 <- corpus_1835_metrics
-save(corpus_1835_metrics, file = "../../data/corpus1835/corpus_1835.Rda")
+saveRDS(corpus_1835_metrics, file = "../../data/corpus1835/corpus_1835.Rds")
 ```
+
+## 

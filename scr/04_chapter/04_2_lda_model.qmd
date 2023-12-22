@@ -15,7 +15,7 @@ theme_set(theme_minimal())
 ```
 
 ```{r}
-load("data/dtm_iamb4_experiment.Rda")
+dtm_iamb4_experiment <- readRDS("../../data/ch4/dtm_iamb4_experiment.Rds")
 dtm_iamb4_experiment
 ```
 
@@ -38,13 +38,13 @@ gamma <- iamb4_model %>% tidy(matrix = "gamma") %>%
     separate(document, into = c("index", "year", "first_line", "formula"), sep = "___") %>% 
     mutate(corpus = str_extract(index, "^\\w"))
 
-save(beta, gamma, file = "data/lda75_output.Rda")
+save(beta, gamma, file = "../../data/ch4/lda75_output.Rda")
 ```
 
 ## Exploration
 
 ```{r}
-load("data/lda75_output.Rda")
+load("../../data/ch4/lda75_output.Rda")
 ```
 
 ```{r}

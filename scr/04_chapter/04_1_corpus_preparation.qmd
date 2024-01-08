@@ -1,6 +1,6 @@
 ---
 title: "04_1_corpus_preparation"
-format: html
+format: md
 editor: visual
 ---
 

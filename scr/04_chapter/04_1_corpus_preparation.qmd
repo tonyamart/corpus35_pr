@@ -154,10 +154,11 @@ glimpse(corpus_35_short)
 Load RNC
 
 ```{r}
-load("../../data/nkrja_19th_lem.Rda")
+# load("../../data/nkrja_19th_lem.Rda")
 
 corpus1835_check <- corpus_35_short %>% 
     filter(n_lines > 3) %>%
+  # create a check variable from the first three lemmatized lines
     mutate(doublesCheck = str_extract(text_lemm, "^.*?\n.*?\n.*?\n")) %>% 
     mutate(doublesCheck = str_remove_all(doublesCheck, "[[:punct:]]|[[:space:]]")) %>% 
     select(text_id, author, year, doublesCheck, text_raw)
@@ -174,6 +175,7 @@ nkrja19_check <- c19 %>%
     select(Unnamed..0, author, year, doublesCheck, text_raw)
 
 doubles <- nkrja19_check %>% 
+  filter(doublesCheck != "") %>% # remove cases where sth went wrong with the line extraction
   inner_join(corpus1835_check, by = "doublesCheck")  
 
 glimpse(doubles)  
@@ -206,7 +208,7 @@ Remove doubles from corpus_1835
 head(doubles$text_id)
 
 corpus_35_short_nd <- corpus_35_short %>% 
-  filter(!text_id %in% doubles$text_id) %>% 
+  filter(!text_id %in% doubles$text_id) %>% # remove ids of doubled texts
   rename(id = text_id)
 
 nrow(corpus_35_short_nd)

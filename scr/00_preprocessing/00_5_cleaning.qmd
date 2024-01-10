@@ -1,0 +1,87 @@
+---
+title: "Corpus cleaning"
+format: md
+editor: visual
+---
+
+```{r}
+library(tidyverse)
+library(tidytext)
+```
+
+## Authors - doubles
+
+```{r}
+corpus <- readRDS("../../data/corpus1835/corpus_1835.Rds")
+glimpse(corpus)
+```
+
+### Detect doubles with RNC
+
+Same code as in 04_1
+
+```{r}
+load("../../data/nkrja_19th_lem.Rda")
+
+corpus1835_check <- corpus %>% 
+    rename(author = author_text) %>% 
+    filter(n_lines > 3) %>%
+  # create a check variable from the first three lemmatized lines
+    mutate(doublesCheck = str_extract(text_lemm, "^.*?\n.*?\n.*?\n")) %>% 
+    mutate(doublesCheck = str_remove_all(doublesCheck, "[[:punct:]]|[[:space:]]")) %>% 
+    select(text_id, author, year, doublesCheck, text_raw)
+
+nkrja19_check <- c19 %>% 
+    filter(diff < 10) %>% 
+    filter(year > 1774 & year < 1851) %>% 
+    filter(verses > 1) %>% 
+    rename(n_lines = verses,
+           text_lemm = lemma) %>% 
+    filter(n_lines > 3) %>%
+    mutate(doublesCheck = str_extract(text_lemm, "^.*?\n.*?\n.*?\n")) %>% 
+    mutate(doublesCheck = str_remove_all(doublesCheck, "[[:punct:]]|[[:space:]]")) %>% 
+    select(Unnamed..0, author, year, doublesCheck, text_raw)
+
+doubles <- nkrja19_check %>% 
+  filter(doublesCheck != "") %>% # remove cases then the first lines were empty or sth like this
+  inner_join(corpus1835_check, by = "doublesCheck")  
+
+glimpse(doubles)  
+
+write.csv(doubles, file = "doubles.csv")
+```
+
+See author to author correspondence (authors should find the equivalents with themselves!)
+
+```{r}
+print(paste0("Number of intersections between RNC & corpus_1835: ", nrow(doubles)))
+
+doubles %>% 
+  count(author.x, author.y, sort = T)
+
+doubles %>% 
+  select(text_id) %>% 
+  mutate(text_id = str_remove_all(text_id, "M_")) %>% 
+  separate(text_id, into = c("corpus", "id"), sep = "_") %>% 
+  count(corpus)
+```
+
+```{r}
+test <- doubles %>% 
+  left_join(corpus %>% select(text_id, A_ID, author_text),
+            by = "text_id") %>% 
+  select(author.x, author.y, A_ID, author_text) %>% 
+  distinct()
+
+test
+```
+
+to do:
+
+-   add known authors to authors meta (Раич, ВИ Панаев, и др?)
+
+-   check if there are cases when author_test is known & there is no A_ID / only the ones with many texts or definitely known - add to authors.meta
+
+-   check authors.meta for initials if available
+
+-   reattach author_text with fixed surnames+initials

@@ -29,7 +29,7 @@ corpus1835_check <- corpus %>%
   # create a check variable from the first three lemmatized lines
     mutate(doublesCheck = str_extract(text_lemm, "^.*?\n.*?\n.*?\n")) %>% 
     mutate(doublesCheck = str_remove_all(doublesCheck, "[[:punct:]]|[[:space:]]")) %>% 
-    select(text_id, author, year, doublesCheck, text_raw)
+    select(text_id, author, A_ID, year, doublesCheck, text_raw)
 
 nkrja19_check <- c19 %>% 
     filter(diff < 10) %>% 
@@ -57,7 +57,7 @@ See author to author correspondence (authors should find the equivalents with th
 print(paste0("Number of intersections between RNC & corpus_1835: ", nrow(doubles)))
 
 doubles %>% 
-  count(author.x, author.y, sort = T)
+  count(author.x, author.y, A_ID, sort = T)
 
 doubles %>% 
   select(text_id) %>% 
@@ -85,3 +85,182 @@ to do:
 -   check authors.meta for initials if available
 
 -   reattach author_text with fixed surnames+initials
+
+```{r}
+doubles %>% 
+  count(author.x, author.y, A_ID, sort = T) %>% 
+  mutate(author_rnc = str_replace(author.x, 
+                                      "^(\\w\\.) (\\w\\.) (\\w+)$",
+                                      "\\3 \\1\\2")) %>% 
+  select(-author.x) %>% 
+  filter(author_rnc != author.y | A_ID == "")
+```
+
+```{r}
+glimpse(doubles)
+```
+
+Authors with signatures: add A_ID & add to the texts meta
+
+```{r}
+doubles %>% 
+  filter(A_ID == "" & author.y != "") %>% 
+  select(author.x, author.y, A_ID) %>% distinct()
+
+t <- doubles %>% 
+  filter(A_ID == "" & author.y != "") %>% 
+  select(author.x, author.y, A_ID) %>% 
+  distinct()
+
+a_id_vec <- c("A-307", "A-309", "A-308", "A-310", "A-310", "A-110", "A-142",
+              "A-308", "A-311")
+
+t$A_ID_new <- a_id_vec
+t
+
+doubles %>% 
+  left_join(t %>% select(-author.x, -A_ID),
+            by = "author.y") %>% 
+  mutate(A_ID = ifelse(A_ID == "" & !is.na(A_ID_new), A_ID_new, A_ID)) %>% 
+  # fast check if A_ID were placed correctly
+  filter(author.y != "" & author.x != "") %>% select(author.x, author.y, A_ID) %>% distinct # seems to work
+
+doubles_cln <- doubles %>% 
+  left_join(t %>% select(-author.x, -A_ID),
+            by = "author.y") %>% 
+  mutate(A_ID = ifelse(A_ID == "" & !is.na(A_ID_new), A_ID_new, A_ID)) %>% 
+  select(-A_ID_new)
+```
+
+Fill empty A_ID for known authors
+
+```{r}
+t_empty <- doubles %>% 
+  select(author.x, author.y, A_ID, text_id) %>% 
+  filter(author.x != "" & author.y == "") %>% 
+  distinct()
+
+t_empty
+
+a_id_empty <- c("", "A-162", "A-61", "A-143", "A-151", 
+                "A-113", "A-115", "A-11", "A-11", "A-245")
+
+t_empty$A_ID_new <- a_id_empty
+
+t_empty
+
+doubles %>% 
+  left_join(t_empty %>% select(text_id, A_ID_new), 
+            by = "text_id") %>% 
+  mutate(A_ID = ifelse(!is.na(A_ID_new), A_ID_new, A_ID)) %>% 
+  filter(author.y == "") %>% 
+  select(author.x, author.y, A_ID) %>% 
+  distinct()
+
+doubles_cln <- doubles_cln %>% 
+  left_join(t_empty %>% select(text_id, A_ID_new), 
+            by = "text_id") %>% 
+  mutate(A_ID = ifelse(!is.na(A_ID_new), A_ID_new, A_ID))
+```
+
+Check that all authors here now have A_ID
+
+```{r}
+doubles_cln %>% 
+  count(author.x, author.y, A_ID, sort = T) %>% 
+  mutate(author_rnc = str_replace(author.x, 
+                                      "^(\\w\\.) (\\w\\.) (\\w+)$",
+                                      "\\3 \\1\\2")) %>% 
+  select(-author.x) %>% 
+  filter(author_rnc != author.y | A_ID == "")
+```
+
+Attach checked A_ID to the corpus
+
+```{r}
+# create a table with A_IDs from doubles with RNC
+a_id_doubles <- doubles_cln %>% 
+  select(text_id, A_ID) %>% # only text and author ID
+  rename(A_ID_checked = A_ID)
+
+# join the new A_IDs with existing corpus
+corpus_cln <- corpus %>% 
+  left_join(a_id_doubles, by = "text_id") %>% 
+  # insert new A_ID from the column if it is specified
+  mutate(A_ID = ifelse(!is.na(A_ID_checked) & A_ID_checked != "", 
+                       A_ID_checked, A_ID)) %>% 
+  select(-A_ID_checked) # remove additional column
+
+glimpse(corpus_cln)
+```
+
+### author_text & author_sign cleaning
+
+Check authors & A_ID in the corpus in general
+
+```{r}
+corpus_cln %>% 
+  select(author_sign, author_text, A_ID) %>% 
+  count(author_sign, author_text, A_ID, sort = T)
+
+# 213 anonimous texts (with no author sign at all)
+```
+
+```{r}
+corpus_cln %>% 
+  filter(str_detect(author_text, "Мещерский"))
+```
+
+```{r}
+corpus_cln2 <- corpus_cln %>% 
+  mutate(A_ID = ifelse(author_sign == "Аладьина Е.В.", "A-60", A_ID),
+         A_ID = ifelse(author_text == "Раич", "A_310", A_ID),
+         A_ID = ifelse(author_text == "С. Раич", "A_310", A_ID),
+         A_ID = ifelse(author_text == "Александр Чужбинский", "A-191", A_ID),
+         A_ID = ifelse(author_sign == "Любич", "A-200", A_ID),
+         A_ID = ifelse(author_text == "В. Григорьев", "A-309", A_ID),
+         A_ID = ifelse(author_text == "*…..А*…..А", "A-60", A_ID), 
+         A_ID = ifelse(author_text == "[Киселева?]", "A-225", A_ID),
+         A_ID = ifelse(author_text == "И. Оссовецкий, Вил. Двор. Инст.", "A-313", A_ID),
+         A_ID = ifelse(author_text == "Н. Петровский", "A-314", A_ID),
+         A_ID = ifelse(author_text == "С. Лакроа", "A-315", A_ID),
+         A_ID = ifelse(author_text == "Л. Плошинский, Вил. Двор. Инст.", "A-316", A_ID)
+         
+         ) %>% 
+  
+  #	add Князь Э. Мещерский
+  mutate(A_ID = ifelse(str_detect(author_text, "Мещерский"), "A-312", A_ID)) %>% 
+  
+  # clean some Unknown old tags
+  mutate(author_text = ifelse(author_text == "Unknown", "", author_text),
+         
+         # clean almanack author signs
+         # if almanack's editor is placed instead of the author of the text, change it to the text's author in the sign column
+         author_sign = ifelse(author_sign == "Владиславлев", author_text, author_sign),
+        author_sign = ifelse(author_sign == "Владиславлев В.А.", author_text, author_sign),
+        author_sign = ifelse(author_sign == "Кукольник Н. (изд.)", author_text, author_sign),
+        author_sign = ifelse(author_sign == "Максимович М.", author_text, author_sign), 
+        author_sign = ifelse(author_sign == "Бобылев Н.И.", author_text, author_sign),
+        author_sign = ifelse(author_sign == "Лебедев В. (изд.)", author_text, author_sign),
+        author_sign = ifelse(author_sign == "Крыловский В.", author_text, author_sign),
+        author_sign = ifelse(author_sign == "Кульчицкий А.", author_text, author_sign),
+        author_sign = ifelse(author_sign == "Владиславлев", author_text, author_sign)
+  )
+```
+
+Check
+
+```{r}
+corpus_cln2 %>% 
+  select(author_sign, author_text, A_ID) %>% 
+  count(author_sign, author_text, A_ID, sort = T)
+```
+
+### attach authors metadata
+
+Read authors metadata for clean names
+
+```{r}
+authors_meta <- read.delim("../../meta/authors.tsv", sep = "\t")
+glimpse(authors_meta)
+```

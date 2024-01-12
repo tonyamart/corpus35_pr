@@ -12,7 +12,7 @@ library(tidytext)
 ## Authors - doubles
 
 ```{r}
-corpus <- readRDS("../../data/corpus1835/corpus_1835.Rds")
+corpus <- readRDS("../../data/corpus1835/corpus_1835_metrics.Rds")
 glimpse(corpus)
 ```
 
@@ -48,7 +48,7 @@ doubles <- nkrja19_check %>%
 
 glimpse(doubles)  
 
-write.csv(doubles, file = "doubles.csv")
+# write.csv(doubles, file = "doubles.csv")
 ```
 
 See author to author correspondence (authors should find the equivalents with themselves!)
@@ -68,6 +68,7 @@ doubles %>%
 
 ```{r}
 test <- doubles %>% 
+  select(-A_ID) %>% 
   left_join(corpus %>% select(text_id, A_ID, author_text),
             by = "text_id") %>% 
   select(author.x, author.y, A_ID, author_text) %>% 
@@ -75,16 +76,6 @@ test <- doubles %>%
 
 test
 ```
-
-to do:
-
--   add known authors to authors meta (Раич, ВИ Панаев, и др?)
-
--   check if there are cases when author_test is known & there is no A_ID / only the ones with many texts or definitely known - add to authors.meta
-
--   check authors.meta for initials if available
-
--   reattach author_text with fixed surnames+initials
 
 ```{r}
 doubles %>% 
@@ -224,6 +215,7 @@ corpus_cln2 <- corpus_cln %>%
          A_ID = ifelse(author_text == "И. Оссовецкий, Вил. Двор. Инст.", "A-313", A_ID),
          A_ID = ifelse(author_text == "Н. Петровский", "A-314", A_ID),
          A_ID = ifelse(author_text == "С. Лакроа", "A-315", A_ID),
+         A_ID = ifelse(author_text == "С. Локроа", "A-315", A_ID),
          A_ID = ifelse(author_text == "Л. Плошинский, Вил. Двор. Инст.", "A-316", A_ID)
          
          ) %>% 
@@ -233,6 +225,7 @@ corpus_cln2 <- corpus_cln %>%
   
   # clean some Unknown old tags
   mutate(author_text = ifelse(author_text == "Unknown", "", author_text),
+         author_sign = ifelse(author_sign == "Unknown", "", author_sign),
          
          # clean almanack author signs
          # if almanack's editor is placed instead of the author of the text, change it to the text's author in the sign column
@@ -261,6 +254,68 @@ corpus_cln2 %>%
 Read authors metadata for clean names
 
 ```{r}
-authors_meta <- read.delim("../../meta/authors.tsv", sep = "\t")
+authors_meta <- read.delim("../../meta/authors.tsv", sep = "\t") %>% 
+  mutate(A_ID = str_replace_all(A_ID, "-", "_"))
+
 glimpse(authors_meta)
+```
+
+```{r}
+corpus_cln2 %>% 
+  filter(A_ID == "А-48") %>% select(A_ID, author_sign) %>% distinct  # typo with cyrrilic A 
+```
+
+```{r}
+corpus_authors <- corpus_cln2 %>% 
+  # clean error with - and _ in A_ID
+  mutate(A_ID = ifelse(A_ID == "А-48", "A_48", A_ID), # fix typo
+         A_ID = str_replace_all(A_ID, "-", "_") # fix - _ variants
+         ) %>% 
+  
+  # attach names from the authors_meta
+  left_join(authors_meta %>% select(A_ID, author),
+            by = "A_ID") %>% 
+  
+  rename(author_text_old = author_text,  # rename the old column with errors
+         author_text = author) %>% # assign new name from the joined column
+  
+  # for authors with no A_ID but with some sign, assign author_text as author_sign
+  mutate(author_text = ifelse(A_ID == "" & is.na(author_text), 
+                              author_sign,
+                              author_text)) %>% 
+  select(-author_text_old)
+  
+  #select(author_sign, author_text_old, author_text, A_ID) %>% distinct() # check
+
+```
+
+Some cleaning
+
+```{r}
+# fill NA with empty space
+corpus_authors[is.na(corpus_authors)] <- ""
+
+# reorder columns
+corpus_authors <- corpus_authors %>% 
+  select(text_id, A_ID, author_sign, author_text, everything()) %>% 
+  
+  # bring back - in A_ID for consistency with original table
+  mutate(A_ID = str_replace(A_ID, "_", "-"))
+```
+
+Check authors
+
+```{r}
+corpus_authors %>% 
+  count(author_text, A_ID, sort = T)
+```
+
+```{r}
+unique(corpus_authors$A_ID)
+```
+
+Save
+
+```{r}
+saveRDS(corpus_authors, "../../data/corpus1835/corpus_1835.Rds")
 ```

@@ -14,14 +14,14 @@ library(topicmodels)
 theme_set(theme_minimal())
 ```
 
-```{r}
+```{r, eval = F}
 dtm_iamb4_experiment <- readRDS("../../data/ch4/dtm_iamb4_experiment.Rds")
 dtm_iamb4_experiment
 ```
 
 ## Build the model
 
-```{r}
+```{r, eval=FALSE}
 iamb4_model <- LDA(dtm_iamb4_experiment,
                     k = 75,
                     method = "Gibbs",
@@ -29,7 +29,7 @@ iamb4_model <- LDA(dtm_iamb4_experiment,
                         alpha = 0.5, delta = 0.1))
 ```
 
-```{r}
+```{r, eval = F}
 # retrieve and save beta & gamma probs
 beta <- iamb4_model %>% tidy(matrix = "beta")
 
@@ -38,6 +38,9 @@ gamma <- iamb4_model %>% tidy(matrix = "gamma") %>%
     separate(document, into = c("index", "year", "first_line", "formula"), sep = "___") %>% 
     mutate(corpus = str_extract(index, "^\\w"))
 
+```
+
+```{r, eval = F}
 save(beta, gamma, file = "../../data/ch4/lda75_output.Rda")
 ```
 

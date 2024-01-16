@@ -121,10 +121,20 @@ nkrja19 <- ru19_fin %>%
 glimpse(nkrja19) 
 ```
 
+Corpus metrics
+
+```{r}
+nkrja19 %>% 
+  count(formula, sort = T) %>% head(10)
+
+nrow(nkrja19)
+```
+
 Save
 
 ```{r, eval = F}
 saveRDS(nkrja19, file = "../../data/ch4/nkrja_sampled_iamb4_experiment.Rds")
+rm(c19, dat, ru19_fin)
 ```
 
 ### Corpus 1835
@@ -138,7 +148,7 @@ Select only needed columns
 
 ```{r}
 corpus_35_short <- corpus_1835 %>% 
-  mutate(text_id = paste0("M_", text_id),# m for marginal
+  mutate(text_id = paste0("M_", text_id), # m for marginal
          verses = ""
          ) %>% 
   rename(author = author_text) %>% 
@@ -154,7 +164,7 @@ glimpse(corpus_35_short)
 Load RNC
 
 ```{r}
-# load("../../data/nkrja_19th_lem.Rda")
+load("../../data/nkrja_19th_lem.Rda")
 
 corpus1835_check <- corpus_35_short %>% 
     filter(n_lines > 3) %>%
@@ -230,6 +240,10 @@ Save
 ```{r, eval = F}
 saveRDS(corpus_1835_sampled, file = "../../data/ch4/corpus_1835_sampled.Rds")
 saveRDS(corpus_35_short_nd, file = "../../data/ch4/corpus_35_short_nd.Rds")
+```
+
+```{r}
+rm(list = ls())
 ```
 
 ## load data
@@ -455,11 +469,21 @@ ru_stop <- tibble(word = readLines("../../data/stopwords_ru.txt"))
 glimpse(corpus_merged)
 ```
 
-Clean \n
+### Clean \n
 
 ```{r}
+# some \\n symbols inside words/texts should be removed otherwise unnest tokens read them as a part of the words
+corpus_merged %>% select(text_lemm) %>% sample_n(10)
+
 corpus_merged <- corpus_merged %>% 
-  mutate(text_lemm = str_replace_all(text_lemm, "\\\n", " ")) 
+  mutate(text_lemm = str_replace_all(text_lemm, "n", " ")) 
+
+corpus_merged %>% select(text_lemm) %>% sample_n(10)
+
+corpus_merged %>% 
+  unnest_tokens(input = text_lemm, output = word, token = "words") %>% 
+  select(word) %>% 
+  filter(str_detect(word, "^n")) %>% distinct
 ```
 
 Prepare id for dtm
@@ -484,7 +508,7 @@ corpus_tokens <- corpus_to_dtm %>%
   anti_join(ru_stop, by = "word") %>% 
   filter(str_detect(word, "[А-Яа-я]"))
 
- head(corpus_tokens)
+head(corpus_tokens)
 ```
 
 ```{r}
@@ -503,7 +527,8 @@ ranks <- corpus_tokens %>%
   head(5000) %>% 
   select(-n)
 
-head(ranks, 10)
+head(ranks, 30)
+tail(ranks, 30)
 ```
 
 ```{r}
@@ -524,6 +549,6 @@ dtm_iamb4_experiment <- counts_dtm %>% cast_dtm(document = doc,
 dtm_iamb4_experiment
 ```
 
-```{r}
+```{r, eval = FALSE}
 saveRDS(dtm_iamb4_experiment, file = "../../data/ch4/dtm_iamb4_experiment.Rds")
 ```

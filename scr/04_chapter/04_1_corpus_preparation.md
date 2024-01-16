@@ -234,7 +234,7 @@ nkrja19 <- ru19_fin %>%
 glimpse(nkrja19) 
 ```
 
-    Rows: 13,896
+    Rows: 13,909
     Columns: 9
     $ id        <chr> "N_8", "N_12", "N_14", "N_22", "N_25", "N_26", "N_28", "N_30…
     $ author    <chr> "С. С. Бобров", "С. С. Бобров", "С. С. Бобров", "С. С. Бобро…
@@ -246,10 +246,38 @@ glimpse(nkrja19)
     $ verses    <dbl> 8, 23, 24, 24, 14, 14, 6, 12, 8, 8, 4, 4, 6, 8, 4, 5, 5, 8, …
     $ n_lines   <int> 8, 23, 24, 24, 14, 14, 6, 12, 8, 8, 4, 4, 6, 8, 4, 5, 5, 8, …
 
+Corpus metrics
+
+``` r
+nkrja19 %>% 
+  count(formula, sort = T) %>% head(10)
+```
+
+    # A tibble: 10 × 2
+       formula                 n
+       <chr>               <int>
+     1 iamb_4               4134
+     2 iamb_free            2232
+     3 trochee_4            1645
+     4 iamb_6               1560
+     5 iamb_5                823
+     6 other_6               377
+     7 iamb_3                372
+     8 other_free            234
+     9 amphibrach_4          156
+    10 iamb_регулярная:4+3   150
+
+``` r
+nrow(nkrja19)
+```
+
+    [1] 13909
+
 Save
 
 ``` r
 saveRDS(nkrja19, file = "../../data/ch4/nkrja_sampled_iamb4_experiment.Rds")
+rm(c19, dat, ru19_fin)
 ```
 
 ### Corpus 1835
@@ -259,12 +287,12 @@ corpus_1835 <- readRDS("../../data/corpus1835/corpus_1835.Rds")
 glimpse(corpus_1835)
 ```
 
-    Rows: 4,797
+    Rows: 4,799
     Columns: 20
     $ text_id       <chr> "P_1", "P_10", "P_100", "P_1000", "P_1001", "P_1002", "P…
     $ A_ID          <chr> "", "A-50", "A-7", "A-41", "A-139", "A-11", "A-163", "A-…
-    $ author_text   <chr> "", "Якубович Л.А.", "Кольцов А.В.", "Глинка Ф.Н.", "Про…
     $ author_sign   <chr> "", "Л. Якубович", "Кольцов", "Ф. Глинка", "Н. Прокопови…
+    $ author_text   <chr> "", "Якубович Л.А.", "Кольцов А.В.", "Глинка Ф.Н.", "Про…
     $ text_title    <chr> "Солдатская песня", "Молния", "Ночлег чумаков", "Утешите…
     $ text_subtitle <chr> "", "", "Сельские картины", "", "", "", "", "", "", "", …
     $ first_line    <chr> "Ох жизнь, молодецкая", "Зачем с небесной высоты", "В бл…
@@ -286,7 +314,7 @@ Select only needed columns
 
 ``` r
 corpus_35_short <- corpus_1835 %>% 
-  mutate(text_id = paste0("M_", text_id),# m for marginal
+  mutate(text_id = paste0("M_", text_id), # m for marginal
          verses = ""
          ) %>% 
   rename(author = author_text) %>% 
@@ -297,7 +325,7 @@ corpus_35_short <- corpus_1835 %>%
 glimpse(corpus_35_short)
 ```
 
-    Rows: 4,797
+    Rows: 4,799
     Columns: 10
     $ text_id   <chr> "M_P_1", "M_P_10", "M_P_100", "M_P_1000", "M_P_1001", "M_P_1…
     $ author    <chr> "", "Якубович Л.А.", "Кольцов А.В.", "Глинка Ф.Н.", "Прокопо…
@@ -319,6 +347,7 @@ load("../../data/nkrja_19th_lem.Rda")
 
 corpus1835_check <- corpus_35_short %>% 
     filter(n_lines > 3) %>%
+  # create a check variable from the first three lemmatized lines
     mutate(doublesCheck = str_extract(text_lemm, "^.*?\n.*?\n.*?\n")) %>% 
     mutate(doublesCheck = str_remove_all(doublesCheck, "[[:punct:]]|[[:space:]]")) %>% 
     select(text_id, author, year, doublesCheck, text_raw)
@@ -335,11 +364,12 @@ nkrja19_check <- c19 %>%
     select(Unnamed..0, author, year, doublesCheck, text_raw)
 
 doubles <- nkrja19_check %>% 
+  filter(doublesCheck != "") %>% # remove cases where sth went wrong with the line extraction
   inner_join(corpus1835_check, by = "doublesCheck")  
 ```
 
     Warning in inner_join(., corpus1835_check, by = "doublesCheck"): Detected an unexpected many-to-many relationship between `x` and `y`.
-    ℹ Row 923 of `x` matches multiple rows in `y`.
+    ℹ Row 922 of `x` matches multiple rows in `y`.
     ℹ Row 3388 of `y` matches multiple rows in `x`.
     ℹ If a many-to-many relationship is expected, set `relationship =
       "many-to-many"` to silence this warning.
@@ -348,7 +378,7 @@ doubles <- nkrja19_check %>%
 glimpse(doubles)  
 ```
 
-    Rows: 991
+    Rows: 981
     Columns: 9
     $ Unnamed..0   <int> 246, 542, 726, 807, 808, 809, 811, 815, 816, 818, 819, 82…
     $ author.x     <chr> "П. И. Шаликов", "Д. П. Ознобишин", "В. И. Панаев", "В. И…
@@ -368,7 +398,7 @@ glimpse(doubles)
 print(paste0("Number of intersections between RNC & corpus_1835: ", nrow(doubles)))
 ```
 
-    [1] "Number of intersections between RNC & corpus_1835: 991"
+    [1] "Number of intersections between RNC & corpus_1835: 981"
 
 ``` r
 doubles %>% 
@@ -378,92 +408,57 @@ doubles %>%
                           author.x                   author.y   n
     1                 И. А. Крылов                Крылов И.А. 168
     2            Е. А. Баратынский           Баратынский Е.А. 131
-    3             В. Г. Бенедиктов            Бенедиктов В.Г.  73
-    4              В. А. Жуковский             Жуковский В.А.  72
-    5               Н. А. Некрасов              Некрасов Н.А.  53
-    6                А. В. Кольцов               Кольцов А.В.  46
-    7              М. Ю. Лермонтов             Лермонтов М.Ю.  45
-    8                    А. А. Фет                   Фет А.А.  40
-    9                 Ф. И. Тютчев                Тютчев Ф.И.  39
-    10                А. С. Пушкин                Пушкин А.С.  37
+    3             В. Г. Бенедиктов            Бенедиктов В.Г.  76
+    4              В. А. Жуковский             Жуковский В.А.  73
+    5               Н. А. Некрасов              Некрасов Н.А.  54
+    6              М. Ю. Лермонтов             Лермонтов М.Ю.  52
+    7                А. В. Кольцов               Кольцов А.В.  48
+    8                 А. С. Пушкин                Пушкин А.С.  42
+    9                    А. А. Фет                   Фет А.А.  40
+    10                Ф. И. Тютчев                Тютчев Ф.И.  39
     11              А. И. Полежаев              Полежаев А.И.  24
-    12   А. А. Бестужев-Марлинский Бестужев А.А. (Марлинский)  21
-    13                М. Д. Деларю                Деларю М.Д.  16
-    14            Е. П. Ростопчина            Ростопчина Е.П.  15
-    15              В. Г. Тепляков              Тепляков В.Г.  14
-    16               Н. С. Теплова            Надежда Теплова  13
-    17                 П. П. Ершов                 Ершов П.П.  13
+    12   А. А. Бестужев-Марлинский Бестужев А.А. (Марлинский)  22
+    13                 П. П. Ершов                 Ершов П.П.  18
+    14                М. Д. Деларю                Деларю М.Д.  17
+    15               Н. С. Теплова               Теплова Н.С.  17
+    16            Е. П. Ростопчина            Ростопчина Е.П.  15
+    17              В. Г. Тепляков              Тепляков В.Г.  14
     18              А. В. Тимофеев              Тимофеев А.В.   9
-    19              А. И. Полежаев          Елизавета Кульман   9
-    20               А. С. Хомяков               Хомяков А.С.   9
-    21             В. И. Туманский             Туманский В.И.   9
-    22                   Е. Бернет                  Бернет Е.   7
-    23              Л. А. Якубович              Якубович Л.А.   7
-    24           А. И. Подолинский           Подолинский А.И.   6
-    25             Д. П. Ознобишин             Ознобишин Д.П.   6
-    26             П. А. Вяземский             Вяземский П.А.   6
-    27                 Э. И. Губер                 Губер Э.И.   6
-    28               Д. В. Давыдов               Давыдов Д.В.   4
-    29             Н. В. Кукольник             Кукольник Н.В.   4
-    30                Н. М. Языков                Языков Н.М.   4
-    31               Н. С. Теплова               Теплова Н.С.   4
-    32             А. С. Грибоедов             Грибоедов А.С.   3
-    33 Д. Ю. Струйский (Трилунный)             Струйский Д.Ю.   3
-    34              Е. П. Гребенка              Гребенка Е.П.   3
-    35                И. И. Козлов                Козлов И.И.   3
-    36             М. Ю. Лермонтов               М. Лермонтов   3
-    37               А. В. Кольцов                 А. Кольцов   2
-    38              А. И. Полежаев              Тимофеев А.В.   2
-    39                А. Н. Майков                Майков А.Н.   2
-    40                А. С. Пушкин                              2
-    41                А. С. Пушкин                А.С. Пушкин   2
-    42            В. Г. Бенедиктов              В. Бенедиктов   2
-    43              И. С. Тургенев              Тургенев И.С.   2
-    44               К. К. Павлова               Павлова К.К.   2
-    45                   Л. А. Мей                  Зелинский   2
-    46             Н. В. Кукольник               Н. Кукольник   2
-    47                Н. М. Коншин                     Н. К-н   2
-    48             П. А. Вяземский              Кн. Вяземский   2
-    49                 П. П. Ершов                   П. Ершов   2
-    50               С. П. Шевырев               Шевырев С.П.   2
-    51   А. А. Бестужев-Марлинский                              1
-    52               А. А. Дельвиг               Дельвиг А.А.   1
-    53              А. И. Полежаев              Алексеев П.Ф.   1
-    54              А. И. Полежаев                         С.   1
-    55              А. И. Полежаев                 Сатин Н.М.   1
-    56                А. Н. Майков                        М.    1
-    57                А. П. Крюков                  А. Крюков   1
-    58                А. С. Пушкин                  А. Пушкин   1
-    59             В. А. Жуковский                  Жуковский   1
-    60            В. Г. Бенедиктов             В. Бенедиктов    1
-    61                В. И. Панаев                              1
-    62           В. И. Соколовский             В. Соколовский   1
-    63             В. Н. Григорьев                       П.М.   1
-    64               Д. В. Давыдов                         Н.   1
-    65              Е. П. Гребенка                Е. Гребенка   1
-    66                И. И. Козлов                              1
-    67                И. И. Козлов                  И. Козлов   1
-    68              К. А. Бахтурин              Бахтурин К.А.   1
-    69              Л. А. Якубович                Л. Якубович   1
-    70                М. Д. Деларю                  М. Деларю   1
-    71              Н. А. Некрасов                              1
-    72             Н. В. Кукольник                              1
-    73                 Н. М. Сатин                 Сатин Н.М.   1
-    74                Н. М. Языков                              1
-    75                Н. П. Огарев                Огарев Н.П.   1
-    76               Н. Ф. Щербина                Н. Щербинин   1
-    77               П. А. Катенин                              1
-    78               П. А. Катенин               Катенин П.А.   1
-    79               П. И. Шаликов               Шаликов П.И.   1
-    80                 П. П. Ершов                              1
-    81                 П. П. Ершов                   Ершов П.   1
-    82                 П. П. Ершов                 Петр Ершов   1
-    83                  С. Е. Раич                       Раич   1
-    84                  С. Е. Раич                    С. Раич   1
-    85                  Ф. А. Кони                  Кони Ф.А.   1
-    86                  Ф. А. Кони                 Федор Кони   1
-    87                Ф. Н. Глинка               Федор Глинка   1
-    88                 Э. И. Губер               Эдуард Губер   1
+    19               А. С. Хомяков               Хомяков А.С.   9
+    20             В. И. Туманский             Туманский В.И.   9
+    21              Л. А. Якубович              Якубович Л.А.   8
+    22             П. А. Вяземский             Вяземский П.А.   8
+    23                   Е. Бернет                  Бернет Е.   7
+    24             Н. В. Кукольник             Кукольник Н.В.   7
+    25                 Э. И. Губер                 Губер Э.И.   7
+    26           А. И. Подолинский           Подолинский А.И.   6
+    27             Д. П. Ознобишин             Ознобишин Д.П.   6
+    28               Д. В. Давыдов               Давыдов Д.В.   5
+    29                И. И. Козлов                Козлов И.И.   5
+    30                Н. М. Языков                Языков Н.М.   5
+    31              Е. П. Гребенка              Гребенка Е.П.   4
+    32                А. Н. Майков                Майков А.Н.   3
+    33             А. С. Грибоедов             Грибоедов А.С.   3
+    34 Д. Ю. Струйский (Трилунный)             Струйский Д.Ю.   3
+    35              И. С. Тургенев              Тургенев И.С.   2
+    36               К. К. Павлова               Павлова К.К.   2
+    37                   Л. А. Мей                Крюков А.П.   2
+    38                Н. М. Коншин                Коншин Н.М.   2
+    39               П. А. Катенин               Катенин П.А.   2
+    40                  С. Е. Раич                  Раич С.Е.   2
+    41               С. П. Шевырев               Шевырев С.П.   2
+    42                  Ф. А. Кони                  Кони Ф.А.   2
+    43               А. А. Дельвиг               Дельвиг А.А.   1
+    44                А. П. Крюков                Крюков А.П.   1
+    45                В. И. Панаев                              1
+    46           В. И. Соколовский           Соколовский В.И.   1
+    47             В. Н. Григорьев             Григорьев В.Н.   1
+    48              К. А. Бахтурин              Бахтурин К.А.   1
+    49                 Н. М. Сатин                 Сатин Н.М.   1
+    50                Н. П. Огарев                Огарев Н.П.   1
+    51               Н. Ф. Щербина               Щербина Н.Ф.   1
+    52               П. И. Шаликов               Шаликов П.И.   1
+    53                Ф. Н. Глинка                Глинка Ф.Н.   1
 
 ``` r
 doubles %>% 
@@ -473,12 +468,12 @@ doubles %>%
   count(corpus)
 ```
 
-    Warning: Expected 2 pieces. Additional pieces discarded in 666 rows [16, 17, 18, 19, 20,
+    Warning: Expected 2 pieces. Additional pieces discarded in 659 rows [16, 17, 18, 19, 20,
     21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 34, 35, 36, ...].
 
       corpus   n
-    1      C 666
-    2      P 325
+    1      C 659
+    2      P 322
 
 ``` r
 # remove some issue with detecting Kulman's texts as doubles to Polezhaev
@@ -496,13 +491,13 @@ head(doubles$text_id)
 
 ``` r
 corpus_35_short_nd <- corpus_35_short %>% 
-  filter(!text_id %in% doubles$text_id) %>% 
+  filter(!text_id %in% doubles$text_id) %>% # remove ids of doubled texts
   rename(id = text_id)
 
 nrow(corpus_35_short_nd)
 ```
 
-    [1] 3817
+    [1] 3822
 
 #### sampling corpus-1835
 
@@ -536,13 +531,17 @@ corpus_1835_sampled <- sample_long(corpus_35_short_nd,
 nrow(corpus_1835_sampled)
 ```
 
-    [1] 4755
+    [1] 4766
 
 Save
 
 ``` r
 saveRDS(corpus_1835_sampled, file = "../../data/ch4/corpus_1835_sampled.Rds")
 saveRDS(corpus_35_short_nd, file = "../../data/ch4/corpus_35_short_nd.Rds")
+```
+
+``` r
+rm(list = ls())
 ```
 
 ## load data
@@ -554,7 +553,7 @@ corpus_1835_sampled <- readRDS("../../data/ch4/corpus_1835_sampled.Rds")
 glimpse(nkrja19)
 ```
 
-    Rows: 13,899
+    Rows: 13,915
     Columns: 9
     $ id        <chr> "N_8", "N_12", "N_14", "N_22", "N_25", "N_26", "N_28", "N_30…
     $ author    <chr> "С. С. Бобров", "С. С. Бобров", "С. С. Бобров", "С. С. Бобро…
@@ -570,7 +569,7 @@ glimpse(nkrja19)
 glimpse(corpus_1835_sampled)
 ```
 
-    Rows: 4,755
+    Rows: 4,766
     Columns: 10
     $ id        <chr> "M_P_1002", "M_P_1008", "M_P_1009", "M_P_1013", "M_P_1017", …
     $ author    <chr> "Пушкин А.С.", "Ростопчина Е.П.", "Айбулат К.М.", "Якубович …
@@ -597,7 +596,7 @@ corpus_1835_sampled %>%
   ggplot(aes(x = N, y = n_lines)) + geom_boxplot()
 ```
 
-![](04_1_corpus_preparation.markdown_strict_files/figure-markdown_strict/unnamed-chunk-16-1.png)
+![](04_1_corpus_preparation.markdown_strict_files/figure-markdown_strict/unnamed-chunk-18-1.png)
 
 ### merge
 
@@ -624,7 +623,7 @@ intersect(unique(c35_to_merge$formula), unique(nkrja19$formula))
 glimpse(c35_to_merge)
 ```
 
-    Rows: 4,755
+    Rows: 4,766
     Columns: 8
     $ id        <chr> "M_P_1002", "M_P_1008", "M_P_1009", "M_P_1013", "M_P_1017", …
     $ author    <chr> "Пушкин А.С.", "Ростопчина Е.П.", "Айбулат К.М.", "Якубович …
@@ -639,7 +638,7 @@ glimpse(c35_to_merge)
 glimpse(rnc_to_merge)
 ```
 
-    Rows: 13,899
+    Rows: 13,915
     Columns: 8
     $ id        <chr> "N_8", "N_12", "N_14", "N_22", "N_25", "N_26", "N_28", "N_30…
     $ author    <chr> "С. С. Бобров", "С. С. Бобров", "С. С. Бобров", "С. С. Бобро…
@@ -655,7 +654,7 @@ corpus_merged <- rbind(c35_to_merge, rnc_to_merge)
 glimpse(corpus_merged)
 ```
 
-    Rows: 18,654
+    Rows: 18,681
     Columns: 8
     $ id        <chr> "M_P_1002", "M_P_1008", "M_P_1009", "M_P_1013", "M_P_1017", …
     $ author    <chr> "Пушкин А.С.", "Ростопчина Е.П.", "Айбулат К.М.", "Якубович …
@@ -676,8 +675,8 @@ corpus_merged %>%
     # A tibble: 2 × 2
       corpus     n
       <chr>  <int>
-    1 M       4755
-    2 N      13899
+    1 M       4766
+    2 N      13915
 
 ``` r
 # add two essential columns
@@ -715,17 +714,17 @@ corpus_merged %>%
      2   1780   401
      3   1785   214
      4   1790   537
-     5   1795   769
-     6   1800   648
-     7   1805   729
+     5   1795   770
+     6   1800   644
+     7   1805   731
      8   1810   929
      9   1815  1127
-    10   1820  1274
-    11   1825  1706
-    12   1830  1544
-    13   1835  5143
-    14   1840  2145
-    15   1845  1112
+    10   1820  1282
+    11   1825  1703
+    12   1830  1545
+    13   1835  5155
+    14   1840  2151
+    15   1845  1116
     16   1850   109
 
 ``` r
@@ -738,24 +737,24 @@ corpus_merged %>%
     # A tibble: 18 × 3
        decade corpus      n
         <dbl> <chr>   <int>
-     1   1775 N       27774
-     2   1780 N       41278
-     3   1785 N       22224
-     4   1790 N       51419
-     5   1795 N       71803
-     6   1800 N       62125
-     7   1805 N       70834
-     8   1810 N       90790
-     9   1815 N       99529
-    10   1820 N      119053
-    11   1825 N      146793
-    12   1830 N      146654
-    13   1835 M      301608
-    14   1835 N      105425
-    15   1840 M       55881
-    16   1840 N      132208
-    17   1845 N      128260
-    18   1850 N       10643
+     1   1775 N       27965
+     2   1780 N       40784
+     3   1785 N       22329
+     4   1790 N       52387
+     5   1795 N       74041
+     6   1800 N       61718
+     7   1805 N       71090
+     8   1810 N       91549
+     9   1815 N       99247
+    10   1820 N      121204
+    11   1825 N      145586
+    12   1830 N      145934
+    13   1835 M      303245
+    14   1835 N      105897
+    15   1840 M       56298
+    16   1840 N      132213
+    17   1845 N      128066
+    18   1850 N       10606
 
 ### n tokens
 
@@ -768,7 +767,7 @@ corpus_merged %>%
     ggplot(aes(x = year, y = n, fill = corpus)) + geom_col() + theme_minimal()
 ```
 
-![](04_1_corpus_preparation.markdown_strict_files/figure-markdown_strict/unnamed-chunk-22-1.png)
+![](04_1_corpus_preparation.markdown_strict_files/figure-markdown_strict/unnamed-chunk-24-1.png)
 
 ### meter distribution
 
@@ -806,11 +805,11 @@ counts
     # Rowwise:  formula
       formula  `1775` `1780` `1785` `1790` `1795` `1800` `1805` `1810` `1815` `1820`
       <chr>     <int>  <int>  <int>  <int>  <int>  <int>  <int>  <int>  <int>  <int>
-    1 iamb_4       70     80     67    176    307    220    165    195    245    528
-    2 iamb_6      108     97     55     79    103     72    145    156    112    128
-    3 iamb_fr…     32    192     42     85    114    144    220    239    342    196
-    4 trochee…     25     11     14     95    137     82     73     88     66     76
-    5 other        32     21     36    102    108    130    126    251    362    346
+    1 iamb_4       70     80     67    176    307    220    166    195    244    528
+    2 iamb_6      108     97     55     79    103     72    146    155    113    129
+    3 iamb_fr…     33    192     42     84    115    142    220    239    344    198
+    4 trochee…     25     11     14     95    137     80     74     87     66     78
+    5 other        31     21     36    103    108    130    125    253    360    349
     # ℹ 6 more variables: `1825` <int>, `1830` <int>, `1835` <int>, `1840` <int>,
     #   `1845` <int>, total <int>
 
@@ -821,7 +820,7 @@ counts %>% ungroup() %>% summarise_if(is.numeric, sum)
     # A tibble: 1 × 16
       `1775` `1780` `1785` `1790` `1795` `1800` `1805` `1810` `1815` `1820` `1825`
        <int>  <int>  <int>  <int>  <int>  <int>  <int>  <int>  <int>  <int>  <int>
-    1    267    401    214    537    769    648    729    929   1127   1274   1706
+    1    267    401    214    537    770    644    731    929   1127   1282   1703
     # ℹ 5 more variables: `1830` <int>, `1835` <int>, `1840` <int>, `1845` <int>,
     #   total <int>
 
@@ -842,11 +841,11 @@ counts[,17] %>% mutate(perc = round(total/colSums(counts[,17])*100, 1))
     # Rowwise: 
       total  perc
       <int> <dbl>
-    1  4115  29.8
+    1  4119  29.8
     2  1549  11.2
-    3  2218  16.1
+    3  2221  16.1
     4  1626  11.8
-    5  4282  31.1
+    5  4291  31.1
 
 ``` r
 top_meters <- corpus_merged %>% 
@@ -865,16 +864,16 @@ top_meters
     # A tibble: 10 × 2
        formula          n
        <chr>        <int>
-     1 iamb_4        5725
-     2 trochee_4     2296
-     3 iamb_free     2230
+     1 iamb_4        5733
+     2 trochee_4     2297
+     3 iamb_free     2233
      4 iamb_6        1920
-     5 iamb_5        1011
-     6 iamb_other     686
-     7 iamb_3         557
+     5 iamb_5        1014
+     6 iamb_other     689
+     7 iamb_3         555
      8 other_6        377
      9 amphibrach_4   352
-    10 other_free     232
+    10 other_free     234
 
 ``` r
 corpus_merged %>% 
@@ -890,7 +889,7 @@ corpus_merged %>%
         theme(legend.position = "None")
 ```
 
-![](04_1_corpus_preparation.markdown_strict_files/figure-markdown_strict/unnamed-chunk-25-1.png)
+![](04_1_corpus_preparation.markdown_strict_files/figure-markdown_strict/unnamed-chunk-27-1.png)
 
 ``` r
 corpus_merged %>% 
@@ -906,7 +905,7 @@ corpus_merged %>%
         theme(legend.position = "None")
 ```
 
-![](04_1_corpus_preparation.markdown_strict_files/figure-markdown_strict/unnamed-chunk-26-1.png)
+![](04_1_corpus_preparation.markdown_strict_files/figure-markdown_strict/unnamed-chunk-28-1.png)
 
 ``` r
 corpus_merged %>% 
@@ -923,7 +922,7 @@ corpus_merged %>%
         theme(legend.position = "None")
 ```
 
-![](04_1_corpus_preparation.markdown_strict_files/figure-markdown_strict/unnamed-chunk-27-1.png)
+![](04_1_corpus_preparation.markdown_strict_files/figure-markdown_strict/unnamed-chunk-29-1.png)
 
 ``` r
 corpus_merged %>% 
@@ -939,7 +938,7 @@ corpus_merged %>%
         theme(legend.position = "None")
 ```
 
-![](04_1_corpus_preparation.markdown_strict_files/figure-markdown_strict/unnamed-chunk-27-2.png)
+![](04_1_corpus_preparation.markdown_strict_files/figure-markdown_strict/unnamed-chunk-29-2.png)
 
 Iamb-3 unexpected presence in 1839:
 
@@ -950,10 +949,10 @@ corpus_merged %>%
 ```
 
     # A tibble: 2 × 2
-      author                n
-      <chr>             <int>
-    1 Елизавета Кульман   146
-    2 Карамзин А.Н.         1
+      author            n
+      <chr>         <int>
+    1 Карамзин А.Н.     1
+    2 Кульман Е.Б.    146
 
 ## DTM creation
 
@@ -969,7 +968,7 @@ ru_stop <- tibble(word = readLines("../../data/stopwords_ru.txt"))
 glimpse(corpus_merged)
 ```
 
-    Rows: 18,654
+    Rows: 18,681
     Columns: 10
     $ id        <chr> "M_P_1002", "M_P_1008", "M_P_1009", "M_P_1013", "M_P_1017", …
     $ author    <chr> "Пушкин А.С.", "Ростопчина Е.П.", "Айбулат К.М.", "Якубович …
@@ -1011,7 +1010,7 @@ corpus_tokens <- corpus_to_dtm %>%
   anti_join(ru_stop, by = "word") %>% 
   filter(str_detect(word, "[А-Яа-я]"))
 
- head(corpus_tokens)
+head(corpus_tokens)
 ```
 
     # A tibble: 6 × 2
@@ -1035,7 +1034,7 @@ tokens_count %>%
   summarise(total_w = sum(n)) %>% ggplot(aes(x = total_w)) + geom_density()
 ```
 
-![](04_1_corpus_preparation.markdown_strict_files/figure-markdown_strict/unnamed-chunk-34-1.png)
+![](04_1_corpus_preparation.markdown_strict_files/figure-markdown_strict/unnamed-chunk-36-1.png)
 
 ``` r
 # count 5k MFW
@@ -1044,10 +1043,10 @@ ranks <- corpus_tokens %>%
   head(5000) %>% 
   select(-n)
 
-head(ranks, 10)
+head(ranks, 30)
 ```
 
-    # A tibble: 10 × 1
+    # A tibble: 30 × 1
        word  
        <chr> 
      1 душа  
@@ -1055,11 +1054,12 @@ head(ranks, 10)
      3 друг  
      4 день  
      5 любовь
-     6 жизнь 
-     7 небо  
+     6 небо  
+     7 жизнь 
      8 мир   
      9 свет  
     10 рука  
+    # ℹ 20 more rows
 
 ``` r
 # select only MFW
@@ -1081,8 +1081,8 @@ dtm_iamb4_experiment <- counts_dtm %>% cast_dtm(document = doc,
 dtm_iamb4_experiment
 ```
 
-    <<DocumentTermMatrix (documents: 18604, terms: 5000)>>
-    Non-/sparse entries: 707273/92312727
+    <<DocumentTermMatrix (documents: 18630, terms: 5000)>>
+    Non-/sparse entries: 710610/92439390
     Sparsity           : 99%
     Maximal term length: 15
     Weighting          : term frequency (tf)

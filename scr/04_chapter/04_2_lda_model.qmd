@@ -1,6 +1,6 @@
 ---
 title: "04_2_LDA"
-format: html
+format: md
 editor: visual
 ---
 

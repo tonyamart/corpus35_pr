@@ -85,7 +85,13 @@ network_compare <- function(network, meter_value, palette_v) {
     geom_edge_fan(aes(color = group,
                       filter = meter %in% c(meter_value) & group == "Both corpora", 
                       width = n), 
-                      alpha = 1) +
+                      alpha = 1) + 
+    
+    geom_node_text(aes(label=idn), 
+                   hjust=0.1, 
+                   vjust=-0.4, 
+                   size=3, 
+                   color="grey50") +
     
     geom_node_point() +
     theme_void() + 
@@ -234,14 +240,13 @@ ggsave(filename = "plots/demo.png", plot = last_plot(),
 Select corpus
 
 ```{r}
+
 # prepare gamma data
 gamma_rnc <- gamma %>% 
     # select ONLY RNC connections & topics
-    filter(corpus == "N") %>% 
+    filter(corpus == "N") 
     # add index for create_edges function
-    # mutate(index = paste0(corpus, "_", id)) %>% 
-    # fix typo
-    rename(author = first_line)
+    # mutate(index = paste0(corpus, "_", id)) 
 ```
 
 ## Create edges
@@ -980,6 +985,9 @@ saveRDS(all_edges, file = "../../data/ch4/edge_stability.Rds")
 ```{r}
 all_edges <- readRDS(file = "../../data/ch4/edge_stability.Rds")
 
+# create a variable for meters of interest
+top_meters <- c("iamb_4", "trochee_4", "iamb_6")
+
 all_edges %>% 
   ggplot(aes(x = meter, y = Freq, , fill = corpus)) + geom_boxplot()
 ```
@@ -1019,12 +1027,17 @@ Create edgelist from all corpus (no chronological or other limits)
 ```{r}
 edges_all <- compute_edges(gamma, time_slice = 5)
 head(edges_all)
+
 ```
 
 Retrieve stable edges for both corpora
 
 ```{r}
 links_all <- edges_all %>% 
+  
+  # select only 1830s 
+  filter(slice %in% c(1830, 1835)) %>% 
+  
   mutate(meter = formula) %>%
   # filter out only 8 most interesting meters
   filter(meter %in% top_meters) %>% 
@@ -1041,14 +1054,17 @@ edges_rnc <- links_all %>%
     filter(corpus == "N" & meter == "iamb_4") %>% 
     filter(edge_id %in% stable_edges_i4_n) 
 
-edges_m <- links_1830_ns %>% 
+edges_m <- links_all %>% 
     filter(corpus == "M" & meter == "iamb_4") %>% 
     filter(edge_id %in% stable_edges_i4_n) 
 
 head(edges_rnc)
 
-edges_intersection <- intersect(stable_edges_i4_m, stable_edges_i4_n)
-length(edges_intersection)
+nrow(edges_rnc) # total number of edges in the rnc network
+nrow(edges_m) # total number of edges in the corpus-1835 network
+edges_intersection_i4 <- intersect(edges_rnc$edge_id, edges_m$edge_id)
+length(edges_intersection) # number of intersected edges
+
 
 links_i4 <- rbind(edges_rnc, edges_m)
 head(links_i4)
@@ -1064,14 +1080,366 @@ edgelist_i4 <- links_i4 %>%
 head(edgelist_i4)
 ```
 
-```{r}
-net_comp <- graph_from_data_frame(d = edgelist_i4, vertices = nodelist_ns, directed = F)
-net_comp
+```{r, eval=FALSE}
+net_comp_i4 <- graph_from_data_frame(d = edgelist_i4, vertices = nodelist_ns, directed = F)
+net_comp_i4
 
-network_compare(net_comp, "iamb_4", c(wes_palette("Darjeeling1")[2], wes_palette("Royal1")[1]))
+network_compare(net_comp_i4, "iamb_4", c(wes_palette("Darjeeling1")[2], wes_palette("Royal1")[1]))
 ```
 
-## old code 
+### iamb-6
+
+Select stable edges
+
+```{r}
+# summary for corpus-1835
+all_edges %>% filter(meter == "Iamb_6" & corpus == "M") %>% summary()
+
+# summary for RNC
+all_edges %>% filter(meter == "Iamb_6" & corpus == "RNC") %>% summary()
+
+# calculate number of edges to plot in case of selecting ones above mean
+all_edges %>% 
+  filter(meter == "Iamb_6" & corpus == "M") %>% 
+  filter(Freq > 46) %>% nrow() # filter starting from mean
+
+all_edges %>% 
+  filter(meter == "Iamb_6" & corpus == "RNC") %>% 
+  filter(Freq > 45) %>% nrow()
+
+# retrieve stable edges for both corpora 
+stable_edges_i6_m <- all_edges %>% 
+  filter(meter == "Iamb_6" & corpus == "M") %>% 
+  filter(Freq > 46) %>% select(Var1) %>% pull()
+
+stable_edges_i6_n <- all_edges %>% 
+  filter(meter == "Iamb_6" & corpus == "RNC") %>% 
+  filter(Freq > 45) %>% select(Var1) %>% pull()
+```
+
+Create edgelists & filter only 1830s texts
+
+```{r}
+# head(links_all) # this variable is created for iamb-4 already
+
+edges_rnc <- links_all %>% 
+    filter(corpus == "N" & meter == "iamb_6") %>% 
+    filter(edge_id %in% stable_edges_i6_n) 
+
+edges_m <- links_all %>% 
+    filter(corpus == "M" & meter == "iamb_6") %>% 
+    filter(edge_id %in% stable_edges_i6_n) 
+
+head(edges_rnc)
+
+nrow(edges_rnc) # total number of edges in the rnc network
+nrow(edges_m) # total number of edges in the corpus-1835 network
+edges_intersection_i6 <- intersect(edges_rnc$edge_id, edges_m$edge_id)
+length(edges_intersection) # number of intersected edges
+
+
+links_i6 <- rbind(edges_rnc, edges_m)
+head(links_i6)
+
+edgelist_i6 <- links_i6 %>% 
+    mutate(group = ifelse(edge_id %in% edges_intersection, 
+                         "Both corpora", 
+                         "Unique edge")) %>% 
+    select(source, target, n, meter, corpus, group) %>% 
+    mutate(width = n/10,
+          corpus_fullname = ifelse(corpus == "M", "Корпус-1835", "НКРЯ"))
+
+head(edgelist_i6)
+```
+
+Create network & viz
+
+```{r, eval=FALSE}
+net_comp_i6 <- graph_from_data_frame(d = edgelist_i6, vertices = nodelist_ns, directed = F)
+#net_comp_i6
+
+network_compare(net_comp_i6, "iamb_6", c(wes_palette("Darjeeling1")[3], wes_palette("Royal1")[1]))
+```
+
+### trochee-4
+
+Calculate most stable edges
+
+```{r}
+# summary for corpus-1835
+all_edges %>% filter(meter == "Trochee_4" & corpus == "M") %>% summary()
+
+# summary for RNC
+all_edges %>% filter(meter == "Trochee_4" & corpus == "RNC") %>% summary()
+
+# calculate number of edges to plot in case of selecting ones above mean
+all_edges %>% 
+  filter(meter == "Trochee_4" & corpus == "M") %>% 
+  filter(Freq > 56) %>% nrow() # filter starting from mean
+
+all_edges %>% 
+  filter(meter == "Trochee_4" & corpus == "RNC") %>% 
+  filter(Freq > 36) %>% nrow()
+
+# retrieve stable edges for both corpora 
+stable_edges_t4_m <- all_edges %>% 
+  filter(meter == "Trochee_4" & corpus == "M") %>% 
+  filter(Freq > 56) %>% select(Var1) %>% pull()
+
+stable_edges_t4_n <- all_edges %>% 
+  filter(meter == "Trochee_4" & corpus == "RNC") %>% 
+  filter(Freq > 36) %>% select(Var1) %>% pull()
+```
+
+Create edgelist & select only 1830s
+
+```{r}
+# head(links_all) # this variable is created for iamb-4 already
+
+edges_rnc <- links_all %>% 
+    filter(corpus == "N" & meter == "trochee_4") %>% 
+    filter(edge_id %in% stable_edges_t4_n) 
+
+edges_m <- links_all %>% 
+    filter(corpus == "M" & meter == "trochee_4") %>% 
+    filter(edge_id %in% stable_edges_t4_n) 
+
+head(edges_rnc)
+
+nrow(edges_rnc) # total number of edges in the rnc network
+nrow(edges_m) # total number of edges in the corpus-1835 network
+edges_intersection_t4 <- intersect(edges_rnc$edge_id, edges_m$edge_id)
+length(edges_intersection) # number of intersected edges
+
+
+links_t4 <- rbind(edges_rnc, edges_m)
+head(links_t4)
+
+edgelist_t4 <- links_t4 %>% 
+    mutate(group = ifelse(edge_id %in% edges_intersection, 
+                         "Both corpora", 
+                         "Unique edge")) %>% 
+    select(source, target, n, meter, corpus, group) %>% 
+    mutate(width = n/10,
+          corpus_fullname = ifelse(corpus == "M", "Корпус-1835", "НКРЯ"))
+
+head(edgelist_t4)
+```
+
+Network viz
+
+```{r, eval=FALSE}
+net_comp_t4 <- graph_from_data_frame(d = edgelist_t4, vertices = nodelist_ns, directed = F)
+#net_comp_i6
+
+network_compare(net_comp_t4, "trochee_4", c(wes_palette("Darjeeling1")[1], wes_palette("Royal1")[1]))
+```
+
+## comparison network (all)
+
+Create network
+
+```{r}
+# bind together all edgelists (for all 3 meters)
+edgelist_all_1830 <- rbind(edgelist_i4, edgelist_i6, edgelist_t4)
+
+# create a network
+net_comp <- graph_from_data_frame(edgelist_all_1830, vertices = nodelist_ns, directed = F)
+```
+
+### meter stats (d, n_union)
+
+Statistics for each meter (for labels)
+
+```{r}
+# ------------- Densities ----------------
+# fn to calculate network densities
+density_vector <- function(edgelist, formula) {
+    densities <- vector()
+    e1 <- NULL
+    for (i in 1:length(unique(edgelist$corpus))) {
+        e1 <- edgelist %>% 
+            filter(meter == formula & corpus == unique(edgelist$corpus)[i])
+
+            net_test <- graph_from_data_frame(d = e1, vertices = nodelist_ns, directed = F)
+
+            densities[i] <- edge_density(net_test, loops = F)
+    }
+    densities
+}
+
+densities <- tibble(
+      corpus = c("N", "M"),
+      iamb_4 = round(density_vector(edgelist_all_1830, "iamb_4"), 3),
+      iamb_6 = round(density_vector(edgelist_all_1830, "iamb_6"), 3),
+      trochee_4 = round(density_vector(edgelist_all_1830, "trochee_4"), 3),
+      ) 
+
+# ------------- Edges intersection ----------------
+# create a list of intersected edges
+
+n_intersections <- tibble(
+    # create a tibble out of vector edges intersection
+    edge = c(edges_intersection_i4, edges_intersection_i6, edges_intersection_t4),
+    meter = c(rep("iamb_4", length(edges_intersection_i4)),
+            rep("iamb_6", length(edges_intersection_i6)),
+            rep("trochee_4", length(edges_intersection_t4)))
+    ) %>% 
+    # count n intersections
+    count(meter, sort = T) %>% 
+    rename(n_intersections = n)
+
+
+
+# get statistics for each meter from the edgelist
+meters_stats <- edgelist_all_1830 %>% 
+    # count total number of connections
+    #filter(meter %in% c("iamb_4", "iamb_6", "trochee_4")) %>% 
+    group_by(meter, corpus) %>% 
+    count(sort = F) %>% 
+    rename(n_edges_total = n) %>% 
+
+    # add data on densities
+    unite("corpus_meter", corpus:meter, sep = "__")  %>% 
+    left_join(densities %>% 
+              pivot_longer(!corpus, names_to = "meter", values_to = "density") %>% 
+              unite("corpus_meter", corpus:meter,  sep = "__"), 
+             by = "corpus_meter") %>% 
+    separate(corpus_meter, into = c("corpus", "meter"), sep = "__") %>% 
+
+    # add column on number of intersections
+    left_join(n_intersections, by = "meter") %>% 
+    mutate(perc_intersected = round((n_intersections/n_edges_total)*100, 1))
+
+# transform to labels
+meters_stats <- meters_stats %>% 
+    mutate(corpus_fullname = ifelse(corpus == "N", "НКРЯ", "Корпус-1835")) %>% 
+    mutate(
+        label = paste0("N связей = ", n_edges_total, 
+                       "\nd = ", density, 
+                       "\n% общих связей = ", perc_intersected))
+
+meters_stats
+```
+
+```{r}
+network_labels <- function(network, meter_value, palette_v) {
+  ggraph(network, layout = "kk") +
+    # one layer for edges which are unique for each corpus (RNC or Periodicals)
+    geom_edge_fan(aes(color = group,
+                      filter = meter %in% c(meter_value) & group == "Unique edge", 
+                      width = n), 
+                      alpha = 0.5) +
+    
+    # second layer for intersected edges
+    geom_edge_fan(aes(color = group,
+                      filter = meter %in% c(meter_value) & group == "Both corpora", 
+                      width = n), 
+                      alpha = 0.8) +
+    
+    geom_node_point() +
+    theme_void() + 
+    facet_wrap(~corpus_fullname, 
+               scales="free_x", 
+               drop=T,
+               ncol = 2,
+               labeller = as_labeller(facet_labels)) + 
+    scale_edge_color_manual(values = palette_v) + 
+    theme(legend.position = "None",
+         strip.text = element_text(size = 18, hjust = 0), 
+         plot.title = element_text(size = 22, hjust = 0, face = "bold"))
+}
+     
+```
+
+```{r}
+labels_df <- meters_stats %>% 
+    filter(meter == "iamb_4") 
+
+facet_labels <- setNames(as.character(labels_df$label), labels_df$corpus_fullname)
+                         
+p_i4 <- network_labels(network = net_comp, 
+                       meter_value = "iamb_4", 
+                       palette_v = c(wes_palette("Darjeeling1")[2], 
+                                     wes_palette("Royal1")[1])) + 
+  ggtitle("4-ст. ямб") 
+
+network_labels(network = net_comp, 
+                       meter_value = "iamb_4", 
+                       palette_v = c(wes_palette("Darjeeling1")[2], 
+                                     wes_palette("Royal1")[1])) + 
+  ggtitle("4-ст. ямб") + 
+  # added the topic numbers to look into the topics
+  geom_node_text(aes(label=idn), 
+                   hjust=0.1, 
+                   vjust=-0.4, 
+                   size=3, 
+                   color="grey20") 
+```
+
+```{r}
+labels_df <- meters_stats %>% 
+    filter(meter == "iamb_6") 
+
+facet_labels <- setNames(as.character(labels_df$label), labels_df$corpus_fullname)
+                         
+p_i6 <- network_labels(network = net_comp, 
+                       meter_value = "iamb_6", 
+                       palette_v = c(wes_palette("Darjeeling1")[4], 
+                                     wes_palette("Royal1")[1])) + 
+  ggtitle("6-ст. ямб")
+
+network_labels(network = net_comp, 
+                       meter_value = "iamb_6", 
+                       palette_v = c(wes_palette("Darjeeling1")[4], 
+                                     wes_palette("Royal1")[1])) + 
+  ggtitle("6-ст. ямб") + 
+  geom_node_text(aes(label=idn), 
+                   hjust=0.1, 
+                   vjust=-0.4, 
+                   size=3, 
+                   color="grey20") 
+```
+
+```{r}
+labels_df <- meters_stats %>% 
+    filter(meter == "trochee_4") 
+
+facet_labels <- setNames(as.character(labels_df$label), labels_df$corpus_fullname)
+                         
+p_t4 <- network_labels(network = net_comp, 
+                       meter_value = "trochee_4", 
+                       palette_v = c(wes_palette("Darjeeling1")[1], 
+                                     wes_palette("Royal1")[1])) + 
+  ggtitle("4-ст. хорей")
+
+network_labels(network = net_comp, 
+                       meter_value = "trochee_4", 
+                       palette_v = c(wes_palette("Darjeeling1")[1], 
+                                     wes_palette("Royal1")[1])) + 
+  ggtitle("4-ст. хорей") + 
+  geom_node_text(aes(label=idn), 
+                   hjust=0.1, 
+                   vjust=-0.4, 
+                   size=3, 
+                   color="grey20") 
+```
+
+### figure
+
+```{r}
+p_i4 / p_i6 / p_t4 + plot_annotation(
+  title = "Корпус-1835            vs              НКРЯ",
+  theme = theme(plot.title = element_text(size = 26, 
+                                          face = "bold")))
+```
+
+```{r, eval=FALSE}
+ggsave(file = "plots/Fig_4-0-0.png", plot = last_plot(),
+      dpi = 300, width = 8, height = 16, bg = "white")
+```
+
+## old code
 
 Check distribution in number of texts
 

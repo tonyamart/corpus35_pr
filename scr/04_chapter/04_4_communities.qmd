@@ -6,7 +6,7 @@ editor: visual
 
 ## load pckg & data
 
-```{r}
+```{r, warning=FALSE, message=FALSE}
 library(tidyverse)
 
 # networks
@@ -34,7 +34,7 @@ plt <- c(wes_palette("Darjeeling1")[2],
 
 ```{r}
 # load model output
-load("data/lda75_output.Rda")
+load("../../data/ch4/lda75_output.Rda")
 
 # load code for edges calculation
 source("04_fn_calculate_edges.R")
@@ -61,14 +61,7 @@ get_topic_labels = function(x, n_labels = 10) {
 # prepare gamma data
 gamma_rnc <- gamma %>% 
     # select ONLY RNC connections & topics
-    filter(corpus == "N") %>% 
-    # add index for create_edges function
-    # mutate(index = paste0(corpus, "_", id)) %>% 
-    # fix typo
-    rename(author = first_line)
-
-gamma <- gamma %>% 
-  rename(author = first_line)
+    filter(corpus == "N") 
 
 glimpse(gamma)
 glimpse(gamma_rnc)
@@ -80,53 +73,120 @@ topic_labels <- get_topic_labels(beta, n_labels = 5)
 head(topic_labels)
 ```
 
-### RNC communities
+### export stable edges
+
+Stable edges calculated via loop with excessive sampling from both corpora (see scr 03 ch4).
 
 ```{r}
-edges_raw <- compute_edges(gamma_rnc,
+stable_edges <- readRDS("../../data/ch4/edge_stability.Rds") %>% 
+  mutate(meter = tolower(meter),
+         meter_edge = paste0(meter, "__", Var1)) # create an id col to merge with data
+glimpse(stable_edges)
+```
+
+Create edges for everything
+
+```{r}
+edges_raw <- compute_edges(gamma,
                            gamma_thresh = 0.05,
                            time_slice = 5)
+```
 
+### RNC edges & nodes
+
+```{r}
 # create links
-links <- edges_raw %>% 
+links_rnc <- edges_raw %>% 
+  filter(corpus == "N") %>% 
   mutate(meter = formula) %>%
-  # filter out only iambic hexameter
-  #filter(meter == "iamb_6") %>% 
   # group and count edges
-  group_by(slice, meter, corpus) %>% 
+  group_by(slice, meter) %>% 
   count(slice, meter, edge_id, source, target, sort = T) %>% 
-  # filter non-frequent edges
-  filter(n > 2) %>% 
-  ungroup() 
+  ungroup() %>% 
+  
+  # attach data about the edge stability
+  mutate(meter_edge = paste0(meter, "__", edge_id)) %>%  # id column for merging
+  inner_join(stable_edges %>% 
+               filter(corpus == "RNC") %>% # filter only rnc data
+               select(meter_edge, Freq), # leave only data about the edge_meter & freq
+             by = "meter_edge")
 
 # quick check
-head(links)
+head(links_rnc)
+nrow(links_rnc)
 ```
 
 ```{r}
-edgelist <- links %>% 
-  select(source, target, n, meter, slice, corpus) %>% 
+edgelist_rnc <- links_rnc %>% 
+  select(source, target, n, meter, slice, Freq) %>% 
   mutate(width = n/10) %>% 
   filter(slice != 1850) %>% 
   rename(N_connections = n) %>% 
   mutate(facet_title = slice)
 
-nodelist <- tibble(source = unique(c(links$source, links$target))) %>% 
+nodelist_rnc <- tibble(source = unique(c(links_rnc$source, links_rnc$target))) %>% 
   mutate(idn = as.numeric(str_extract(source, "^\\d+"))) 
 
-head(edgelist)
-head(nodelist) 
+head(edgelist_rnc)
+head(nodelist_rnc) 
 
-summary(edgelist)
+summary(edgelist_rnc)
+```
+
+### corpus-1835 edges & nodes
+
+```{r}
+# create links
+links_m <- edges_raw %>% 
+  filter(corpus == "M") %>% 
+  mutate(meter = formula) %>%
+  # group and count edges
+  group_by(slice, meter) %>% 
+  count(slice, meter, edge_id, source, target, sort = T) %>% 
+  ungroup() %>% 
+  
+  # attach data about the edge stability
+  mutate(meter_edge = paste0(meter, "__", edge_id)) %>%  # id column for merging
+  inner_join(stable_edges %>% 
+               filter(corpus == "M") %>% # filter only rnc data
+               select(meter_edge, Freq), # leave only data about the edge_meter & freq
+             by = "meter_edge")
+
+# quick check
+head(links_m)
+nrow(links_m)
 ```
 
 ```{r}
-custom_edgelist <- function(edgelist_input, meter_v, slices, min_connections) {
+edgelist_m <- links_m %>% 
+  select(source, target, n, meter, slice, Freq) %>% 
+  mutate(width = n/10) %>% 
+  filter(slice != 1850) %>% 
+  rename(N_connections = n) %>% 
+  mutate(facet_title = slice)
+
+nodelist_m <- tibble(source = unique(c(links_m$source, links_m$target))) %>% 
+  mutate(idn = as.numeric(str_extract(source, "^\\d+"))) 
+
+head(edgelist_m)
+head(nodelist_m) 
+
+summary(edgelist_m)
+```
+
+## fn for custom edgelists
+
+```{r}
+custom_edgelist <- function(edgelist_input, meter_v, slices, #min_freq
+                            min_connections
+                            ) {
     edgelist_input %>% 
     #filter time slice 
     filter(slice %in% slices) %>% 
     # select meter and connection frequency threshold
-    filter(meter == meter_v & N_connections > min_connections) %>% 
+    filter(meter == meter_v & #Freq > min_freq
+             N_connections > min_connections
+           ) %>% 
     select(-slice) %>% 
     mutate(source_target = paste0(source, "__", target)) %>% 
     group_by(source_target) %>% 
@@ -149,19 +209,25 @@ custom_nodelist <- function(source_vec, target_vec) {
 
 ```{r}
 
-edgelist %>% 
+edgelist_rnc %>% 
   filter(meter == "iamb_4") %>% 
-  ggplot(aes(x = N_connections)) + geom_boxplot()
+  summary()
 
-edgelist %>% filter(meter == "iamb_4") %>% select(N_connections) %>% pull %>% 
+edgelist_rnc %>% 
+  filter(meter == "iamb_4") %>% 
+  filter(slice %in% c(1815:1829)) %>% 
+  filter(Freq == 100) %>% 
+  select(N_connections) %>% pull %>% 
   quantile(probs = c(0.1, 0.25, 0.5, 0.75, 0.9, 0.95, 0.97, 1))
 
 
-edgelist_i4 <- custom_edgelist(edgelist, 
+edgelist_i4 <- custom_edgelist(edgelist_rnc, 
                                meter_v = "iamb_4", 
                             # choices for the Fig. 2:
                                slices = c(1815:1829), 
-                               min_connections = 8)
+                               #min_freq = 99
+                                min_connections = 7 # 95 percentile 
+                            ) 
 head(edgelist_i4)
 nrow(edgelist_i4)
 nodelist_i4 <- custom_nodelist(edgelist_i4$source, edgelist_i4$target)
@@ -178,14 +244,16 @@ net_t <- tbl_graph(nodes = nodelist_i4,
 t_community <- net_t %>% 
     activate(nodes) %>% 
     mutate(community = as.factor(group_louvain())) 
-```
 
-```{r}
+# check number of communities
 t_community %>% 
   activate(nodes) %>% 
-  #filter(community == 1)
-  select(community) %>% distinct() %>% pull
+  select(community) %>% distinct() %>% pull()
+```
 
+Get communities labels
+
+```{r}
 t_community %>% 
   activate(nodes) %>% 
   filter(community == 1)
@@ -201,18 +269,26 @@ t_community %>%
 t_community %>% 
   activate(nodes) %>% 
   filter(community == 4)
+
+t_community %>% 
+  activate(nodes) %>% 
+  filter(community == 5)
+
+t_community %>% 
+  activate(nodes) %>% 
+  filter(community == 6)
 ```
 
 ```{r}
-nodelist_i4[nodelist_i4$idn %in% c(13, 18, 2, 26, 53, 27, 30, 39, 4, 10, 47, 71),]
+#nodelist_i4[nodelist_i4$idn %in% c(13, 18, 2, 26, 53, 27, 30, 39, 4, 10, 47, 71),]
 
 labels <- tibble(
-  community = c(1,2,3,4),
-  label = c("Элегия", "Поэзия", "Гражданские темы", "Романтические темы"), 
-  descr = c("13_дева прекрасный любовь милый юный\n18_страсть душа мука страдание тоска\n2_мечта душа вдохновение поэт восторг",
-  "26_муза певец поэт дар слава\n53_стих писать читать перо поэт\n27_пить вино чаша друг пир",
-  "30_царь народ русский царство слава\n39_враг меч бой брань битва\n4_свобода цепь природа мир вечный",
-  "10_волна море берег вода брег\n47_ночь луна ночной тень темный\n71_туча гром буря ветер небо")
+  community = c(1, 2, 3, 4, 5#, 6
+                ),
+  label = c("intimacy", "poetry", "patriotic", "nature", "romantic"#, "friendship"
+            ), 
+  descr = c("", "", "", "", ""#, ""
+            )
   ) %>% 
   mutate(community = as.factor(community))
 
@@ -267,7 +343,29 @@ t_community %>%
                    label.minwidth = 100,
                    label.fontsize = c(18,12),
                    con.cap = 1
-                  ) + 
+                  ) +
+
+  geom_mark_hull(aes(x,y, fill = community,
+                     color = community,
+                     label = label,
+                     description = descr,
+                     filter = community == 5),
+                   label.buffer = unit(7, 'mm'),
+                   label.minwidth = 100,
+                   label.fontsize = c(18,12),
+                   con.cap = 1
+                  ) +
+
+  geom_mark_hull(aes(x,y, fill = community,
+                     color = community,
+                     label = label,
+                     description = descr,
+                     filter = community == 6),
+                   label.buffer = unit(7, 'mm'),
+                   label.minwidth = 100,
+                   label.fontsize = c(18,12),
+                   con.cap = 1
+                  ) +
   
   geom_edge_link(aes(width = sum_links), 
                    alpha = 0.5) + 
@@ -275,8 +373,8 @@ t_community %>%
                        ), size = 10) + 
   geom_node_text(aes(label = idn), size = 5) + 
   # colouring
-    scale_color_manual(values = plt) + 
-    scale_fill_manual(values = plt) + 
+    scale_color_manual(values = rep(plt, 2)) + 
+    scale_fill_manual(values = rep(plt, 2)) + 
     
     # text sizes
     theme(legend.position = "None",
@@ -284,71 +382,34 @@ t_community %>%
          plot.subtitle = element_text(size = 16)) 
 
 
-ggsave("plots/i4_rnc.png", plot = last_plot(), 
-      bg = "white", width = 12, height = 8, dpi = 300)
+# ggsave("plots/i4_rnc.png", plot = last_plot(), 
+#       bg = "white", width = 12, height = 8, dpi = 300)
 ```
 
 #### marginals
 
 ```{r}
-edges_raw <- compute_edges(gamma,
-                           gamma_thresh = 0.05,
-                           time_slice = 5)
+edgelist_m %>% filter(meter == "iamb_4") %>% summary()
 
-
-head(edges_raw)
-
-# create links
-m_links <- edges_raw %>% 
-  filter(corpus == "M") %>% 
-  mutate(meter = formula) %>%
-  # filter out only iambic hexameter
-  #filter(meter == "iamb_6") %>% 
-  # group and count edges
-  group_by(slice, meter, corpus) %>% 
-  count(slice, meter, edge_id, source, target, sort = T) %>% 
-  # filter non-frequent edges
-  filter(n > 2) %>% 
-  ungroup() 
-
-# quick check
-head(m_links)
-
-
-m_edgelist <- m_links %>% 
-  select(source, target, n, meter, slice, corpus) %>% 
-  mutate(width = n/10) %>% 
-  filter(slice != 1850) %>% 
-  rename(N_connections = n) %>% 
-  mutate(facet_title = slice)
-
-m_nodelist <- tibble(source = unique(c(m_links$source, m_links$target))) %>% 
-  mutate(idn = as.numeric(str_extract(source, "^\\d+"))) 
-
-head(m_edgelist)
-head(m_nodelist) 
-
-summary(m_edgelist)
-
-
-```
-
-```{r}
-
-m_edgelist %>% filter(meter == "iamb_4") %>% select(N_connections) %>% pull %>% 
+edgelist_m %>% 
+  filter(meter == "iamb_4") %>% 
+  filter(Freq == 100) %>% 
+  select(N_connections) %>% pull %>% 
   quantile(probs = c(0.1, 0.25, 0.5, 0.75, 0.9, 0.95, 0.97, 1))
 
-m_edgelist_i4 <- custom_edgelist(m_edgelist, 
+m_edgelist_i4 <- custom_edgelist(edgelist_m, 
                                meter_v = "iamb_4", 
                             # choices for the Fig. 2:
                                slices = c(1835:1845), 
-                               min_connections = 13)
+                               min_connections = 15) # 95 perc.
 head(m_edgelist_i4)
 nrow(m_edgelist_i4)
 m_nodelist_i4 <- custom_nodelist(m_edgelist_i4$source, m_edgelist_i4$target)
 head(m_nodelist_i4)
 nrow(m_nodelist_i4)
 ```
+
+Create network & detect communities
 
 ```{r}
 # create tidy graph
@@ -363,9 +424,12 @@ m_community <- net_m %>%
 
 m_community %>% 
   activate(nodes) %>% 
-  #filter(community == 1)
-  select(community) %>% distinct() %>% pull
+  select(community) %>% distinct() %>% pull()
+```
 
+Communities info
+
+```{r}
 m_community %>% 
   activate(nodes) %>% 
   filter(community == 1)
@@ -385,12 +449,9 @@ m_community %>%
 
 ```{r}
  labels <- tibble(
-  community = c(1,2,3,4),
-  label = c("Природа", "Поэзия", "Страсть", "Возвышенное"), 
-  descr = c("10_волна море берег вода брег\n29_страна край родной чужой туда\n47_ночь луна ночной тень темный",
-"2_мечта душа вдохновение поэт восторг\n13_дева прекрасный любовь милый юный\n26_муза певец поэт дар слава\n45_огонь грудь пламень гореть кипеть",
-"18_страсть душа мука страдание тоска\n21_мечта надежда любовь душа желание\n8_сердце душа тоска дума пора",
-"3_луч свет солнце блеск мрак\n50_небо мир земля земной небесный\n57_мир дух творец бог свет")
+  community = c(1,2,3, 4),
+  label = c("sky & love", "poetry", "passion", ""), 
+  descr = c("", "", "", "")
   ) %>% 
   mutate(community = as.factor(community))
 
@@ -477,11 +538,18 @@ edgelist %>% filter(meter == "iamb_6") %>%
   pull %>% 
   quantile(probs = c(0.1, 0.25, 0.5, 0.75, 0.9, 0.95, 0.97, 1))
 
+
+edgelist %>% filter(meter == "iamb_6") %>% 
+  filter(slice > 1799 & slice < 1830) %>% 
+  select(Freq) %>% 
+  pull %>% summary()
+  #quantile(probs = c(0.1, 0.25, 0.5, 0.75, 0.9, 0.95, 0.97, 1))
+
 edgelist_i6 <- custom_edgelist(edgelist, 
                                meter_v = "iamb_6", 
                             # choices for the Fig. 2:
                                slices = c(1800:1829), 
-                               min_connections = 5)
+                               min_freq = 81)
 head(edgelist_i6)
 nrow(edgelist_i6)
 nodelist_i6 <- custom_nodelist(edgelist_i6$source, edgelist_i6$target)
@@ -498,6 +566,16 @@ net_t <- tbl_graph(nodes = nodelist_i6,
 t_community <- net_t %>% 
     activate(nodes) %>% 
     mutate(community = as.factor(group_louvain())) 
+
+
+t_community %>% 
+  activate(nodes) %>% 
+  select(community) %>% distinct() %>% pull
+
+t_community %>% 
+  activate(nodes) %>% 
+  filter(community == 1)
+
 
 t_community %>% 
   activate(nodes) %>% 

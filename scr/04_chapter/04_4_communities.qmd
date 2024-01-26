@@ -29,7 +29,8 @@ plt <- c(wes_palette("Darjeeling1")[2],
         wes_palette("Darjeeling1")[5],
         wes_palette("Darjeeling1")[4],
         wes_palette("Darjeeling1")[3],
-        wes_palette("Darjeeling1")[1])
+        wes_palette("Darjeeling1")[1],
+        wes_palette("Royal1"))
 ```
 
 ```{r}
@@ -185,7 +186,7 @@ custom_edgelist <- function(edgelist_input, meter_v, slices, #min_freq
     filter(slice %in% slices) %>% 
     # select meter and connection frequency threshold
     filter(meter == meter_v & #Freq > min_freq
-             N_connections > min_connections
+             N_connections >= min_connections
            ) %>% 
     select(-slice) %>% 
     mutate(source_target = paste0(source, "__", target)) %>% 
@@ -203,7 +204,7 @@ custom_nodelist <- function(source_vec, target_vec) {
 }
 ```
 
-### iamb 4
+### iamb 4 - freq=100, q=0.95
 
 #### rnc
 
@@ -215,21 +216,21 @@ edgelist_rnc %>%
 
 edgelist_rnc %>% 
   filter(meter == "iamb_4") %>% 
-  filter(slice %in% c(1815:1829)) %>% 
+  filter(slice %in% c(1800:1829)) %>% 
   filter(Freq == 100) %>% 
   select(N_connections) %>% pull %>% 
-  quantile(probs = c(0.1, 0.25, 0.5, 0.75, 0.9, 0.95, 0.97, 1))
+  quantile(probs = c(0.1, 0.25, 0.5, 0.75, 0.8, 0.9, 0.95, 0.97, 1))
 
 
-edgelist_i4 <- custom_edgelist(edgelist_rnc, 
+edgelist_i4 <- custom_edgelist(edgelist_rnc %>% filter(Freq == 100), 
                                meter_v = "iamb_4", 
                             # choices for the Fig. 2:
-                               slices = c(1815:1829), 
+                               slices = c(1800:1829), 
                                #min_freq = 99
-                                min_connections = 7 # 95 percentile 
+                                min_connections = 8 # from 95 percentile 
                             ) 
 head(edgelist_i4)
-nrow(edgelist_i4)
+nrow(edgelist_i4) # 20
 nodelist_i4 <- custom_nodelist(edgelist_i4$source, edgelist_i4$target)
 head(nodelist_i4)
 ```
@@ -269,25 +270,20 @@ t_community %>%
 t_community %>% 
   activate(nodes) %>% 
   filter(community == 4)
-
-t_community %>% 
-  activate(nodes) %>% 
-  filter(community == 5)
-
-t_community %>% 
-  activate(nodes) %>% 
-  filter(community == 6)
 ```
 
 ```{r}
-#nodelist_i4[nodelist_i4$idn %in% c(13, 18, 2, 26, 53, 27, 30, 39, 4, 10, 47, 71),]
+# nodelist_i4[nodelist_i4$idn %in% c(44, 26, 72, 70, 10, 59, 73, 6, 57, 64),]
 
 labels <- tibble(
-  community = c(1, 2, 3, 4, 5#, 6
+  community = c(1, 2, 3, 4
                 ),
-  label = c("intimacy", "poetry", "patriotic", "nature", "romantic"#, "friendship"
+  label = c('"Ода"', '"Стихия"', '"Идиллия"', '"Судьба"'
             ), 
-  descr = c("", "", "", "", ""#, ""
+  descr = c("59 царь народ слава великий россия\n73 зреть дух сие свет коль\n6 мир вечный природа творец земля\n23 правда закон зло суд истина", 
+            "10 гора скала лес стоять дикий\n70 враг бой меч герой брань\n41 гром страшный средь страх пасть", 
+            "44 вода река струя бежать ручей\n26 лес тень лист луг роща\n72 луч небо заря солнце блистать\n52 уста око грудь кудри нега", 
+            "57 бог святой молитва боже вера\n64 злой враг кровь смерть страшный"
             )
   ) %>% 
   mutate(community = as.factor(community))
@@ -306,7 +302,7 @@ t_community %>%
                      label = label,
                      description = descr,
                      filter = community == 1),
-                   label.buffer = unit(7, 'mm'),
+                   label.buffer = unit(10, 'mm'),
                    label.minwidth = 100,
                    label.fontsize = c(18,12),
                    con.cap = 1
@@ -317,10 +313,10 @@ t_community %>%
                      label = label,
                      description = descr,
                      filter = community == 2),
-                   label.buffer = unit(7, 'mm'),
+                   label.buffer = unit(20, 'mm'),
                    label.minwidth = 100,
                    label.fontsize = c(18,12),
-                   con.cap = 1
+                   con.cap = 2
                   ) + 
   
   geom_mark_hull(aes(x,y, fill = community,
@@ -328,7 +324,7 @@ t_community %>%
                      label = label,
                      description = descr,
                      filter = community == 3),
-                   label.buffer = unit(7, 'mm'),
+                   label.buffer = unit(-1, 'mm'),
                    label.minwidth = 100,
                    label.fontsize = c(18,12),
                    con.cap = 1
@@ -339,29 +335,7 @@ t_community %>%
                      label = label,
                      description = descr,
                      filter = community == 4),
-                   label.buffer = unit(7, 'mm'),
-                   label.minwidth = 100,
-                   label.fontsize = c(18,12),
-                   con.cap = 1
-                  ) +
-
-  geom_mark_hull(aes(x,y, fill = community,
-                     color = community,
-                     label = label,
-                     description = descr,
-                     filter = community == 5),
-                   label.buffer = unit(7, 'mm'),
-                   label.minwidth = 100,
-                   label.fontsize = c(18,12),
-                   con.cap = 1
-                  ) +
-
-  geom_mark_hull(aes(x,y, fill = community,
-                     color = community,
-                     label = label,
-                     description = descr,
-                     filter = community == 6),
-                   label.buffer = unit(7, 'mm'),
+                   label.buffer = unit(20, 'mm'),
                    label.minwidth = 100,
                    label.fontsize = c(18,12),
                    con.cap = 1
@@ -380,10 +354,11 @@ t_community %>%
     theme(legend.position = "None",
          plot.title = element_text(size = 20, face = "bold"),
          plot.subtitle = element_text(size = 16)) 
+```
 
-
-# ggsave("plots/i4_rnc.png", plot = last_plot(), 
-#       bg = "white", width = 12, height = 8, dpi = 300)
+```{r, eval=FALSE}
+ggsave("plots/i4_rnc.png", plot = last_plot(),
+      bg = "white", width = 9, height = 7, dpi = 300)
 ```
 
 #### marginals
@@ -395,15 +370,15 @@ edgelist_m %>%
   filter(meter == "iamb_4") %>% 
   filter(Freq == 100) %>% 
   select(N_connections) %>% pull %>% 
-  quantile(probs = c(0.1, 0.25, 0.5, 0.75, 0.9, 0.95, 0.97, 1))
+  quantile(probs = c(0.1, 0.25, 0.5, 0.75, 0.8, 0.9, 0.95, 0.97, 1))
 
-m_edgelist_i4 <- custom_edgelist(edgelist_m, 
+m_edgelist_i4 <- custom_edgelist(edgelist_m %>% filter(Freq == 100), 
                                meter_v = "iamb_4", 
                             # choices for the Fig. 2:
-                               slices = c(1835:1845), 
-                               min_connections = 15) # 95 perc.
-head(m_edgelist_i4)
-nrow(m_edgelist_i4)
+                               slices = c(1830:1845), 
+                               min_connections = 16) # 95 perc.
+#head(m_edgelist_i4)
+nrow(m_edgelist_i4) # 25
 m_nodelist_i4 <- custom_nodelist(m_edgelist_i4$source, m_edgelist_i4$target)
 head(m_nodelist_i4)
 nrow(m_nodelist_i4)
@@ -449,9 +424,12 @@ m_community %>%
 
 ```{r}
  labels <- tibble(
-  community = c(1,2,3, 4),
-  label = c("sky & love", "poetry", "passion", ""), 
-  descr = c("", "", "", "")
+  community = c(1, 2, 3, 4),
+  label = c('"Поэзия и возвышенное"', '"Любовь"', '"Ночной пейзаж"', '"Ода"'), 
+  descr = c("22 душа мечта поэт вдохновение восторг\n18 небо мир земля земной небесный\n4 душа чувство мысль сердце понимать\n9 звук струна внимать глас лира", 
+            "56 мечта душа сон воспоминание пора\n63 любовь сердце надежда душа верить\n5 любовь огонь грудь сердце кровь\n25 душа страсть страдание мука тоска", 
+            "10 гора скала лес стоять дикий\n24 ночь луна ночной темный тень\n32 волна море берег вода брег", 
+            "59 царь народ слава великий россия\n60 слава народ век великий имя\n70 враг бой меч герой брань")
   ) %>% 
   mutate(community = as.factor(community))
 
@@ -481,7 +459,7 @@ m_community %>%
                      label = label,
                      description = descr,
                      filter = community == 2),
-                   label.buffer = unit(1, 'mm'),
+                   label.buffer = unit(15, 'mm'),
                    label.minwidth = 100,
                    label.fontsize = c(18,12),
                    con.cap = 1
@@ -492,7 +470,7 @@ m_community %>%
                      label = label,
                      description = descr,
                      filter = community == 3),
-                   label.buffer = unit(7, 'mm'),
+                   label.buffer = unit(-2, 'mm'),
                    label.minwidth = 100,
                    label.fontsize = c(18,12),
                    con.cap = 1
@@ -503,8 +481,8 @@ m_community %>%
                      label = label,
                      description = descr,
                      filter = community == 4),
-                   label.buffer = unit(7, 'mm'),
-                   label.minwidth = 100,
+                   label.buffer = unit(1, 'mm'),
+                   label.minwidth = 80,
                    label.fontsize = c(18,12),
                    con.cap = 1
                   ) + 
@@ -522,36 +500,39 @@ m_community %>%
     theme(legend.position = "None",
          plot.title = element_text(size = 20, face = "bold"),
          plot.subtitle = element_text(size = 16)) 
-
-ggsave("plots/i4_m.png", plot = last_plot(), 
-      bg = "white", width = 12, height = 8, dpi = 300)
 ```
 
-### iamb-6
+```{r, eval=FALSE}
+ggsave("plots/i4_m.png", plot = last_plot(),
+      bg = "white", width = 9, height = 7, dpi = 300)
+```
+
+### iamb-6 : freq\>90, q=80
 
 #### rnc
 
 ```{r}
-edgelist %>% filter(meter == "iamb_6") %>% 
-  filter(slice > 1799 & slice < 1830) %>% 
-  select(N_connections) %>% 
-  pull %>% 
-  quantile(probs = c(0.1, 0.25, 0.5, 0.75, 0.9, 0.95, 0.97, 1))
+edgelist_rnc %>% 
+  filter(meter == "iamb_6") %>% 
+  summary()
 
+edgelist_rnc %>% 
+  filter(meter == "iamb_6") %>% 
+  filter(slice %in% c(1800:1829)) %>% 
+  filter(Freq > 90) %>% 
+  select(N_connections) %>% pull %>% 
+  quantile(probs = c(0.1, 0.25, 0.5, 0.75, 0.8, 0.9, 0.95, 0.97, 1))
 
-edgelist %>% filter(meter == "iamb_6") %>% 
-  filter(slice > 1799 & slice < 1830) %>% 
-  select(Freq) %>% 
-  pull %>% summary()
-  #quantile(probs = c(0.1, 0.25, 0.5, 0.75, 0.9, 0.95, 0.97, 1))
-
-edgelist_i6 <- custom_edgelist(edgelist, 
+edgelist_i6 <- custom_edgelist(edgelist_rnc %>% filter(Freq > 90), 
                                meter_v = "iamb_6", 
                             # choices for the Fig. 2:
                                slices = c(1800:1829), 
-                               min_freq = 81)
+                               #min_freq = 99
+                                min_connections = 3 # from 80 percentile 
+                            ) 
+nrow(edgelist_i6) # 84 edges
 head(edgelist_i6)
-nrow(edgelist_i6)
+
 nodelist_i6 <- custom_nodelist(edgelist_i6$source, edgelist_i6$target)
 head(nodelist_i6)
 ```
@@ -568,13 +549,11 @@ t_community <- net_t %>%
     mutate(community = as.factor(group_louvain())) 
 
 
-t_community %>% 
-  activate(nodes) %>% 
-  select(community) %>% distinct() %>% pull
+#save(net_t, t_community, file = "i6_rnc_net.Rda")
 
 t_community %>% 
   activate(nodes) %>% 
-  filter(community == 1)
+  select(community) %>% distinct() %>% pull
 
 
 t_community %>% 
@@ -592,70 +571,109 @@ t_community %>%
 t_community %>% 
   activate(nodes) %>% 
   filter(community == 4)
+
+t_community %>% 
+  activate(nodes) %>% 
+  filter(community == 5)
+
+t_community %>% 
+  activate(nodes) %>% 
+  filter(community == 6)
 ```
 
 ```{r}
+#nodelist_i6[nodelist_i6$idn %in% c(15, 22, 43),]
+
 labels <- tibble(
-  community = c(1,2,3,4),
-  label = c("Басня", "Поэзия", "Битва", "Судьба"),
-  descr = c("15_лев волк зверь говорить становиться\n40_слава век великий герой славный\n42_богатый жить богатство служить большой",
-"26_муза певец поэт дар слава\n53_стих писать читать перо поэт\n67_ум дело труд должный наука",
-"39_враг меч бой брань битва\n46_враг страшный смерть кровь злодей",
-"59_счастие радость жизнь счастливый сердце\n63_судьба умирать рок ах оставлять")
+  community = c(1, 2, 3, 4, 5, 6),
+  label = c('"Возвышенное"', '"Дидактическое"', '"Элегия"', '"Басня"', '"Природа"', '"Ночь"'),
+  descr = c("23_правда закон зло суд истина\n60_слава народ век великий имя\n61_храм рука глава венец священный",
+            "30_муза певец слава лира хвала\n50_толпа ум свет пускай гордый\n22_душа мечта поэт вдохновение восторг", 
+            "1_слеза плакать лить скорбь тоска\n37_могила гроб земля прах лежать\n75_милый сердце любовь нежный ах",
+            "65_стих писать поэт читать перо\n34_лев становиться зверь волк говорить\n40_богатый нужда хлеб отдавать деньги",
+            "26_лес тень лист луг роща\n44_вода река струя бежать ручей\n72_луч небо заря солнце блистать", 
+            "13_небо звезда солнце луч свет\n14_сон спать покой ночь вставать\n24_ночь луна ночной темный тень")
 ) %>% 
   mutate(community = as.factor(community))
 ```
 
 ```{r}
+# load("i6_rnc_net.Rda")
+
 t_community %>% 
   activate(nodes) %>% 
     left_join(labels, by = "community") %>% 
   ggraph('kk') + 
-  
+  # vozvyshennoe
   geom_mark_hull(aes(x,y, fill = community,
                      color = community,
                      label = label,
                      description = descr,
                      filter = community == 1),
-                   label.buffer = unit(7, 'mm'),
-                   label.minwidth = 100,
+                   label.buffer = unit(-10, 'mm'),
+                   label.minwidth = 70,
                    label.fontsize = c(18,12),
                    con.cap = 1
-                  ) + 
-  
+                  ) +
+  # didactic
   geom_mark_hull(aes(x,y, fill = community,
                      color = community,
                      label = label,
                      description = descr,
                      filter = community == 2),
-                   label.buffer = unit(7, 'mm'),
+                   label.buffer = unit(40, 'mm'),
                    label.minwidth = 100,
                    label.fontsize = c(18,12),
                    con.cap = 1
-                  ) + 
+                  ) +
   
+  # 5 nature
+  geom_mark_hull(aes(x,y, fill = community,
+                     color = community,
+                     label = label,
+                     description = descr,
+                     filter = community == 5),
+                   label.buffer = unit(2, 'mm'),
+                   label.minwidth = 50,
+                   label.fontsize = c(18,12),
+                   con.cap = 1
+                  ) +
+  
+  # elegy
   geom_mark_hull(aes(x,y, fill = community,
                      color = community,
                      label = label,
                      description = descr,
                      filter = community == 3),
-                   label.buffer = unit(7, 'mm'),
+                   label.buffer = unit(50, 'mm'),
                    label.minwidth = 100,
                    label.fontsize = c(18,12),
                    con.cap = 1
-                  ) + 
+                  ) +
+  # basnja
+  geom_mark_hull(aes(x,y, fill = community,
+                     color = community,
+                     label = label,
+                     #description = descr,
+                     filter = community == 4),
+                   label.buffer = unit(0, 'mm'),
+                   label.minwidth = 100,
+                   label.fontsize = c(14,10),
+                   con.cap = 1
+                  ) +
   
+  # night
   geom_mark_hull(aes(x,y, fill = community,
                      color = community,
                      label = label,
                      description = descr,
-                     filter = community == 4),
-                   label.buffer = unit(7, 'mm'),
+                     filter = community == 6),
+                   label.buffer = unit(-1, 'mm'),
                    label.minwidth = 100,
                    label.fontsize = c(18,12),
                    con.cap = 1
-                  ) + 
-  
+                  ) +
+  # 
   geom_edge_link(aes(width = sum_links), 
                    alpha = 0.5) + 
   geom_node_point(aes(colour = community
@@ -670,32 +688,39 @@ t_community %>%
          plot.title = element_text(size = 20, face = "bold"),
          plot.subtitle = element_text(size = 16)) 
 
-ggsave("plots/i6_rnc.png", plot = last_plot(), 
-      bg = "white", width = 12, height = 8, dpi = 300)
+
+ggsave("plots/i6_rnc.png", plot = last_plot(),
+      bg = "white", width = 10, height = 8, dpi = 300)
 ```
 
 #### marginals
 
 ```{r}
-m_edgelist %>% filter(meter == "iamb_6") %>% select(N_connections) %>% pull %>% 
-  quantile(probs = c(0.1, 0.25, 0.5, 0.75, 0.9, 0.95, 0.97, 1))
+edgelist_m %>% filter(meter == "iamb_6") %>% summary()
 
-m_edgelist_i4 <- custom_edgelist(m_edgelist, 
+edgelist_m %>% 
+  filter(meter == "iamb_6") %>% 
+  filter(Freq > 90) %>% 
+  select(N_connections) %>% pull %>% 
+  quantile(probs = c(0.1, 0.25, 0.5, 0.75, 0.8, 0.9, 0.95, 0.97, 1))
+
+m_edgelist_i6 <- custom_edgelist(edgelist_m %>% filter(Freq > 90), 
                                meter_v = "iamb_6", 
                             # choices for the Fig. 2:
-                               slices = c(1835:1845), 
-                               min_connections = 6)
-head(m_edgelist_i4)
-nrow(m_edgelist_i4)
-m_nodelist_i4 <- custom_nodelist(m_edgelist_i4$source, m_edgelist_i4$target)
-head(m_nodelist_i4)
-nrow(m_nodelist_i4)
+                               slices = c(1830:1845), 
+                               min_connections = 5) # 90 perc.
+nrow(m_edgelist_i6) # 19
+m_nodelist_i6 <- custom_nodelist(m_edgelist_i6$source, m_edgelist_i6$target)
+head(m_nodelist_i6)
+head(m_edgelist_i6)
+
+nrow(m_nodelist_i6)
 ```
 
 ```{r}
 # create tidy graph
-net_m <- tbl_graph(nodes = m_nodelist_i4,
-                  edges = m_edgelist_i4,
+net_m <- tbl_graph(nodes = m_nodelist_i6,
+                  edges = m_edgelist_i6,
                   directed = FALSE)
 
 # detect communities with louvain method
@@ -728,80 +753,143 @@ m_community %>%
   activate(nodes) %>% 
   filter(community == 5)
 
+m_community %>% 
+  activate(nodes) %>% 
+  filter(community == 6)
+
+m_community %>% 
+  activate(nodes) %>% 
+  filter(community == 7)
+
+m_community %>% 
+  activate(nodes) %>% 
+  filter(community == 8)
 
 ```
 
 ```{r}
 labels <- tibble(
-  community = c(1,2,3,4,5),
-  label = c("Сентиметальная поэзия", "Гражданская", "Природа", "Ночь", "Возвышенное"),
-  descr = c("14_красота природа краса вид прелесть\n63_судьба умирать рок ах оставлять\n68_слеза сердце плакать лить слезать\n73_цветок роза цвести весна цвет",
-"30_царь народ русский царство слава\n39_враг меч бой брань битва\n40_слава век великий герой славный",
-"10_волна море берег вода брег\n44_гора лес скала долина вершина стоять\n71_туча гром буря ветер небо",
-"47_ночь луна ночной тень темный\n55_небо звезда солнце луч светлый",
-"50_небо мир земля земной небесный\n57_мир дух творец бог свет")
+  community = c(1,2,3,4,5,6,7,8),
+  label = c('"Возвышенное"',
+            '"Романтический пейзаж"',
+            '"Элегия"',
+            '"Природа"',
+            '"Любовь"',
+            '"Религия"',
+            '"Свет"',
+            '"Меланхолия"'),
+  descr = c("60_слава народ век великий имя\n6_мир вечный природа творец земля\n13_небо звезда солнце луч свет",
+            "10_гора скала лес стоять дикий\n32_волна море берег вода брег\n19_ветер туча буря небо гроза\n24_ночь луна ночной темный тень",
+            "1_слеза плакать лить скорбь тоска\n25_душа страсть страдание мука тоска",
+            "26_лес тень лист луг роща\n36_цветок роза весна цвет цвести",
+            "28_красота видеть природа вид прелесть\n75_милый сердце любовь нежный ах",
+            "41_гром страшный средь страх пасть\n57_бог святой молитва боже вера",
+            "42_взор око немой улыбка чей\n50_толпа ум свет пускай гордый",
+            "46_сердце тоска душа грудь печаль\n56_мечта душа сон воспоминание пора")
 ) %>% 
   mutate(community = as.factor(community))
+
+# save(net_m, labels, file = "i6_net.Rda")
 ```
 
 ```{r}
+
+# load("i6_net.Rda")
+
 m_community %>% 
   activate(nodes) %>% 
     left_join(labels, by = "community") %>% 
   ggraph('kk') + 
   
+  # green
   geom_mark_hull(aes(x,y, fill = community,
                      color = community,
                      label = label,
                      description = descr,
                      filter = community == 1),
-                   label.buffer = unit(7, 'mm'),
-                   label.minwidth = 100,
+                   label.buffer = unit(0, 'mm'),
+                   label.minwidth = 65,
                    label.fontsize = c(18,12),
                    con.cap = 1
                   ) + 
   
+  # elegy
   geom_mark_hull(aes(x,y, fill = community,
                      color = community,
                      label = label,
-                     description = descr,
-                     filter = community == 2),
-                   label.buffer = unit(7, 'mm'),
-                   label.minwidth = 100,
-                   label.fontsize = c(18,12),
-                   con.cap = 1
-                  ) + 
-  
-  geom_mark_hull(aes(x,y, fill = community,
-                     color = community,
-                     label = label,
-                     description = descr,
+                     #description = descr,
                      filter = community == 3),
-                   label.buffer = unit(40, 'mm'),
-                   label.minwidth = 100,
-                   label.fontsize = c(18,12),
+                   label.buffer = unit(-30, 'mm'),
+                   label.minwidth = 5,
+                   label.fontsize = c(14,12),
                    con.cap = 0
                   ) + 
-  
+  # nature
   geom_mark_hull(aes(x,y, fill = community,
                      color = community,
                      label = label,
-                     description = descr,
+                     #description = descr,
                      filter = community == 4),
-                   label.buffer = unit(7, 'mm'),
+                   label.buffer = unit(-40, 'mm'),
                    label.minwidth = 100,
-                   label.fontsize = c(18,12),
+                   label.fontsize = c(14,12),
                    con.cap = 1
                   ) + 
-  
+  # love
   geom_mark_hull(aes(x,y, fill = community,
                      color = community,
                      label = label,
                      description = descr,
                      filter = community == 5),
-                   label.buffer = unit(7, 'mm'),
+                   label.buffer = unit(1, 'mm'),
+                   label.minwidth = 50,
+                   label.fontsize = c(14,12),
+                   con.cap = 1
+                  ) + 
+  
+  # romantic landscape
+  geom_mark_hull(aes(x,y, fill = community,
+                     color = community,
+                     label = label,
+                     description = descr,
+                     filter = community == 2),
+                   label.buffer = unit(1, 'mm'),
                    label.minwidth = 100,
                    label.fontsize = c(18,12),
+                   con.cap = 1
+                  ) + 
+  
+  # religion
+  geom_mark_hull(aes(x,y, fill = community,
+                     color = community,
+                     label = label,
+                     description = descr,
+                     filter = community == 6),
+                   label.buffer = unit(-10, 'mm'),
+                   label.minwidth = 100,
+                   label.fontsize = c(14,12),
+                   con.cap = 1
+                  ) + 
+  # monde
+  geom_mark_hull(aes(x,y, fill = community,
+                     color = community,
+                     label = label,
+                     description = descr,
+                     filter = community == 7),
+                   label.buffer = unit(2, 'mm'),
+                   label.minwidth = 50,
+                   label.fontsize = c(14,12),
+                   con.cap = 1
+                  ) + 
+  # melancholy
+  geom_mark_hull(aes(x,y, fill = community,
+                     color = community,
+                     label = label,
+                     #description = descr,
+                     filter = community == 8),
+                   label.buffer = unit(-20, 'mm'),
+                   label.minwidth = 100,
+                   label.fontsize = c(14,12),
                    con.cap = 1
                   ) + 
   
@@ -819,8 +907,8 @@ m_community %>%
          plot.title = element_text(size = 20, face = "bold"),
          plot.subtitle = element_text(size = 16)) 
 
-ggsave("plots/i6_m.png", plot = last_plot(), 
-      bg = "white", width = 12, height = 8, dpi = 300)
+# ggsave("plots/i6_m.png", plot = last_plot(), 
+#        bg = "white", width = 9, height = 7, dpi = 300)
 ```
 
 ### trochee 4
@@ -828,29 +916,35 @@ ggsave("plots/i6_m.png", plot = last_plot(),
 #### rnc
 
 ```{r}
-edgelist %>% filter(meter == "trochee_4") %>% 
-  filter(slice > 1800 & slice < 1845) %>% 
-  select(N_connections) %>% 
-  pull %>% 
-  quantile(probs = c(0.1, 0.25, 0.5, 0.75, 0.9, 0.95, 0.97, 1))
+edgelist_rnc %>% 
+  filter(meter == "trochee_4") %>% 
+  summary()
 
-edgelist_i6 <- custom_edgelist(edgelist, 
+edgelist_rnc %>% 
+  filter(meter == "trochee_4") %>% 
+  filter(slice %in% c(1800:1829)) %>% 
+  filter(Freq > 90) %>% 
+  select(N_connections) %>% pull %>% 
+  quantile(probs = c(0.1, 0.25, 0.5, 0.75, 0.8, 0.9, 0.95, 0.97, 1))
+
+
+edgelist_t4 <- custom_edgelist(edgelist_rnc %>% filter(Freq > 90), 
                                meter_v = "trochee_4", 
                             # choices for the Fig. 2:
-                               slices = c(1780:1841), 
-                               min_connections = 5)
-head(edgelist_i6)
-nrow(edgelist_i6)
-
-nodelist_i6 <- custom_nodelist(edgelist_i6$source, edgelist_i6$target)
-head(nodelist_i6)
-nrow(nodelist_i6)
+                               slices = c(1800:1829), 
+                               #min_freq = 99
+                                min_connections = 3 # from 90 percentile 
+                            ) 
+head(edgelist_t4)
+nrow(edgelist_t4) # 14
+nodelist_t4 <- custom_nodelist(edgelist_t4$source, edgelist_t4$target)
+head(nodelist_t4)
 ```
 
 ```{r}
 # create tidy graph
-net_t <- tbl_graph(nodes = nodelist_i6,
-                  edges = edgelist_i6,
+net_t <- tbl_graph(nodes = nodelist_t4,
+                  edges = edgelist_t4,
                   directed = FALSE)
 
 # detect communities with louvain method
@@ -860,7 +954,6 @@ t_community <- net_t %>%
 
 t_community %>% 
   activate(nodes) %>% 
-  #filter(community == 1)
   select(community) %>% distinct() %>% pull
 
 t_community %>% 
@@ -874,20 +967,15 @@ t_community %>%
 t_community %>% 
   activate(nodes) %>% 
   filter(community == 3)
-
-t_community %>% 
-  activate(nodes) %>% 
-  filter(community == 4)
 ```
 
 ```{r}
 labels <- tibble(
-  community = c(1,2,3,4),
-  label = c("Басня(?)", "Стихия", "Патриотические темы", "Песня"),
-  descr = c("15_лев волк зверь говорить становиться\n17_де два точно хорошо очень\n28_видеть глаз новый увидеть взглядывать\n33_день забывать помнить память былой\n40_слава век великий герой славный",
-"10_волна море берег вода брег\n3_луч свет солнце блеск мрак\n55_небо звезда солнце луч светлый\n71_туча гром буря ветер небо",
-"30_царь народ русский царство слава\n52_знать другой иной бывать говорить\n39_враг меч бой брань битва",
-"14_красота природа краса вид прелесть\n70_петь песня звук струна песнь"
+  community = c(1,2,3),
+  label = c('"Идиллическая\nприрода"', '"Любовь"', '"Женский портрет"'),
+  descr = c("32_волна море берег вода брег\n72_луч небо заря солнце блистать\n44_вода река струя бежать ручей", 
+            "1_слеза плакать лить скорбь тоска\n75_милый сердце любовь нежный ах\n36_цветок роза весна цвет цвести",
+            "38_дева любовь прекрасный юный юноша\n52_уста око грудь кудри нега"
   )
   ) %>% 
   mutate(community = as.factor(community))
@@ -899,24 +987,15 @@ t_community %>%
     left_join(labels, by = "community") %>% 
   ggraph('kk') + 
   
-  geom_mark_hull(aes(x,y, fill = community,
-                     color = community,
-                     label = label,
-                     description = descr,
-                     filter = community == 1),
-                   label.buffer = unit(0, 'mm'),
-                   label.minwidth = 100,
-                   label.fontsize = c(18,12),
-                   con.cap = 1
-                  ) + 
+  
   
   geom_mark_hull(aes(x,y, fill = community,
                      color = community,
                      label = label,
                      description = descr,
                      filter = community == 2),
-                   label.buffer = unit(40, 'mm'),
-                   label.minwidth = 100,
+                   label.buffer = unit(10, 'mm'),
+                   label.minwidth = 60,
                    label.fontsize = c(18,12),
                    con.cap = 1
                   ) + 
@@ -926,9 +1005,9 @@ t_community %>%
                      label = label,
                      description = descr,
                      filter = community == 3),
-                   label.buffer = unit(10, 'mm'),
-                   label.minwidth = 100,
-                   label.fontsize = c(18,12),
+                   label.buffer = unit(0, 'mm'),
+                   label.minwidth = 70,
+                   label.fontsize = c(16,12),
                    con.cap = 1
                   ) + 
   
@@ -936,11 +1015,11 @@ t_community %>%
                      color = community,
                      label = label,
                      description = descr,
-                     filter = community == 4),
-                   label.buffer = unit(-5, 'mm'),
-                   label.minwidth = 100,
-                   label.fontsize = c(18,12),
-                   con.cap = 0
+                     filter = community == 1),
+                   label.buffer = unit(5, 'mm'),
+                   label.minwidth = 55,
+                   label.fontsize = c(16,12),
+                   con.cap = 1
                   ) + 
   
   geom_edge_link(aes(width = sum_links), 
@@ -958,31 +1037,36 @@ t_community %>%
          plot.subtitle = element_text(size = 16)) 
 
 ggsave("plots/tr4_rnc.png", plot = last_plot(), 
-      bg = "white", width = 12, height = 8, dpi = 300)
+       bg = "white", width = 9, height = 7, dpi = 300)
 ```
 
 #### marginals
 
 ```{r}
-m_edgelist %>% filter(meter == "trochee_4") %>% select(N_connections) %>% pull %>% 
-  quantile(probs = c(0.1, 0.25, 0.5, 0.75, 0.9, 0.95, 0.97, 1))
+edgelist_m %>% filter(meter == "trochee_4") %>% summary()
 
-m_edgelist_i4 <- custom_edgelist(m_edgelist, 
+edgelist_m %>% 
+  filter(meter == "trochee_4") %>% 
+  filter(Freq > 90) %>% 
+  select(N_connections) %>% pull %>% 
+  quantile(probs = c(0.1, 0.25, 0.5, 0.75, 0.8, 0.9, 0.95, 0.97, 1))
+
+m_edgelist_t4 <- custom_edgelist(edgelist_m %>% filter(Freq > 90), 
                                meter_v = "trochee_4", 
                             # choices for the Fig. 2:
-                               slices = c(1835:1845), 
-                               min_connections = 8)
-head(m_edgelist_i4)
-nrow(m_edgelist_i4)
-m_nodelist_i4 <- custom_nodelist(m_edgelist_i4$source, m_edgelist_i4$target)
-head(m_nodelist_i4)
-nrow(m_nodelist_i4)
+                               slices = c(1830:1845), 
+                               min_connections = 7) # 90 perc.
+#head(m_edgelist_i4)
+nrow(m_edgelist_t4) # 37
+m_nodelist_t4 <- custom_nodelist(m_edgelist_t4$source, m_edgelist_t4$target)
+head(m_nodelist_t4)
+nrow(m_nodelist_t4)
 ```
 
 ```{r}
 # create tidy graph
-net_m <- tbl_graph(nodes = m_nodelist_i4,
-                  edges = m_edgelist_i4,
+net_m <- tbl_graph(nodes = m_nodelist_t4,
+                  edges = m_edgelist_t4,
                   directed = FALSE)
 
 # detect communities with louvain method
@@ -992,7 +1076,6 @@ m_community <- net_m %>%
 
 m_community %>% 
   activate(nodes) %>% 
-  #filter(community == 1)
   select(community) %>% distinct() %>% pull
 
 m_community %>% 
@@ -1013,18 +1096,26 @@ m_community %>%
 ```
 
 ```{r}
+m_community %>% 
+  activate(nodes) %>% 
+  filter(community == 2 & idn == 72) 
+
 labels <- tibble(
   community = c(1,2,3,4),
-  label = c("Стихия", "Русская песня", "Женский портрет", "Ночь"),
-  descr = c("10_волна море берег вода брег\n19_лететь крыло орел летать стрела\n71_туча гром буря ветер небо",
-"30_царь народ русский царство слава\n32_конь девица красный молодец дорога\n34_степь пустыня земля дикий средь\n39_враг меч бой брань битва",
-"13_дева прекрасный любовь милый юный\n69_уста грудь око любовь нега\n74_черный кудри грудь блистать золотой",
-"37_сон спать ночь вставать покой\n47_ночь луна ночной тень темный\n55_небо звезда солнце луч светлый")
+  label = c('"Пейзаж"', '"Природа"', '"Русская песня"', '"Любовь"'),
+  descr = c("19_ветер туча буря небо гроза\n10_гора скала лес стоять дикий\n62_край страна родной чужой далекий", 
+            "32_волна море берег вода брег\n72_луч небо заря солнце блистать\n24_ночь луна ночной темный тень", 
+            "71_конь поле степь пыль скакать\n29_девица молодой красный старик белый", 
+            "52_уста око грудь кудри нега\n5_любовь огонь грудь сердце кровь")
 ) %>% 
   mutate(community = as.factor(community))
+
+# save(m_community, labels, file = "tr4_m_net.Rda")
 ```
 
 ```{r}
+# load("tr4_m_net.Rda)
+
 m_community %>% 
   activate(nodes) %>% 
     left_join(labels, by = "community") %>% 
@@ -1035,7 +1126,7 @@ m_community %>%
                      label = label,
                      description = descr,
                      filter = community == 1),
-                   label.buffer = unit(60, 'mm'),
+                   label.buffer = unit(28, 'mm'),
                    label.minwidth = 100,
                    label.fontsize = c(18,12),
                    con.cap = 1
@@ -1046,8 +1137,8 @@ m_community %>%
                      label = label,
                      description = descr,
                      filter = community == 2),
-                   label.buffer = unit(-10, 'mm'),
-                   label.minwidth = 100,
+                   label.buffer = unit(0, 'mm'),
+                   label.minwidth = 80,
                    label.fontsize = c(18,12),
                    con.cap = 1
                   ) + 
@@ -1058,21 +1149,21 @@ m_community %>%
                      description = descr,
                      filter = community == 3),
                    label.buffer = unit(2, 'mm'),
-                   label.minwidth = 90,
+                   label.minwidth = 100,
                    label.fontsize = c(18,12),
                    con.cap = 0
                   ) + 
   
-  geom_mark_hull(aes(x,y, fill = community,
-                     color = community,
-                     label = label,
-                     description = descr,
-                     filter = community == 4),
-                   label.buffer = unit(0, 'mm'),
-                   label.minwidth = 100,
-                   label.fontsize = c(18,12),
-                   con.cap = 1
-                  ) + 
+  # geom_mark_hull(aes(x,y, fill = community,
+  #                    color = community,
+  #                    label = label,
+  #                    description = descr,
+  #                    filter = community == 4),
+  #                  label.buffer = unit(10, 'mm'),
+  #                  label.minwidth = 100,
+  #                  label.fontsize = c(16,12),
+  #                  con.cap = 1
+  #                 ) + 
   
   geom_edge_link(aes(width = sum_links), 
                    alpha = 0.5) + 
@@ -1088,6 +1179,6 @@ m_community %>%
          plot.title = element_text(size = 20, face = "bold"),
          plot.subtitle = element_text(size = 16)) 
 
-ggsave("plots/tr4_m.png", plot = last_plot(), 
-      bg = "white", width = 12, height = 8, dpi = 300)
+ggsave("plots/tr4_m_pr.png", plot = last_plot(), 
+      bg = "white", width = 9, height = 7, dpi = 300)
 ```

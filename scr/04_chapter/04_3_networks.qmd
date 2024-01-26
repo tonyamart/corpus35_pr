@@ -768,7 +768,7 @@ gamma_small <- gamma %>%
   filter(!author %in% large_authors$author)
 ```
 
-Sampling
+### Sampling - loop
 
 ```{r, eval=FALSE}
 

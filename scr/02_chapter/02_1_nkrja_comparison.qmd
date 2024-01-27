@@ -1,0 +1,441 @@
+---
+title: Chapter 2.1
+format: md
+editor: visual
+---
+
+Notebook on comparison between canonic corpus and periodicals.
+
+```{r}
+library(tidyverse)
+library(tidytext)
+
+library(ggrepel)
+library(MetBrewer)
+library(wesanderson)
+
+theme_set(theme_minimal())
+
+# fix problems with cyrillics (for ipynb)
+#library(extrafont)
+#library(showtext)
+#font_add("Arial", "/Library/Fonts/Arial.ttf") 
+#showtext_auto()
+```
+
+Load RNC data
+
+```{r}
+load("../../data/nkrja_19th_lem.Rda")
+glimpse(c19)
+```
+
+Create 1830-1840 and 1835-1840 sets
+
+```{r}
+nkrja_1835 <- c19 %>% filter(year > 1834 & year < 1841)
+nkrja_1830 <- c19 %>% filter(year > 1829 & year < 1841)
+```
+
+### General NKRJA overview
+
+Create a function for displaying stats
+
+```{r}
+stats_nkrja <- function(corpus) {
+    print("Number of unique authors:")
+    print(length(unique(corpus$author)))
+
+    print("Number of poems:")
+    print(nrow(corpus))
+
+    print("Top authors:")
+    corpus %>% 
+        group_by(author) %>% 
+        count(sort = T) %>% 
+        mutate(perc = n / nrow(corpus) * 100) %>% 
+        head(20) %>% print
+    
+    print("Sources:")
+    
+    corpus %>% 
+        group_by(source) %>% 
+        count(sort = T) %>% 
+        mutate(perc = n/nrow(corpus)*100)
+    }
+```
+
+#### 1835-1840
+
+```{r}
+stats_nkrja(nkrja_1835)
+```
+
+#### 1830-1840
+
+```{r}
+stats_nkrja(nkrja_1830)
+```
+
+```{r}
+# 80-20 test
+print("30% of top authors gather how much of the corpus -- 1830-1840:")
+
+nkrja_1830 %>% 
+        group_by(author) %>% 
+        count(sort = T) %>% 
+        mutate(perc = n / nrow(nkrja_1830) * 100) %>% 
+        head(round(length(unique(nkrja_1830$author))*0.3)) %>% 
+        ungroup() %>% 
+        summarise(test = sum(perc)) %>% 
+        print()
+
+print("30% of top authors gather how much of the corpus -- 1835-1840:")
+nkrja_1835 %>% 
+        group_by(author) %>% 
+        count(sort = T) %>% 
+        mutate(perc = n / nrow(nkrja_1835) * 100) %>% 
+        head(round(length(unique(nkrja_1835$author))*0.3)) %>% 
+        ungroup() %>% 
+        summarise(test = sum(perc))
+```
+
+```{r}
+round(length(unique(nkrja_1830$author))*0.3)
+```
+
+```{r}
+nkrja_1830 %>% 
+        group_by(author) %>% 
+        count(sort = T) %>% 
+        mutate(perc = n / nrow(nkrja_1830) * 100) %>% 
+        head(5) %>% 
+        ungroup() %>% 
+        summarise(test = sum(perc)) %>% 
+        print()
+```
+
+#### "Poet's library" quick check
+
+```{r}
+authors_1830 <- nkrja_1830$author
+
+# select authors from 1830s and see their sources
+test <- c19 %>% 
+    filter(author %in% authors_1830) %>% 
+    group_by(source) %>% 
+    count(sort = T)
+
+test
+```
+
+```{r}
+# count withough author filter, but number of poem entries in each source
+c19 %>% 
+    filter(source %in% test$source) %>% 
+    count(source, sort = T)
+```
+
+```{r}
+c19 %>% 
+    filter(author == "К. К. Павлова") %>% 
+    nrow()
+```
+
+```{r}
+nkrja_1830 %>% 
+    count(source, sort = T)
+
+print("Number of Pushkin's poems:")
+nkrja_1830 %>% 
+    count(source, sort = T) %>% 
+    filter(str_detect(source, "Пушкин")) %>% 
+    summarise(sum(n)) %>% pull()
+
+nkrja_1830 %>% 
+    count(source, sort = T) %>% 
+    filter(!str_detect(source, "Поэты|Поэзия|Русская басня|Пушкин|Лермонтов|Жуковский")) %>% 
+
+    # I manually checked whether Koltsov and others who have incomplete source description
+    # are cited from BP and add them to the detection regex below
+    mutate(edition = ifelse(str_detect(source, 
+                                       "(Б|б)иблиотека поэта|Б-ка поэта|Кольцов|Тютчев|Языков"), 
+                            "BP", "else")) %>% 
+    group_by(edition) %>% 
+    summarise(total_poems = sum(n))
+```
+
+Subset 1835-1840
+
+```{r}
+nkrja_1835 %>% 
+    count(source, sort = T)
+
+print("Number of Pushkin's poems:")
+nkrja_1835 %>% 
+    count(source, sort = T) %>% 
+    filter(str_detect(source, "Пушкин")) %>% 
+    summarise(sum(n)) %>% pull
+
+nkrja_1835 %>% 
+    count(source, sort = T) %>% 
+    filter(!str_detect(source, "Поэты|Поэзия|Русская басня|Пушкин|Лермонтов|Жуковский")) %>% 
+
+    # I manually checked whether Koltsov and others who have incomplete source description
+    # are cited from BP and add them to the detection regex below
+    mutate(edition = ifelse(str_detect(source, 
+                                       "(Б|б)иблиотека поэта|Б-ка поэта|Кольцов|Тютчев|Языков"), 
+                            "BP", "else")) %>% 
+    group_by(edition) %>% 
+    summarise(total_poems = sum(n))
+```
+
+```{r}
+print("Percentages for 1830-40:")
+tibble(x = c(361, 49, 15, 197, 357, 116, 1128, 178, 8),
+                   total = rep(2409, 9)) %>% 
+    mutate(perc = round(x/total*100, 1))
+
+print("Percentages for 1835-40:")
+tibble(x = c(166, 29, 7, 61, 82, 47, 714, 100, 6),
+      total = rep(1212, 9)) %>% 
+    mutate(pers = round(x/total*100,1))
+```
+
+### Plot 2.1
+
+Retrieve rankings & n poems for authors from RNC
+
+```{r}
+r35 <- nkrja_1835 %>% 
+    count(author, sort = T) %>% 
+    mutate(rank = row_number(), group = "НКРЯ 1835-1840")
+
+r30 <- nkrja_1830 %>% 
+    count(author, sort = T) %>% 
+    mutate(rank = row_number(), group = "НКРЯ 1830-1840")
+
+rankings_nkrja <- rbind(r35, r30)
+
+head(rankings_nkrja)
+```
+
+## Periodicals data
+
+```{r}
+per <- readRDS("../../data/corpus1835/corpus_1835.Rds") %>% 
+  filter(corpus == "per") %>% 
+  rename(author = author_text)
+
+authors_meta <- read.delim("../../meta/authors.tsv", sep = "\t")
+
+# attach only gender by A_ID
+per <- per %>% 
+  left_join(authors_meta %>% select(A_ID, RP, gender), by = "A_ID")
+
+glimpse(per)
+
+rm(authors_meta)
+```
+
+```{r}
+print(paste0( "Number of recognised authors: ",  per %>% 
+    filter(A_ID != "") %>% 
+    select(author) %>% 
+    distinct() %>% nrow )
+    )
+
+print(paste0( "Total number of authors (including signatures): ",  per %>% 
+    #filter(A_ID != "") %>% 
+    select(author) %>% 
+    distinct() %>% nrow ))
+
+
+print(paste0( "Number of authors in RP: ",  per %>% 
+    filter(RP != "") %>% 
+    select(author) %>% 
+    distinct() %>% nrow ))
+```
+
+```{r}
+nkrja_authors <- c19 %>% 
+    select(author) %>% 
+    distinct() %>% 
+    mutate(author  = str_replace_all(author, 
+                                     "(\\w\\.)[[:space:]]?(\\w?\\.?)[[:space:]](\\w+)", 
+                                     "\\3 \\1\\2"))
+
+#per %>% 
+#    filter(A_ID != "") %>% select(author) %>% distinct() %>% nrow()
+
+paste0("Number of authors included in NKRJA & found in periodicals: ",  per %>% 
+    filter(A_ID != "") %>% 
+    select(author) %>% 
+    distinct() %>% 
+    inner_join(nkrja_authors, by = "author") %>% nrow() 
+       )
+```
+
+```{r}
+per_authors <- per %>% 
+    filter(author != "") %>% 
+    count(author, sort = T) %>% 
+    mutate(rank = row_number(), 
+           group = "Периодика"
+           ) 
+
+per_authors %>% 
+    mutate(perc = round( n/nrow(per)*100 ,2)) %>% head(20)
+```
+
+### Plot 2.1
+
+```{r}
+rankings_full <- rbind(per_authors, rankings_nkrja)
+```
+
+```{r}
+p1 <- rankings_full %>% 
+    ggplot(aes(x = rank, y = n, group = group, color = group)) + 
+    geom_line(linewidth = 1.2, alpha = 0.8) + 
+    scale_color_manual(values = c(met.brewer("Veronese")[1], 
+                                  met.brewer("Veronese")[3], 
+                                  met.brewer("Veronese")[4])) +
+    theme(axis.text = element_text(size = 14), 
+          axis.title = element_text(size = 16),
+          legend.text = element_text(size = 14), 
+          legend.title = element_text(size = 14, face = "bold")) 
+```
+
+```{r}
+# annotation with annotate()
+#p1 + labs(x = "Author rank", 
+#         y = "N texts", 
+#         color = "Corpus") + 
+#    # add custom points & lables
+#    geom_point(aes(x = 2, y = 194), size = 2) + 
+#    annotate("segment", x = 12, y = 214, xend = 4, yend = 197, 
+#              arrow = arrow(type = "closed", length = unit(0.02, "npc"))) + 
+#    annotate("text", x = 20, y = 216, label = "Pushkin", size = 14/.pt)
+
+
+# attach labels & axis titles in russian
+
+top3 <- rankings_nkrja %>% filter(group == "НКРЯ 1830-1840") %>% head(5)
+top3
+
+p_ru <- p1 + geom_label_repel(data = top3, aes(x = rank, y = n, label = author),
+                      size = 5,
+                      point.padding = 0.5, 
+                     nudge_x = 80, nudge_y = -10, 
+                     arrow = arrow(length = unit(0.015, 'npc'))) + 
+    geom_point(data = top3) + 
+    labs(x = "Ранг автора (по количеству текстов)", 
+         y = "Количество текстов", 
+         color = "Корпус")
+```
+
+```{r, eval=FALSE}
+ggsave(file = "plots/Fig_2-1-1.png", plot = p_ru, 
+      dpi = 300, height = 7, width = 10, bg = "white")
+```
+
+nb: probably paste the legend inside plot area? (upper right corner)
+
+```{r}
+p_ru
+```
+
+### Distribution of texts in periodicals
+
+```{r}
+n_unique_author_per <- per %>% 
+    filter(A_ID != "") %>% 
+    select(author) %>% 
+    distinct() %>% 
+    nrow()
+
+n_unique_author_per
+```
+
+```{r}
+print("Top 5 authors presents % of texts:")
+per %>% 
+        filter(A_ID != "") %>% 
+        group_by(author) %>% 
+        count(sort = T) %>% 
+        mutate(perc = n / nrow(per) * 100) %>% 
+        head(5) %>% 
+        ungroup() %>% 
+        summarise(test = sum(perc)) %>% 
+        print()
+
+print("Top 30% authors presents % of texts:")
+per %>% 
+        filter(A_ID != "") %>% 
+        group_by(author) %>% 
+        count(sort = T) %>% 
+        mutate(perc = n / nrow(per) * 100) %>% 
+        head(round(n_unique_author_per*0.3)) #%>% 
+        #ungroup() %>% 
+        #summarise(test = sum(perc)) %>% 
+        #print()
+```
+
+#### Same distribution check but with number of words by author
+
+```{r}
+# function to count number of tokens by each author in a corpus
+count_tokens <- function(corpus) {
+    tokens <- corpus %>% 
+        unnest_tokens(input = text_raw, output = word, token = "words") %>% 
+        filter(author != "NA") %>%
+        group_by(author) %>% 
+        count(sort = T) %>% 
+        ungroup() %>% 
+        mutate(rank = row_number())
+    }
+```
+
+```{r}
+t30 <- count_tokens(nkrja_1830) %>% mutate(group = "RNC 1830-1840")
+head(t30)
+
+t35 <- count_tokens(nkrja_1835) %>% mutate(group = "RNC 1835-1840")
+t_per <- count_tokens(per) %>% mutate(group = "Periodicals")
+
+rankings_tokens <- rbind(t30, t35, t_per)
+```
+
+```{r}
+top5 <- rankings_tokens %>% filter(group == "RNC 1830-1840") %>% head(5) 
+
+p2 <- rankings_tokens %>% 
+    ggplot(aes(x = rank, y = n, group = group, color = group)) + 
+    geom_line(size = 1, alpha = 0.7) + 
+    scale_color_manual(values = c(wes_palette("Zissou1")[1], 
+                                  wes_palette("Zissou1")[5], 
+                                  wes_palette("Zissou1")[4])) +
+    theme(axis.text = element_text(size = 14), 
+          axis.title = element_text(size = 16),
+          legend.text = element_text(size = 14), 
+          legend.title = element_text(size = 14)) 
+
+p2 + geom_label_repel(data = top5, aes(x = rank, y = n, label = author), 
+                      point.padding = 0.5, 
+                     nudge_x = 40, nudge_y = -10, 
+                     arrow = arrow(length = unit(0.015, 'npc'))) + 
+    geom_point(data = top5) + 
+    labs(x = "Author rank", 
+         y = "Number of tokens", 
+         color = "Corpus")
+```
+
+```{r}
+head(t_per)
+```
+
+```{r, eval=FALSE}
+ggsave(file = "plots/00_author_rankings_tokens.png", plot = last_plot(), 
+      dpi = 300, height = 7, width = 10, bg = "white")
+```

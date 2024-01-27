@@ -1,6 +1,7 @@
 ---
 title: 'Chapter 2.2. Poems in periodicals: statistics'
-jupyter: ir
+format: md
+editor: visual
 ---
 
 ```{r}
@@ -30,76 +31,61 @@ met.brewer(MetBrewer::colorblind_palettes[24])
 Load full metadata
 
 ```{r}
-per_full <- read.delim("../../meta/periodicals_texts.tsv", sep = "\t")
+# load periodicals data stored separately
+per_full <- readRDS("../../data/corpus1835/periodicals/periodicals_corpus_lemm_acc.Rds")
+
 glimpse(per_full)
+
 ```
 
-Attach texts and fill the column for text existence
+Attach authors data: check if all author's names are complete
 
 ```{r}
-# lf <- list.files(path = "../../data/periodicals/periodicals_united/",
-#                  full.names = T)
-# 
-# per_texts <- tibble(text_ID = str_remove_all(lf,
-#                                 "../../data/periodicals/periodicals_united//|\\.txt"),
-#        text_done = "1",
-#        text_raw = sapply(lf, read_file))
-# 
-# glimpse(per_texts)
-# 
-# per_texts <- per_texts %>% 
-#   mutate(text_lemm = str_remove_all(text_raw, "<.*?>"))
-# 
-# write.csv(per_texts, file = "per.csv")
-```
+# load latest ver of the corpus with authors' data cleaned
+corpus_cln <- readRDS("../../data/corpus1835/corpus_1835.Rds")
 
-```{r}
-per_texts <- read.csv("../../data/periodicals_texts.csv") %>% 
-                  select(-X) %>% 
-                  mutate(text_ID = str_remove(text_ID, "\\.tx"))
-glimpse(per_texts)
-```
+glimpse(corpus_cln)
 
-Attach authors data
+glimpse(per_full)
 
-```{r}
-authors <- read.delim("../../meta/authors.tsv", sep = "\t")
-glimpse(authors)
-```
-
-Combine all data together
-
-```{r}
 per <- per_full %>% 
-  select(-txt_raw, -text) %>% 
-  left_join(per_texts, by = "text_ID") %>% 
-  left_join(authors %>% rename(author_x = author), by = "A_ID") %>% 
-  # for poems with authors not in authors_meta add author == author_sign
-  mutate(author = ifelse((A_ID == "" & author == ""), author_sign, author))
+  select(-author_text, -A_ID) %>% 
+  left_join(corpus_cln %>% select(text_id, A_ID, author_text), by = "text_id") 
 
-glimpse(per)
 
-# save(per, file = "periodicals_full_data.Rda")
+# attach RP and gender columns from authors-meta
+# load authors-meta
+authors_meta <- read.delim("../../meta/authors.tsv", sep = "\t")
+
+# attach only gender by A_ID
+per <- per %>% 
+  left_join(authors_meta %>% select(A_ID, RP, gender), by = "A_ID")
+
+
+# cleaning using authors-meta 
+# 
+# # create a table that checks if author's names in authors_metadata and in per_full are different
+# authors_test <- per_full %>% 
+#   select(A_ID, author_text) %>% 
+#   rename(author_existing = author_text) %>% 
+#   left_join(authors %>% select(A_ID, author, author_full_name), by = "A_ID") %>% 
+#   distinct() %>% 
+#   filter(author_existing != author)
+# 
+# # replace author_text column in per_full with more complete data
+# # also add RP column
+# per <- per_full %>% 
+#   left_join(authors %>% select(A_ID, RP, author), by = "A_ID") %>% 
+#   mutate(author_text = ifelse(A_ID %in% authors_test$A_ID, author, author_text)) %>% 
+#   select(-author)
+
+# replace NA appeared after coercion to blank
+per[is.na(per)] <- ""
+
+rm(per_full, corpus_cln, authors_meta)
 ```
 
-## Data load
-
-```{r}
-load("periodicals_full_data.Rda")
-glimpse(per)
-
-print(c("Number of texts:", per %>% filter(text_raw != "") %>% nrow))
-```
-
-```{r}
-
-per %>% 
-  mutate(text_done = ifelse(!is.na(text_raw), "text done", "only meta")) %>% 
-  count(year, text_done) %>% 
-  ggplot(aes(x = year, y = n, fill = text_done)) + 
-  geom_col(position = "dodge") + 
-  scale_fill_manual(values = met.brewer("NewKingdom")[1:3])
-```
+## RNC comparison
 
 ```{r}
 # RNC data
@@ -123,27 +109,27 @@ Comparison on number of authors
 ```{r}
 print("Total number of authors in periodicals:")
 per %>% 
-    filter(A_ID != "" & author != "") %>% # 1455 poems are with known author
-    select(author) %>% 
-    count(author, sort = T) %>% nrow() 
+    filter(A_ID != "" & author_text != "") %>% # nrow() # 1464 poems are with known author
+    select(author_text) %>% 
+    count(author_text, sort = T) %>% nrow() 
 
 print("Number of authors with biography in RP:")
 per %>% 
-    filter(RP != "") %>% # 1198 poems by authors known by RP
+    filter(RP != "") %>% # nrow() # 1197 poems by authors known by RP
     select(RP) %>% 
     count(RP, sort = T) %>% nrow() 
 
 print("Number of authors included in RNC")
 per %>% 
-    filter(author != "") %>% 
-    select(author) %>% 
-    mutate(author = str_replace_all(author, 
+    filter(author_text != "") %>% 
+    select(author_text) %>% 
+    mutate(author = str_replace_all(author_text, 
                                     "(.*?[[:space:]])(\\w\\.\\w.)", 
                                     "\\2\\1")) %>% 
     mutate(author = str_remove_all(author, "[[:space:]]|[[:punct:]]")) %>% 
     distinct() %>% 
     filter(author %in% rnc_authors) %>% 
-    nrow()
+    nrow() # 58 ? 
 ```
 
 ### Textual intersections between RNC & periodicals
@@ -174,7 +160,8 @@ glimpse(nkrja19)
 ```{r}
 doubles_id <- periodicals %>% 
     inner_join(nkrja19, by = "doublesCheck") %>% 
-    select(index, text_ID, year, author.x, author.y, doublesCheck, text_raw)
+    select(index, text_id, year, A_ID, author_text, author, doublesCheck, text_raw) %>% 
+  filter(doublesCheck != "")
 
 doubles_id %>% select(-text_raw) %>% head
 ```
@@ -240,7 +227,8 @@ p2_2_1 <- counter_1835 %>%
     theme(axis.text = element_text(size = 14),
          axis.title = element_text(size = 16),
          legend.title = element_text(size = 16, face = "bold"),
-         legend.text = element_text(size = 14)) + 
+         legend.text = element_text(size = 14),
+         legend.position = "bottom") + 
     labs(x = "Год",
         y = "Количество текстов",
         fill = "Корпус")
@@ -248,9 +236,9 @@ p2_2_1 <- counter_1835 %>%
 p2_2_1
 ```
 
-```{r}
-# ggsave(file = "plots/fig2_2_1.png", plot = p2_2_1, dpi = 300,
-#       width = 8, height = 6, bg = "white")
+```{r, eval=FALSE}
+ggsave(file = "plots/Fig_2_2_1.png", plot = p2_2_1, dpi = 300,
+      width = 8, height = 6, bg = "white")
 ```
 
 ## 2.2.1. Sources statistics
@@ -268,7 +256,10 @@ per %>% group_by(year, PER_ID) %>% count() %>%
 
 ### Plots 2.2.2
 
+Count number total number of texts in each source
+
 ```{r}
+# remove incomplete sources
 periodicals <- per %>% 
   filter(!PER_ID %in% c("Молва", "МН", "Сев_пч"))
 
@@ -280,26 +271,30 @@ source_year_total <- periodicals %>%
   count(PER_ID, year)
 ```
 
+Count number of texts in each source by each author
+
 ```{r}
 authors_sources <- periodicals %>% 
     #filter(PER_ID != "Сев_пч") %>% 
     mutate(PER_ID = ifelse(str_detect(PER_ID,"СОиСА"), "СО", PER_ID)) %>% 
-    filter(author != "") %>% 
+    filter(author_text != "") %>% 
     
     # grouping by author, year and source
-    group_by(year, PER_ID, author) %>% 
+    group_by(year, PER_ID, author_text) %>% 
     count(sort = T) %>% 
     ungroup() %>%
     
     # non-frequent authors grouped as "others"
-    mutate(author = ifelse(n < 3, "Другие", author)) %>% 
-    group_by(year, PER_ID, author) %>% 
+    mutate(author_text = ifelse(n < 3, "Другие", author_text)) %>% 
+    group_by(year, PER_ID, author_text) %>% 
     # sum poems by others
     summarise(n = sum(n)) %>% 
-    mutate(author_label = paste0(author, " (", n, ")"))
+    mutate(author_label = paste0(author_text, " (", n, ")"))
 
 head(authors_sources)
 ```
+
+Select colours for charts
 
 ```{r}
 MetBrewer::colorblind_palettes
@@ -310,40 +305,40 @@ met.brewer("Egypt")
 
 met.brewer("Johnson")
 
-met.brewer("Kandinsky")
+met.brewer("Kandinsky")[3]
 
 met.brewer("Veronese")
 ```
 
-```{r}
+```{r, eval=FALSE}
 # treemap: https://cran.r-project.org/web/packages/treemap/treemap.pdf
 
-x <- NULL
-
-for (i in 1:length(unique(per_full$year))) {
-    
-    x <- unique(per_full$year)[i]
-    
-    filename = paste0("plots/treemaps/plot_", x, ".png")
-
-    png(filename, width = 600, height = 600)
-
-    t <- authors_sources %>% 
-        filter(year == x) %>% 
-        treemap(
-            index = c("PER_ID", "author_label"),
-            vSize = "n",
-            type = "index",
-            palette = light_palette,
-            fontsize.labels = c(20, 16),
-            #position.legend = "right",
-            overlap.labels = 1,
-            title = x,
-            fontsize.title = 22
-        )
-
-    dev.off()
-}
+# x <- NULL
+# 
+# for (i in 1:length(unique(per$year))) {
+#     
+#     x <- unique(per$year)[i]
+#     
+#     filename = paste0("plots/treemaps/plot_", x, ".png")
+# 
+#     png(filename, width = 600, height = 600)
+# 
+#     t <- authors_sources %>% 
+#         filter(year == x) %>% 
+#         treemap(
+#             index = c("PER_ID", "author_label"),
+#             vSize = "n",
+#             type = "index",
+#             palette = light_palette,
+#             fontsize.labels = c(20, 16),
+#             #position.legend = "right",
+#             overlap.labels = 1,
+#             title = x,
+#             fontsize.title = 22
+#         )
+# 
+#     dev.off()
+# }
 ```
 
 ```{r}
@@ -499,7 +494,7 @@ dev.off()
 ```
 
 ```{r}
-png("plots/treemaps/2-2-2_1840_v2.png", height = 650, width = 600)
+png("plots/treemaps/2-2-2_1840_v2.png", height = 700, width = 650)
 
 authors_sources %>% 
         filter(year == 1840) %>% 
@@ -507,6 +502,7 @@ authors_sources %>%
 
 tree_pal <- c(met.brewer("Veronese")[1], # BdCH
               met.brewer("Veronese")[3], # LG
+              met.brewer("Kandinsky")[3], # Mayak
               met.brewer("Archambault")[2], # OZ
               met.brewer("Egypt")[2], # PRiVET
               met.brewer("Veronese")[4], # SO
@@ -522,7 +518,7 @@ authors_sources %>%
             fontsize.labels = c(24, 16),
             #position.legend = "right",
             overlap.labels = 1,
-            title = "1840 (N = 378)",
+            title = "1840 (N = 461)",
             fontsize.title = 22
         )
 
@@ -533,14 +529,14 @@ dev.off()
 
 ```{r}
 per %>% 
-  filter(PER_ID == "БдЧ" & author != "") %>% 
+  filter(PER_ID == "БдЧ" & author_text != "") %>% 
   group_by(year) %>% 
-  count(author, sort = T) %>% 
+  count(author_text, sort = T) %>% 
   mutate(rank = row_number()) %>% 
   ungroup() %>% 
   #filter(rank < 21) %>% 
   pivot_wider(!n, names_from = year, values_from = rank) %>% 
-  select(author, `1835`, `1836`, `1837`, `1838`, `1839`, `1840`)
+  select(author_text, `1835`, `1836`, `1837`, `1838`, `1839`, `1840`)
   #filter(year == 1835)
 ```
 
@@ -642,9 +638,9 @@ for (i in 1:length(per_names)) {
   print(p)
   
   d <- per %>% 
-    filter(author != "") %>% 
+    filter(author_text != "") %>% 
     filter(per_cln == p) %>% 
-    count(year, author) %>% 
+    count(year, author_text) %>% 
     mutate(n = 1) %>% 
     pivot_wider(names_from = year, values_from = n, values_fill = 0) %>% 
     mutate(total = rowSums(select_if(., is.numeric))) %>% 
@@ -679,13 +675,13 @@ for (i in 1:length(unique(per$year))) {
     p <- per_names[j]
     
     x <- per %>% 
-      filter(per_cln == p & year %in% c(y) & author != "") %>% 
-      count(author, sort = T) %>% nrow
+      filter(per_cln == p & year %in% c(y) & author_text != "") %>% 
+      count(author_text, sort = T) %>% nrow()
 
     x1 <- per %>% 
-      filter(per_cln == p & year %in% c(y) & author != "") %>% 
-      count(author, sort = T) %>% 
-      filter(n == 1) %>% nrow
+      filter(per_cln == p & year %in% c(y) & author_text != "") %>% 
+      count(author_text, sort = T) %>% 
+      filter(n == 1) %>% nrow()
     
     print(c("source: ", p, "year:", y, 
             "total authors:", x, "onetimers:", x1, "perc:", round(x1/x*100,1)))
@@ -705,7 +701,7 @@ tibble(year = years,
   pivot_wider(names_from = year, values_from = perc)
 ```
 
-### Plot 2.2.3
+### unused plot (proportion of one-time printed authors)
 
 ```{r}
 tibble(year = years,
@@ -732,6 +728,8 @@ tibble(year = years,
 #         width = 8, height = 6, dpi = 300, bg = "white")
 ```
 
+Another plot (not used)
+
 ```{r}
 
 p <- NULL
@@ -754,12 +752,12 @@ for (i in 1:length(unique(per$year))) {
       p <- per_names[j]
   
       authors_y1 <- per %>% 
-        filter(per_cln == p & year == y & author != "") %>% 
-        count(author) %>% pull(author)
+        filter(per_cln == p & year == y & author_text != "") %>% 
+        count(author_text) %>% pull(author_text)
   
       authors_y2 <- per %>% 
-        filter(per_cln == p & year == y+1 & author != "") %>% 
-        count(author) %>% pull(author)
+        filter(per_cln == p & year == y+1 & author_text != "") %>% 
+        count(author_text) %>% pull(author_text)
       
       #intersect(authors_y1, authors_y2)
       
@@ -809,8 +807,8 @@ tibble(sources = sources,
         axis.text = element_text(size = 12),
         axis.title = element_text(size = 14))
 
-ggsave(filename = "plots/Fig_2-2-3-2.png", plot = last_plot(),
-       width = 8, height = 6, dpi = 300, bg = "white")
+# ggsave(filename = "plots/Fig_2-2-3-2.png", plot = last_plot(),
+#        width = 8, height = 6, dpi = 300, bg = "white")
 ```
 
 ### Jaccard for total top authors in each source
@@ -818,8 +816,8 @@ ggsave(filename = "plots/Fig_2-2-3-2.png", plot = last_plot(),
 ```{r}
 
 t <- per %>% 
-  filter(author != "") %>% 
-  group_by(author, per_cln) %>% 
+  filter(author_text != "") %>% 
+  group_by(author_text, per_cln) %>% 
   count(sort = T) %>% 
   pivot_wider(names_from = per_cln, values_from = n)
 
@@ -828,23 +826,21 @@ summary(t)
 
 ```{r}
 per %>% 
-  filter(author != "" & per_cln %in% per_names) %>% 
-  group_by(author, per_cln) %>% 
+  filter(!author_text %in% c("", "***", "N.N.") & per_cln %in% per_names) %>% 
+  group_by(author_text, per_cln) %>% 
   count() %>% 
   ungroup() %>% 
   filter(n > 3) %>% 
   count(per_cln)
 
 x <- per %>% 
-  filter(author != "" & per_cln %in% per_names) %>% 
-  group_by(author, per_cln) %>% 
+  filter(!author_text %in% c("", "***", "N.N.") & per_cln %in% per_names) %>% 
+  group_by(author_text, per_cln) %>% 
   count() %>% 
   ungroup() %>% 
   filter(n > 3)
 
 x
-
-
 ```
 
 ```{r}
@@ -869,13 +865,13 @@ for (i in 1:length(per_names)) {
     
     a1 <- x %>% 
       filter(per_cln == source1) %>% 
-      select(author) %>% 
+      select(author_text) %>% 
       distinct() %>% 
       pull()
      
     a2 <- x %>% 
       filter(per_cln == source2) %>% 
-      select(author) %>% 
+      select(author_text) %>% 
       distinct() %>% 
       pull()
     
@@ -1015,11 +1011,11 @@ per %>%
                     "шарада|омоним|анаграмма|акростих|логогриф|эпиграмма|загадка")) %>% 
   count(PER_ID, year)
 
-per %>% 
-  #filter(PER_ID %in% c("ЛПРИ", "ЛГ")) %>% 
-  filter(str_detect(subtitle, 
-                    "Шарада|Омоним|Анаграмма|Акростих|Логогриф|Эпиграмма|Загадка")) %>% 
-  count(PER_ID, year)
+# per %>% 
+#   #filter(PER_ID %in% c("ЛПРИ", "ЛГ")) %>% 
+#   filter(str_detect(subtitle, 
+#                     "Шарада|Омоним|Анаграмма|Акростих|Логогриф|Эпиграмма|Загадка")) %>% 
+#   count(PER_ID, year)
 ```
 
 ```{r}
@@ -1036,8 +1032,11 @@ per %>%
 
 ## 2.2.2 Female poetry in journals
 
+Attach author's gender from authors' metadata table
+
 ```{r}
 per %>% 
+  filter(gender != "") %>% 
   count(year, gender) %>% 
   #drop_na() %>% 
   ggplot(aes(x = year, y = n, fill = gender)) + 
@@ -1046,6 +1045,7 @@ per %>%
 
 ```{r}
 per %>% 
+  filter(gender != "") %>% 
   group_by(per_cln) %>% 
   count(year, gender) %>% 
   drop_na() %>% 
@@ -1059,6 +1059,6 @@ print(c("Total number of poems written by women poets in periodicals:",
 
 per %>% 
   filter(gender == "f") %>% 
-  count(author, sort = T) %>% 
-  mutate(perc = round((n/114)*100, 2))
+  count(author_text, sort = T) %>% 
+  mutate(perc = round((n/118)*100, 2))
 ```

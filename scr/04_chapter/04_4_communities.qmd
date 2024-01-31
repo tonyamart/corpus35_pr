@@ -19,18 +19,26 @@ library(concaveman)
 
 # basic colouring and layout options
 library(wesanderson)
-library(patchwork)
+# library(patchwork)
 theme_set(theme_minimal())
+
+library(MetBrewer)
 ```
 
 ```{r}
 # palette
-plt <- c(wes_palette("Darjeeling1")[2],
-        wes_palette("Darjeeling1")[5],
-        wes_palette("Darjeeling1")[4],
-        wes_palette("Darjeeling1")[3],
-        wes_palette("Darjeeling1")[1],
-        wes_palette("Royal1"))
+met.brewer(MetBrewer::colorblind_palettes[24])
+# met.brewer(name = "Kandinsky")
+# met.brewer(MetBrewer::colorblind_palettes[16]) # Kandinsky
+
+plt <- c(met.brewer(name = "Veronese")[2],
+         met.brewer(name = "Veronese")[3],
+         met.brewer(name = "Veronese")[4],
+         met.brewer(name = "Kandinsky")[3],
+         met.brewer(name = "Kandinsky")[2],
+         met.brewer(name = "Veronese")[5],
+         met.brewer(name = "Pillement")
+         )
 ```
 
 ```{r}
@@ -278,21 +286,28 @@ t_community %>%
 labels <- tibble(
   community = c(1, 2, 3, 4
                 ),
-  label = c('"Ода"', '"Стихия"', '"Идиллия"', '"Судьба"'
+  label = c('"Ода"', '"Стихия"',  '"Идиллия"', '"Судьба"' 
             ), 
-  descr = c("59 царь народ слава великий россия\n73 зреть дух сие свет коль\n6 мир вечный природа творец земля\n23 правда закон зло суд истина", 
-            "10 гора скала лес стоять дикий\n70 враг бой меч герой брань\n41 гром страшный средь страх пасть", 
-            "44 вода река струя бежать ручей\n26 лес тень лист луг роща\n72 луч небо заря солнце блистать\n52 уста око грудь кудри нега", 
-            "57 бог святой молитва боже вера\n64 злой враг кровь смерть страшный"
+  descr = c("59_царь народ слава великий россия\n73_зреть дух сие свет коль\n6_мир вечный природа творец земля\n23_правда закон зло суд истина", 
+            
+            "10_гора скала лес стоять дикий\n70_враг бой меч герой брань\n41_гром страшный средь страх пасть", 
+            
+            "44_вода река струя бежать ручей\n26_лес тень лист луг роща\n72_луч небо заря солнце блистать\n52 уста око грудь кудри нега", 
+            
+            "57_бог святой молитва боже вера\n64_злой враг кровь смерть страшный" 
+    
             )
   ) %>% 
   mutate(community = as.factor(community))
 
 labels
+
+# store in a separate variable with results
+community_i4_rnc <- t_community
 ```
 
 ```{r}
-t_community %>% 
+community_i4_rnc %>% 
     activate(nodes) %>% 
     left_join(labels, by = "community") %>% 
   ggraph('kk') + 
@@ -426,18 +441,21 @@ m_community %>%
  labels <- tibble(
   community = c(1, 2, 3, 4),
   label = c('"Поэзия и возвышенное"', '"Любовь"', '"Ночной пейзаж"', '"Ода"'), 
-  descr = c("22 душа мечта поэт вдохновение восторг\n18 небо мир земля земной небесный\n4 душа чувство мысль сердце понимать\n9 звук струна внимать глас лира", 
-            "56 мечта душа сон воспоминание пора\n63 любовь сердце надежда душа верить\n5 любовь огонь грудь сердце кровь\n25 душа страсть страдание мука тоска", 
-            "10 гора скала лес стоять дикий\n24 ночь луна ночной темный тень\n32 волна море берег вода брег", 
-            "59 царь народ слава великий россия\n60 слава народ век великий имя\n70 враг бой меч герой брань")
+  descr = c("22_душа мечта поэт вдохновение восторг\n18_небо мир земля земной небесный\n4_душа чувство мысль сердце понимать\n9_звук струна внимать глас лира", 
+            "56_мечта душа сон воспоминание пора\n63_любовь сердце надежда душа верить\n5_любовь огонь грудь сердце кровь\n25_душа страсть страдание мука тоска", 
+            "10_гора скала лес стоять дикий\n24_ночь луна ночной темный тень\n32_волна море берег вода брег", 
+            "59_царь народ слава великий россия\n60_слава народ век великий имя\n70 враг бой меч герой брань")
   ) %>% 
   mutate(community = as.factor(community))
 
 labels
+
+# store in a separate variable with results
+community_i4_m <- m_community
 ```
 
 ```{r}
-m_community %>% 
+community_i4_m %>% 
   
     activate(nodes) %>% 
     left_join(labels, by = "community") %>% 
@@ -548,9 +566,6 @@ t_community <- net_t %>%
     activate(nodes) %>% 
     mutate(community = as.factor(group_louvain())) 
 
-
-#save(net_t, t_community, file = "i6_rnc_net.Rda")
-
 t_community %>% 
   activate(nodes) %>% 
   select(community) %>% distinct() %>% pull
@@ -582,6 +597,9 @@ t_community %>%
 ```
 
 ```{r}
+# save results
+community_i6_rnc <- t_community
+
 #nodelist_i6[nodelist_i6$idn %in% c(15, 22, 43),]
 
 labels <- tibble(
@@ -598,9 +616,7 @@ labels <- tibble(
 ```
 
 ```{r}
-# load("i6_rnc_net.Rda")
-
-t_community %>% 
+community_i6_rnc %>% 
   activate(nodes) %>% 
     left_join(labels, by = "community") %>% 
   ggraph('kk') + 
@@ -688,7 +704,9 @@ t_community %>%
          plot.title = element_text(size = 20, face = "bold"),
          plot.subtitle = element_text(size = 16)) 
 
+```
 
+```{r, eval=FALSE}
 ggsave("plots/i6_rnc.png", plot = last_plot(),
       bg = "white", width = 10, height = 8, dpi = 300)
 ```
@@ -768,6 +786,8 @@ m_community %>%
 ```
 
 ```{r}
+community_i6_m <- m_community
+
 labels <- tibble(
   community = c(1,2,3,4,5,6,7,8),
   label = c('"Возвышенное"',
@@ -788,15 +808,13 @@ labels <- tibble(
             "46_сердце тоска душа грудь печаль\n56_мечта душа сон воспоминание пора")
 ) %>% 
   mutate(community = as.factor(community))
-
-# save(net_m, labels, file = "i6_net.Rda")
 ```
 
 ```{r}
 
-# load("i6_net.Rda")
+plt2 <- sample(plt, 8)
 
-m_community %>% 
+community_i6_m %>% 
   activate(nodes) %>% 
     left_join(labels, by = "community") %>% 
   ggraph('kk') + 
@@ -899,16 +917,18 @@ m_community %>%
                        ), size = 10) + 
   geom_node_text(aes(label = idn), size = 5) + 
   # colouring
-    scale_color_manual(values = plt) + 
-    scale_fill_manual(values = plt) + 
+    scale_color_manual(values = plt2) + 
+    scale_fill_manual(values = plt2) + 
     
     # text sizes
     theme(legend.position = "None",
          plot.title = element_text(size = 20, face = "bold"),
          plot.subtitle = element_text(size = 16)) 
+```
 
-# ggsave("plots/i6_m.png", plot = last_plot(), 
-#        bg = "white", width = 9, height = 7, dpi = 300)
+```{r, eval=FALSE}
+ggsave("plots/i6_m.png", plot = last_plot(),
+       bg = "white", width = 9, height = 7, dpi = 300)
 ```
 
 ### trochee 4
@@ -970,6 +990,8 @@ t_community %>%
 ```
 
 ```{r}
+community_t4_rnc <- t_community
+
 labels <- tibble(
   community = c(1,2,3),
   label = c('"Идиллическая\nприрода"', '"Любовь"', '"Женский портрет"'),
@@ -1035,7 +1057,9 @@ t_community %>%
     theme(legend.position = "None",
          plot.title = element_text(size = 20, face = "bold"),
          plot.subtitle = element_text(size = 16)) 
+```
 
+```{r, eval=FALSE}
 ggsave("plots/tr4_rnc.png", plot = last_plot(), 
        bg = "white", width = 9, height = 7, dpi = 300)
 ```
@@ -1096,6 +1120,8 @@ m_community %>%
 ```
 
 ```{r}
+community_t4_m <- m_community
+
 m_community %>% 
   activate(nodes) %>% 
   filter(community == 2 & idn == 72) 
@@ -1110,13 +1136,12 @@ labels <- tibble(
 ) %>% 
   mutate(community = as.factor(community))
 
-# save(m_community, labels, file = "tr4_m_net.Rda")
+
 ```
 
 ```{r}
-# load("tr4_m_net.Rda)
 
-m_community %>% 
+community_t4_m %>% 
   activate(nodes) %>% 
     left_join(labels, by = "community") %>% 
   ggraph('kk') + 
@@ -1132,16 +1157,17 @@ m_community %>%
                    con.cap = 1
                   ) + 
   
+  # pr
   geom_mark_hull(aes(x,y, fill = community,
                      color = community,
-                     label = label,
-                     description = descr,
+                     #label = label,
+                     #description = descr,
                      filter = community == 2),
                    label.buffer = unit(0, 'mm'),
                    label.minwidth = 80,
                    label.fontsize = c(18,12),
                    con.cap = 1
-                  ) + 
+                  ) +
   
   geom_mark_hull(aes(x,y, fill = community,
                      color = community,
@@ -1152,18 +1178,18 @@ m_community %>%
                    label.minwidth = 100,
                    label.fontsize = c(18,12),
                    con.cap = 0
-                  ) + 
+                  ) +
   
-  # geom_mark_hull(aes(x,y, fill = community,
-  #                    color = community,
-  #                    label = label,
-  #                    description = descr,
-  #                    filter = community == 4),
-  #                  label.buffer = unit(10, 'mm'),
-  #                  label.minwidth = 100,
-  #                  label.fontsize = c(16,12),
-  #                  con.cap = 1
-  #                 ) + 
+  geom_mark_hull(aes(x,y, fill = community,
+                     color = community,
+                     label = label,
+                     description = descr,
+                     filter = community == 4),
+                   label.buffer = unit(10, 'mm'),
+                   label.minwidth = 100,
+                   label.fontsize = c(16,12),
+                   con.cap = 1
+                  ) +
   
   geom_edge_link(aes(width = sum_links), 
                    alpha = 0.5) + 
@@ -1178,7 +1204,17 @@ m_community %>%
     theme(legend.position = "None",
          plot.title = element_text(size = 20, face = "bold"),
          plot.subtitle = element_text(size = 16)) 
+```
 
-ggsave("plots/tr4_m_pr.png", plot = last_plot(), 
+```{r, eval=FALSE}
+ggsave("plots/tr4_m.png", plot = last_plot(), 
       bg = "white", width = 9, height = 7, dpi = 300)
+```
+
+```{r, eval=FALSE}
+save(community_i4_rnc, community_i4_m, 
+     community_i6_rnc, community_i6_m,
+     community_t4_rnc, community_t4_m,
+     file = "networks_data.Rda"
+     )
 ```

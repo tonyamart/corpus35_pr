@@ -37,7 +37,8 @@ plt <- c(met.brewer(name = "Veronese")[1], # dark red
          met.brewer(name = "Veronese")[4], # light blue
          met.brewer(name = "Veronese")[6], # green
          met.brewer(name = "Veronese")[7], # dark blue
-         met.brewer(name = "Kandinsky")[3] # gray
+         met.brewer(name = "Kandinsky")[3], # gray
+         met.brewer(name = "Java")[4] # pink
          )
 ```
 
@@ -250,8 +251,8 @@ AAAAAAAA###
 
 demo_lineplot + demo_graph + plot_layout(design = layout)
 
-ggsave(filename = "plots/demo.png", plot = last_plot(),
-       height = 7, width = 10, bg = "white", dpi = 300)
+ggsave(filename = "plots/Fig_4-2-1.png", plot = last_plot(),
+       height = 6, width = 10, bg = "white", dpi = 300)
 ```
 
 ```{r}
@@ -359,7 +360,7 @@ net
 unique(edgelist$meter)
 ```
 
-### all RNC viz (check)
+### Fig_4-2-2-B - all RNC net (check)
 
 Meters without Iamb-4
 
@@ -378,7 +379,7 @@ all_nkrja <- network(net, c("iamb_4",
                             "trochee_4"), 
                      c(plt[4],
                        plt[2],
-                       plt[3],
+                       plt[7],
                        plt[1]
                        ) 
                      )
@@ -398,13 +399,18 @@ all_nkrja + facet_wrap(~slice,
         
 ```
 
+```{r, eval=FALSE}
+ggsave(filename = "plots/Fig_4-2-2-b.png", plot = last_plot(), 
+       width = 8, height = 6, dpi = 300, bg = "white")
+```
+
 All without Iamb-4
 
 ```{r}
 all_nkrja <- network(net, c("iamb_6", "iamb_free", #"iamb_4", 
                             "trochee_4"), 
                      c(plt[2], 
-                       plt[3],
+                       plt[7],
                        # plt[5]], 
                        plt[1])) 
                 
@@ -515,6 +521,33 @@ density_table %>%
                                  plt[3],
                                  plt[1])
                       )
+```
+
+### Fig 4-2-2-A 
+
+Iamb-4 networks with densities
+
+```{r}
+# create labels df
+labels <- density_table %>% 
+  filter(meter == "iamb_4") %>% 
+  mutate(slice_d = paste0(slice, "\n d = ", density))
+
+# transform to named vector
+facet_labels <- setNames(as.character(labels$slice_d), labels$slice)
+
+# create network
+iamb_4 <- network(net, c("iamb_4"), plt[4])
+    
+iamb_4 + facet_wrap(~slice, 
+                 scales="free_x", 
+                 drop=T,
+                 ncol = 5, 
+                 labeller = as_labeller(facet_labels)) + # labels attached
+    theme(legend.position = "None",
+         strip.text = element_text(size = 16),
+         legend.text = element_text(size = 14), 
+         legend.title = element_text(size = 16))
 ```
 
 Remove obsolete objects

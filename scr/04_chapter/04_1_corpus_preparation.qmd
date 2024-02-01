@@ -455,6 +455,14 @@ corpus_merged %>%
   select(author) %>% count(author)
 ```
 
+```{r}
+corpus_merged %>% 
+  filter(corpus == "M") %>% 
+  mutate(formula = ifelse(!formula %in% c("iamb_4", "iamb_6", "iamb_other", "trochee_4"),
+                          "other", formula)) %>% 
+  count(formula)
+```
+
 ## DTM creation
 
 ```{r}

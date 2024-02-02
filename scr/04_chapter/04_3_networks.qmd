@@ -360,7 +360,7 @@ net
 unique(edgelist$meter)
 ```
 
-### Fig_4-2-2-B - all RNC net (check)
+### all RNC net (check)
 
 Meters without Iamb-4
 
@@ -399,19 +399,14 @@ all_nkrja + facet_wrap(~slice,
         
 ```
 
-```{r, eval=FALSE}
-ggsave(filename = "plots/Fig_4-2-2-b.png", plot = last_plot(), 
-       width = 8, height = 6, dpi = 300, bg = "white")
-```
-
-All without Iamb-4
+### Fig_4-2-2-B - All without Iamb-4
 
 ```{r}
 all_nkrja <- network(net, c("iamb_6", "iamb_free", #"iamb_4", 
                             "trochee_4"), 
                      c(plt[2], 
-                       plt[7],
-                       # plt[5]], 
+                       #met.brewer(name = "Veronese")[7],
+                       plt[3], 
                        plt[1])) 
                 
 
@@ -426,6 +421,13 @@ all_nkrja + facet_wrap(~slice,
          panel.spacing = unit(1.4, "lines"),
          legend.position = "bottom")
 ```
+
+```{r, eval=FALSE}
+ggsave(filename = "plots/Fig_4-2-2-b.png", plot = last_plot(), 
+       width = 9, height = 7, dpi = 300, bg = "white")
+```
+
+### 
 
 ### iamb-4
 
@@ -523,7 +525,7 @@ density_table %>%
                       )
 ```
 
-### Fig 4-2-2-A 
+### Fig 4-2-2-A
 
 Iamb-4 networks with densities
 
@@ -548,6 +550,11 @@ iamb_4 + facet_wrap(~slice,
          strip.text = element_text(size = 16),
          legend.text = element_text(size = 14), 
          legend.title = element_text(size = 16))
+```
+
+```{r, eval=FALSE}
+ggsave(filename = "plots/Fig_4-2-2-a.png", plot = last_plot(),
+       width = 9, height = 7, dpi = 300, bg = "white")
 ```
 
 Remove obsolete objects
@@ -734,7 +741,7 @@ int_union %>%
     ggplot(aes(slice, iou, color = meter_t)) + 
     geom_line(size = 2) + 
     labs(x = "", 
-         y = "Proportion of shared connections vs. chance", 
+         y = "Доля общих связей", 
          #title="Iamb-4 vs. others"
         ) + 
     geom_line(data = iou_ribbon %>% left_join(trans_meter, by = "meter"), 
@@ -1275,9 +1282,39 @@ all_edges <- readRDS(file = "../../data/ch4/edge_stability.Rds")
 
 # create a variable for meters of interest
 top_meters <- c("iamb_4", "trochee_4", "iamb_6")
+```
+
+### Fig_4_2_4 - edges stability
+
+```{r}
+head(all_edges)
+
+unique(all_edges$meter)
+
+transl_meters <- tibble(
+  meter = c("Iamb_4", "Iamb_6", "Trochee_4"),
+  meter_r = c("4-ст. ямб", "6-ст. ямб", "4-ст. хорей")
+)
 
 all_edges %>% 
-  ggplot(aes(x = meter, y = Freq, , fill = corpus)) + geom_boxplot()
+  left_join(transl_meters, by = "meter") %>% 
+  mutate(corpus_r = ifelse(corpus == "M", "Корпус-1835", "НКРЯ")) %>% 
+  ggplot(aes(x = meter_r, y = Freq, , fill = corpus_r)) + 
+  geom_boxplot() + 
+  labs(y = "Стабильность связи",
+       fill = "Корпус") + 
+  scale_fill_manual(values = c(plt[1], plt[2])) + 
+  theme(legend.position = "bottom", 
+        axis.title.x = element_blank(),
+        axis.text = element_text(size = 12),
+        axis.title = element_text(size = 14),
+        legend.text = element_text(size = 12))
+
+```
+
+```{r}
+ggsave(filename = "plots/Fig_4-2-4.png", plot = last_plot(),
+       width = 7, height = 5, dpi = 300, bg = "white")
 ```
 
 ## Summaries

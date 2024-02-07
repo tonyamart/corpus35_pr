@@ -365,6 +365,8 @@ rm(rw_acc)
 
 Attach closure data to rhymes
 
+nb: this code result in redubplication, need to check (now just add distinct in the end)
+
 ```{r}
 rhymes_end <- rhymes %>% 
   # attach closure features to 'from' word
@@ -381,28 +383,13 @@ rhymes_end <- rhymes %>%
               rename(to = word,
                      to_closure = closure,
                      to_closure_pattern = closure_pattern),
-            by = "to") 
+            by = "to") %>% 
+  distinct()
 
 head(rhymes_end)
 
 nrow(rhymes)
 nrow(rhymes_end)
-```
-
-```{r}
-glimpse(rhymes_end)
-
-rhymes_end %>% 
-  filter(from_closure == to_closure) %>% 
-  count(from_closure, sort = T) %>% 
-  mutate(perc = round(n / nrow(rhymes_end) * 100, 2))
-
-rhymes_end %>% 
-  filter(from_closure == to_closure) %>% 
-  mutate(from_to_pos = paste(from_pos, to_pos)) %>% 
-  select(from_closure, from_to_pos) %>% 
-  count(from_closure, from_to_pos, sort = T) %>% 
-  mutate(perc = round(n / nrow(rhymes_end) * 100, 2))
 ```
 
 Save

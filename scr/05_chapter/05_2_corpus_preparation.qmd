@@ -20,7 +20,7 @@ library(tidytext)
 
 The data tables are resulting from the poem parced with `RhymeTagger`, see the code in: `00_1_rhymetagger_pos.ipynb`. The output is in three columns: `poem_id`, `rhyme_word`, `rhymes` (for the rhyme id/position).
 
-Corpus-1835 rhymes:
+### Corpus-1835 rhymes
 
 ```{r}
 rhymes_1835 <- read.csv("../../data/ch5/corpus-35_rhymes.csv") %>% select(-X) %>% 
@@ -28,6 +28,34 @@ rhymes_1835 <- read.csv("../../data/ch5/corpus-35_rhymes.csv") %>% select(-X) %>
          id = paste0("M__", id)) # add a letter for "marginals" corpus
 
 glimpse(rhymes_1835)
+```
+
+### RNC rhymes
+
+```{r}
+# dat <- read.csv("../../../../23_rhymes/parsed_rhymes.csv") # old parsed rhymes from ../23_rhymes (earlier experiment)
+# glimpse(dat)
+# 
+# rnc <- dat %>% 
+#   filter(str_detect(poem_id, "^RNC_")) %>% 
+#   select(-X)
+# 
+# head(rnc)
+# rnc$poem_id[1:10]
+# 
+# write.csv(rnc, file = "../../data/ch5/rnc_rhymes.csv")
+```
+
+```{r}
+# load already parsed data
+rnc_rhymes <- read.csv("../../data/ch5/rnc_rhymes.csv") %>% select(-X)
+
+glimpse(rnc_rhymes)
+
+rnc_rhymes %>% 
+  mutate(poem_id = str_replace(poem_id, "RNC_", "RNC__")) %>% 
+  separate(poem_id, into = c("corpus", "id"), sep = "__") %>% 
+  separate(id, into = c("id", "year"), sep = "_") 
 ```
 
 ## Extract rhyme pairs

@@ -1,0 +1,376 @@
+---
+title: "05_3_rhymes_freq"
+format: md
+editor: visual
+---
+
+### load pckg
+
+```{r}
+library(tidyverse)
+library(tidytext)
+
+library(igraph)
+library(ggraph)
+
+library(MetBrewer)
+theme_set(theme_minimal())
+```
+
+### load data
+
+```{r}
+rhymes <- read.csv("../../data/ch5/rhymes_parsed_closure.csv") %>% 
+  select(-X) %>% 
+  distinct() # if redubplicated for some reason
+glimpse(rhymes)
+```
+
+Check rhyme detection
+
+```{r}
+rhymes %>% 
+  filter(id == "M__P_1938")
+```
+
+Metadata
+
+```{r}
+corpus_1835 <- readRDS("../../data/corpus1835/corpus_1835.Rds")
+```
+
+## Basic stats
+
+```{r}
+#glimpse(rhymes)
+
+print(paste("Total number of found rhymes in corpus-1835:", nrow(rhymes)))
+
+print(paste("Number of unique (alph. reordered) rhymes:", length(unique(rhymes$rhyme_alph))))
+
+# Percent of rhymes with FREQ = 1
+n_hapax_legomenas <- rhymes %>% 
+  count(rhyme_alph) %>% filter(n == 1) %>% nrow()
+
+print( paste( "Percent of rhymes encountered only once in Corpus-1835:", 
+              round((n_hapax_legomenas / nrow(rhymes)) * 100, 2) ))
+
+# total distribution features
+rhymes %>% 
+  count(rhyme_alph) %>% summary()
+
+rhymes %>% 
+  count(rhyme_alph) %>% pull(n) %>% quantile(c(0.90, 0.95, 0.97, 0.99, 1))
+
+# number of rhymes enountered more than 9 times (99% percentile)
+rhymes %>% 
+  count(rhyme_alph, sort = T) %>% 
+  filter(n >= 9) %>% 
+  nrow()
+```
+
+Pull top 500 rhymes: the ones which are encountered 10 or more times
+
+```{r}
+top_rhymes <- rhymes %>% 
+  count(rhyme_alph, sort = T) %>% 
+  filter(n > 9) %>% 
+  #head(500) %>% 
+  pull(rhyme_alph)
+
+print(paste("Number of rhyme pairs encountered 10 and more times:", 
+            length(top_rhymes)))
+```
+
+Examples of top rhymes in Corpus-1835
+
+```{r}
+rhymes %>% 
+  count(rhyme_alph, sort = T) %>% 
+  head(30)
+```
+
+## freq distribution of rhyme words
+
+```{r}
+# summary statistics of rhyme word counts
+rhymes %>% 
+  unnest_tokens(input = rhyme_pair, output = word, token = "words") %>% 
+  count(word, sort = T) %>% summary()
+
+# most frequent rhyme words
+rhymes %>% 
+  unnest_tokens(input = rhyme_pair, output = word, token = "words") %>% 
+  count(word, sort = T) %>% 
+  head(50)
+```
+
+```{r}
+# most frequent inline words
+token_freq <- corpus_1835 %>% 
+  select(text_raw) %>% 
+  separate_rows(text_raw, sep = "\n") %>% 
+  filter(text_raw != "" & !str_detect(text_raw, "^[[:punct:]]+$|^[[:space:]]+$")) %>% 
+  mutate(text_cln = str_remove_all(text_raw, "\\W+$|\\s+$"),
+         text_cln = str_replace_all(text_cln, "\\w+$", "_ENDWORD_")) %>% 
+  select(text_cln) %>% 
+  mutate(text_cln = str_remove_all(text_cln, "_ENDWORD_")) %>% 
+  unnest_tokens(input = text_cln, output = word, token = "words") %>% 
+  count(word, sort = T) %>% 
+  mutate(rank_inline = row_number())
+
+head(token_freq)
+```
+
+### MFW rhyme vs all
+
+```{r}
+
+glimpse(rhymes)
+
+rhyme_freq <- rhymes %>% 
+  unnest_tokens(input = rhyme_pair, output = word, token = "words") %>% 
+  count(word, sort = T) %>% 
+  mutate(rank_rhyme = row_number())
+
+head(rhyme_freq, 100)
+```
+
+MFW-1000
+
+```{r}
+mfw_1000 <- token_freq[1:1000,] %>% select(-n)
+
+mfw_1000_rhyme <- mfw_1000 %>% 
+  left_join(rhyme_freq %>% select(-n), by = "word") %>% 
+  drop_na()
+
+head(mfw_1000_rhyme)
+
+cor.test(mfw_1000_rhyme$rank_inline, mfw_1000_rhyme$rank_rhyme, method = "kendall")
+```
+
+MFW-100
+
+```{r}
+mfw_100_rhyme <- token_freq %>% 
+  head(100) %>% 
+  select(-n) %>% 
+  left_join(rhyme_freq %>% select(-n), by = "word") %>% 
+  drop_na()
+
+cor.test(mfw_100_rhyme$rank_inline, mfw_100_rhyme$rank_rhyme, method = "kendall")
+
+mfw_100_rhyme %>% 
+  arrange(-desc(rank_rhyme))
+```
+
+MFW-10000
+
+```{r}
+mfw_10000_rhyme <- token_freq %>% 
+  head(10000) %>% 
+  select(-n) %>% 
+  left_join(rhyme_freq %>% select(-n), by = "word") %>% 
+  drop_na()
+
+cor.test(mfw_10000_rhyme$rank_inline, mfw_10000_rhyme$rank_rhyme, method = "kendall")
+```
+
+Method demonstration (tau max = 1, tau min = -1)
+
+```{r}
+cor.test(c(1,2,3,4,5), c(1,2,3,4,5), method = "kendall")
+cor.test(c(1,2,3,4,5), c(3,2,5,1,4), method = "kendall")
+cor.test(c(1,2,3,4,5), c(5,4,3,2,1), method = "kendall")
+```
+
+Next step: look into grammatical features of the MFW in the two corpora - for that ling annotation for the whole corpus-1835 is needed!
+
+mb later compare the MFW ranked lists for nouns, verbs & adjectives (probably pronouns as well)
+
+```{r}
+# MF features in rhyme
+
+total_items_rhyme <- length(c(rhymes$from_feats, rhymes$to_feats))
+
+tibble(feature = c(rhymes$from_feats, rhymes$to_feats)) %>% 
+  count(feature, sort = T) %>% 
+  mutate(perc = round( (n / total_items_rhyme) * 100, 2 ))
+```
+
+#### masc rhymes
+
+```{r}
+from_masc <- rhymes %>% 
+  filter(from_closure == "masc") %>% pull(from_feats)
+
+to_masc <- rhymes %>% 
+  filter(to_closure == "masc") %>% pull(to_feats)
+
+total_masc <- length(c(from_masc, to_masc))
+
+tibble(feats = c(from_masc, to_masc)) %>% 
+  count(feats, sort = T) %>% 
+  mutate(perc = )
+```
+
+```{r}
+# frequency quantiles
+rhymes %>% 
+  unnest_tokens(input = rhyme_pair, output = word, token = "words") %>% 
+  count(word, sort = T) %>% 
+  pull(n) %>% 
+  quantile(c(0.5, 0.8, 0.9, 0.95, 0.97, 0.99, 1))
+
+rhymes %>% 
+  unnest_tokens(input = rhyme_pair, output = word, token = "words") %>% 
+  count(word, sort = T) %>% 
+  filter(n >= 25) %>% # 97% 
+  mutate(rank = row_number()) %>% # nrow() # about 1074 words for 97%
+  ggplot(aes(x = rank, y = n)) + geom_line() + 
+  labs(y = "frequency")
+
+# total number of rhyme words (non-lemmatised)
+total_rhyme_words <- rhymes %>% 
+  unnest_tokens(input = rhyme_pair, output = word, token = "words") %>% 
+  nrow()
+total_rhyme_words
+
+# which percentage of all rhyme words these words take:
+rhymes %>% 
+  unnest_tokens(input = rhyme_pair, output = word, token = "words") %>% 
+  count(word, sort = T) %>% 
+  filter(n >= 25) %>% 
+  mutate(perc = round((n / total_rhyme_words) * 100, 2 )) %>% 
+  summarise(total_top_perc = sum(perc)) # 42 % of all rhyme words
+```
+
+## top freq words network
+
+```{r}
+# pull a list of the most freq rhyme words
+top_words <- rhymes %>% 
+  unnest_tokens(input = rhyme_pair, output = word, token = "words") %>% 
+  count(word, sort = T) %>% 
+  filter(n >= 25) %>% 
+  pull(word)
+
+# extract rhymes with one or both words being in the top freq
+rhymes_top_words <- rhymes %>% 
+  filter(from %in% top_words | to %in% top_words) %>% 
+  select(id, rhyme_pair, from, from_pos, from_closure, to, to_pos, to_closure, 
+         rhyme_alph)
+
+rhymes_top_words %>% nrow() # 45 583  rhymes contain one or two top-words
+
+# % of poems which contains top words out of all poems
+rhymes_top_words %>% select(id) %>% distinct() %>% nrow() # 4532
+
+# sum of poems with rhymes detected
+rhymes %>% select(id) %>% distinct %>% nrow() # 4719
+```
+
+```{r}
+#### select texts which does NOT include the most freq rhyme words
+original_rhymes <- rhymes %>% 
+#  select(id) %>% 
+  filter(!id %in% rhymes_top_words$id) 
+
+head(original_rhymes)
+
+# check authors
+original_rhymes %>% 
+  select(id) %>% 
+  distinct() %>% 
+  mutate(text_id = str_remove(id, "M__")) %>% 
+  left_join(corpus_1835, by = "text_id") %>% 
+  count(author_text, sort = T)
+```
+
+### masc rhymes
+
+Visualisation for selection of most frequent masculine rhymes
+
+```{r}
+#head(rhymes_top_words)
+
+masc_top_rhymes <- rhymes_top_words %>% 
+  filter(from_closure == "masc" & to_closure == "masc") 
+  # limit to only very same closure pairs (miss about 2k pairs)
+
+head(masc_top_rhymes)
+
+# total rhyme pairs
+nrow(masc_top_rhymes)
+# unique rhyme pairs
+length(unique(masc_top_rhymes$rhyme_alph))
+
+# number of nodes
+length(unique(c(masc_top_rhymes$from, masc_top_rhymes$to))) 
+
+masc_top_rhymes %>% 
+  count(rhyme_alph, sort = T) %>% 
+  pull(n) %>% 
+  quantile(c(0.5, 0.75, 0.8, 0.9, 0.95, 0.97, 0.99)) 
+
+# list from rhymes containing top words AND appeareing multiple number of times (more than 5)
+toptop_list <- masc_top_rhymes %>% 
+  count(rhyme_alph, sort = T) %>% 
+  filter(n > 5) # upper 95%
+
+masc_selected <- masc_top_rhymes %>% filter(rhyme_alph %in% toptop_list$rhyme_alph)
+
+# n of rhyme pairs
+nrow(masc_selected)
+
+# n of unique rhyme pairs
+length(unique(masc_selected$rhyme_alph)) # 678
+
+# number of nodes
+length(unique(c(masc_selected$from, masc_selected$to)))
+```
+
+```{r}
+head(masc_selected)
+
+freq_w <- masc_selected %>% 
+  unnest_tokens(input = rhyme_pair, output = word, token = "words") %>% 
+  count(word, sort = T)
+
+freq_edge <- masc_selected %>% 
+  count(rhyme_alph)
+
+edgelist <- masc_selected %>% select(from, to, from_pos, to_pos, rhyme_alph) %>% 
+  left_join(freq_edge, by = "rhyme_alph")
+
+nodelist <- tibble(source = unique(c(masc_selected$from, masc_selected$to))) %>% 
+  left_join(freq_w %>% rename(source = word), by = "source")
+
+masc_net <- graph_from_data_frame(d = edgelist, vertices = nodelist, directed = F)
+```
+
+```{r}
+ggraph(masc_net, 
+       layout = "stress") + 
+  geom_edge_fan() + 
+  geom_node_point(aes(size = n))
+```
+
+## Closures
+
+```{r}
+# frequency of masc / fem / dactylic rhymes in general
+rhymes %>% 
+  filter(from_closure == to_closure) %>% 
+  count(from_closure, sort = T) %>% 
+  mutate(perc = round(n / nrow(rhymes) * 100, 2))
+
+# freq of different types of rhymes + POS 
+rhymes %>% 
+  filter(from_closure == to_closure) %>% 
+  mutate(from_to_pos = paste(from_pos, to_pos)) %>% 
+  select(from_closure, from_to_pos) %>% 
+  count(from_closure, from_to_pos, sort = T) %>% 
+  mutate(perc = round(n / nrow(rhymes) * 100, 2)) 
+```

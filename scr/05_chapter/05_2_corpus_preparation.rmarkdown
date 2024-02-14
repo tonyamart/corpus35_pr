@@ -4,9 +4,11 @@ format: md
 editor: visual
 ---
 
+
 ## Corpus preparation for rhyme analysis
 
 ## Load pckg
+
 
 ```{r, message=FALSE, warning=FALSE}
 library(tidyverse)
@@ -16,11 +18,13 @@ library(tidytext)
 # ru_taiga <- udpipe_load_model("../../data/russian-taiga-ud-2.5-191206.udpipe")
 ```
 
+
 ## Load data
 
 The data tables are resulting from the poem parced with `RhymeTagger`, see the code in: `00_1_rhymetagger_pos.ipynb`. The output is in three columns: `poem_id`, `rhyme_word`, `rhymes` (for the rhyme id/position).
 
 ### Corpus-1835 rhymes
+
 
 ```{r}
 rhymes_1835 <- read.csv("../../data/ch5/corpus-35_rhymes.csv") %>% select(-X) %>% 
@@ -30,7 +34,9 @@ rhymes_1835 <- read.csv("../../data/ch5/corpus-35_rhymes.csv") %>% select(-X) %>
 glimpse(rhymes_1835)
 ```
 
+
 ### RNC rhymes
+
 
 ```{r}
 # dat <- read.csv("../../../../23_rhymes/parsed_rhymes.csv") # old parsed rhymes from ../23_rhymes (earlier experiment)
@@ -58,9 +64,11 @@ rnc_rhymes %>%
   separate(id, into = c("id", "year"), sep = "_") 
 ```
 
+
 ## Extract rhyme pairs
 
 Create rhyme pairs from 'rhymes' column in annotation
+
 
 ```{r}
 rhymes_1835_t <- rhymes_1835 %>% 
@@ -80,9 +88,11 @@ rhymes_1835_t %>%
   filter(is.na(rhyme_pair))
 ```
 
+
 ### long sequences
 
 When rhyme seq is longer than 2 words, separate sequences into consequetive pairs
+
 
 ```{r}
 sequencies_full <- rhymes_1835_t %>% 
@@ -99,7 +109,9 @@ head(sequencies)
 nrow(sequencies)
 ```
 
+
 Statistics of pairs & sequences
+
 
 ```{r}
 # total number of rhymed pairs
@@ -115,7 +127,9 @@ sequencies %>%
   arrange(desc(n_words)) %>% head()
 ```
 
+
 Loop for rewrite the seq into pairs
+
 
 ```{r}
 x <- do.call(rbind,
@@ -133,7 +147,9 @@ head(as_tibble(x))
 print(paste("Number of rhyme pairs (non-unique) from sequences:", nrow(x)))
 ```
 
+
 Extract table with all unique words & their POS+features
+
 
 ```{r}
 glimpse(rhymes_1835)
@@ -149,7 +165,9 @@ head(pos_tags)
 
 ```
 
+
 Add POS tags
+
 
 ```{r}
 seq_fin <- as_tibble(x) %>% 
@@ -175,7 +193,9 @@ seq_fin <- as_tibble(x) %>%
 rm(sequencies, sequencies_full, x)
 ```
 
+
 ### orphan rhymes
+
 
 ```{r}
 rhymes_1835_t %>% 
@@ -189,9 +209,11 @@ print(paste0("Number of orhpan rhyme words (rows with only 1 word in a 'pair') :
     )
 ```
 
+
 ### true rhyme pairs
 
 Select true rhyme pairs & add POS
+
 
 ```{r}
 rhymes_1835_t <- rhymes_1835_t %>% 
@@ -219,7 +241,9 @@ rhymes_1835_t <- rhymes_1835_t %>%
 glimpse(rhymes_1835_t)
 ```
 
+
 Merge with pairs sequencies
+
 
 ```{r}
 glimpse(seq_fin)
@@ -237,7 +261,9 @@ nrow(rhymes) # total number of rhymes
 length(unique(rhymes$rhyme_pair)) # number of unique rhymes
 ```
 
+
 ## Reorder rhyme words
+
 
 ```{r, eval = FALSE}
 # toy example
@@ -289,7 +315,9 @@ ordered <- tibble(rhyme_pair = raw_pairs,
 head(ordered)
 ```
 
+
 Attach reordered pairs to the main data table
+
 
 ```{r}
 rhymes <- rhymes %>% 
@@ -301,9 +329,11 @@ print(paste("Number of unique rhymes after reordering:",
             length(unique(rhymes$rhyme_alph)) ))
 ```
 
+
 ## Ending type
 
 Extract data as a vector of words for accentuation
+
 
 ```{r, eval=FALSE}
 vec <- NULL
@@ -316,9 +346,11 @@ vector <- paste0(unique(c(rhymes$from, rhymes$to)), collapse = "\n")
 write_file(vector, file = "../../data/ch5/corpus_1835_rhymewords.txt")
 ```
 
+
 Use `scr/00_preprocessing/00_ru_accent_poent.ipynb` to annotate the data with stresses.
 
 Load accented vector of unique rhyme words.
+
 
 ```{r}
 vec_acc <- read_file("../../data/ch5/corpus_1835_rhymewords.accented.txt")
@@ -338,9 +370,11 @@ rw_acc <- rw_acc %>%
 head(rw_acc)
 ```
 
+
 ### extract closure type
 
 Upload function to rewrite letters & ' stress annotation to binary
+
 
 ```{r}
 to_binary <- function(df,document="doc_id",text="acc_text") {
@@ -374,7 +408,9 @@ to_binary <- function(df,document="doc_id",text="acc_text") {
 }
 ```
 
+
 Apply function & binarise
+
 
 ```{r}
 # quick test
@@ -407,9 +443,11 @@ head(words_stressed)
 rm(rw_acc)
 ```
 
+
 Attach closure data to rhymes
 
 nb: this code result in redubplication, need to check (now just add distinct in the end)
+
 
 ```{r}
 rhymes_end <- rhymes %>% 
@@ -436,16 +474,20 @@ nrow(rhymes)
 nrow(rhymes_end)
 ```
 
+
 Save
+
 
 ```{r, eval=FALSE}
 write.csv(file = "../../data/ch5/rhymes_parsed_closure.csv", rhymes_end)
 write.csv(file = "../../data/ch5/rhymes_parsed.csv", rhymes)
 ```
 
+
 ## Rhymer data
 
 old code
+
 
 ```{r}
 rhymer <- read_file("data/rhymer.txt")
@@ -510,3 +552,4 @@ archive_rhymes %>% select(rhyme, year) %>%
 
 # 108 words are intersected with the rhymer
 ```
+

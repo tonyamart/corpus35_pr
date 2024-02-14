@@ -241,7 +241,9 @@ rm(bigram_freq_full, bigram_freq_rhymes, hapax_archive, hapax_per_year,
    total, total_count, unigram_freq_full, unigram_freq_rhymes)
 ```
 
-## Fig. 5-1-2. RNC / C1835 - Random samples rhyme interection
+## Fig. 5-1-2. RNC / C1835 - Random samples rhyme intersection
+
+REMOVE RNC TEXTS before 1830
 
 ```{r}
 x_1 <- NULL

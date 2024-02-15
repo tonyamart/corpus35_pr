@@ -1,0 +1,220 @@
+---
+title: "05_3-1_rhymer"
+format: md
+editor: visual
+---
+
+## Rhymer analysis
+
+Exploratory analysis of the rhymer (1836) data in comparison with actual rhymes obtained from RNC & corpus-1835
+
+```{r}
+library(tidyverse)
+library(MetBrewer)
+library(stringr)
+
+theme_set(theme_minimal())
+```
+
+### Load data
+
+Load digitised rhymer fragment
+
+```{r}
+rhymer <- read_file("../../data/ch5/rhymer.txt")
+
+rhymer <- tibble(word = rhymer) %>% 
+  separate_rows(word, sep = "\n") %>% 
+  filter(word != "") %>% 
+  mutate(word = tolower(word)) 
+
+nrow(rhymer) # 1000 
+head(rhymer)
+```
+
+load RNC & Corpus-1835 rhymes
+
+```{r}
+rnc_rhymes <- read.csv("../../data/ch5/rnc_rhymes.csv") %>% select(-X)
+
+c1835_rhymes <- read.csv("../../data/ch5/rhymes_parsed.csv") %>% select(-X)
+```
+
+### RNC comparison
+
+```{r}
+# glimpse(rnc_rhymes)
+
+rnc_rhymes %>% 
+  select(from, to, poem_id) %>% 
+  pivot_longer(!poem_id, names_to = "group", values_to = "word") %>% 
+  mutate(word = tolower(word)) %>% 
+  count(word, sort = T) %>% 
+  mutate(ending = ifelse(nchar(word) < 2, paste0("_", word), word),
+         ending = str_extract(ending, "\\w{2}$")) %>% 
+  filter(ending %in% c("ба", "ва", "га")) # 545 rows / words on ba-va-ga
+
+# join rhymer & rnc data
+rnc_rhymer <- rnc_rhymes %>% 
+  select(from, to, poem_id) %>% 
+  pivot_longer(!poem_id, names_to = "group", values_to = "word") %>% 
+  mutate(word = tolower(word)) %>% 
+  count(word, sort = T) %>% 
+  mutate(ending = ifelse(nchar(word) < 2, paste0("_", word), word),
+         ending = str_extract(ending, "\\w{2}$")) %>% 
+  filter(ending %in% c("ба", "ва", "га")) %>% 
+  # group_by(ending) %>% 
+  mutate(rank = row_number()) %>% 
+  # ungroup() %>% 
+  left_join(rhymer %>% mutate(group = "rhymer"), 
+             by = "word") %>% 
+  distinct() 
+
+head(rnc_rhymer, 15)
+rnc_rhymer[is.na(rnc_rhymer)] <- "not_found"
+
+# distribution of intersections on a rank-based axis
+rnc_rhymer %>% 
+  ggplot(aes(x = rank, y = n, fill = group)) + geom_col() + 
+  scale_fill_manual(values = c(met.brewer(name = "Veronese")[3],
+                               met.brewer(name = "Veronese")[6]))#+ 
+  #facet_wrap(~ending, scales = "free")
+
+# tail fragment
+rnc_rhymer %>% 
+  filter(rank > 49) %>% 
+  ggplot(aes(x = rank, y = n, fill = group)) + geom_col() + 
+  scale_fill_manual(values = c(met.brewer(name = "Veronese")[3],
+                               met.brewer(name = "Veronese")[6])) #+ 
+  #facet_wrap(~ending, scales = "free")
+
+# percentage of found / not found rhymes IN RHYMER
+rnc_rhymer %>% 
+  count(group, sort = T) %>% 
+  mutate(perc = round(n / nrow(rnc_rhymer) * 100, 1))
+```
+
+### C-1835 comparison
+
+```{r}
+c1835_rhymes %>% 
+  select(id, from, to) %>% 
+  pivot_longer(!id, names_to = "group", values_to = "word") %>% 
+  mutate(word = tolower(word)) %>% 
+  count(word, sort = T) %>% 
+  mutate(ending = ifelse(nchar(word) < 2, paste0("_", word), word),
+         ending = str_extract(word, "\\w{2}$")) %>% 
+  filter(ending %in% c("ба", "ва", "га")) # 309 
+
+c1835_rhymer <- c1835_rhymes %>% 
+  select(id, from, to) %>% 
+  pivot_longer(!id, names_to = "group", values_to = "word") %>% 
+  mutate(word = tolower(word)) %>% 
+  count(word, sort = T) %>% 
+  mutate(ending = ifelse(nchar(word) < 2, paste0("_", word), word),
+         ending = str_extract(word, "\\w{2}$")) %>% 
+  filter(ending %in% c("ба", "ва", "га")) %>% 
+  #group_by(ending) %>% 
+  mutate(rank = row_number()) %>% 
+  #ungroup() %>% 
+  left_join(rhymer %>% mutate(group = "rhymer"), 
+             by = "word") %>% 
+  distinct()
+
+head(c1835_rhymer, 15)
+c1835_rhymer[is.na(c1835_rhymer)] <- "not found"
+
+c1835_rhymer %>% 
+  ggplot(aes(x = rank, y = n, fill = group)) + geom_col() + 
+  scale_fill_manual(values = c(met.brewer(name = "Veronese")[3],
+                               met.brewer(name = "Veronese")[6])) # + 
+  #facet_wrap(~ending, scales = "free")
+
+c1835_rhymer %>% 
+  filter(rank > 19) %>% 
+  ggplot(aes(x = rank, y = n, fill = group)) + geom_col() + 
+  scale_fill_manual(values = c(met.brewer(name = "Veronese")[3],
+                               met.brewer(name = "Veronese")[6])) # + 
+  # facet_wrap(~ending, scales = "free")
+
+c1835_rhymer %>% 
+  count(group, sort = T) %>% 
+  mutate(perc = round(n / nrow(c1835_rhymer) * 100, 1))
+```
+
+### RNC / C-1835 intersection
+
+Rhymes intersection between the same -ba-va-ga sets in rnc / c1835
+
+```{r}
+rnc_bavaga <- rnc_rhymes %>% 
+  select(from, to, poem_id) %>% 
+  pivot_longer(!poem_id, names_to = "group", values_to = "word") %>% 
+  mutate(word = tolower(word)) %>% 
+  count(word, sort = T) %>% 
+  mutate(ending = ifelse(nchar(word) < 2, paste0("_", word), word),
+         ending = str_extract(ending, "\\w{2}$")) %>% 
+  filter(ending %in% c("ба", "ва", "га")) %>% 
+  mutate(rank_rnc = row_number())
+
+c1835_bavaga <- c1835_rhymes %>% 
+  select(id, from, to) %>% 
+  pivot_longer(!id, names_to = "group", values_to = "word") %>% 
+  mutate(word = tolower(word)) %>% 
+  count(word, sort = T) %>% 
+  mutate(ending = ifelse(nchar(word) < 2, paste0("_", word), word),
+         ending = str_extract(word, "\\w{2}$")) %>% 
+  filter(ending %in% c("ба", "ва", "га")) %>% 
+  mutate(rank_1835 = row_number())
+
+bavaga_full <- rnc_bavaga %>% 
+  mutate(perc_rnc = round( n / nrow(rnc_bavaga) * 100, 1 )) %>% 
+  select(-n, -ending) %>% 
+  full_join(c1835_bavaga %>% 
+              mutate(perc_1835 = round( n / nrow(c1835_bavaga) * 100, 1 )) %>% 
+              select(-n, -ending), 
+            by = "word")
+
+bavaga_full[is.na(bavaga_full)] <- 0
+head(bavaga_full, 10)
+nrow(bavaga_full)
+
+bavaga_full %>% 
+  mutate(present_rnc = ifelse(rank_rnc == 0, "not present", "present"),
+         present_35 = ifelse(rank_1835 == 0, "not present", "present"),
+         present_both = ifelse(present_rnc == "present" & present_35 == "present", 
+                               "both", 
+                               "only RNC"), 
+         present_both = ifelse(rank_rnc == 0 & present_both != "both", 
+                               "only C1835", present_both)) %>% 
+  count(present_both) %>% 
+  mutate(perc = round( n / nrow(bavaga_full) * 100, 1 ))
+
+bavaga_full %>% 
+  mutate(present_rnc = ifelse(rank_rnc == 0, "not present", "present"),
+         present_35 = ifelse(rank_1835 == 0, "not present", "present"),
+         present_both = ifelse(present_rnc == "present" & present_35 == "present", 
+                               "both", 
+                               "only RNC"), 
+         present_both = ifelse(rank_rnc == 0 & present_both != "both", 
+                               "only C1835", present_both)) %>%  
+  filter(present_both != "only C1835") %>% 
+  ggplot(aes(x = rank_rnc, y = perc_rnc, fill = present_both)) + 
+  geom_col() + 
+  scale_fill_manual(values = c(met.brewer(name = "Veronese")[3],
+                               met.brewer(name = "Veronese")[6]))
+
+bavaga_full %>% 
+  mutate(present_rnc = ifelse(rank_rnc == 0, "not present", "present"),
+         present_35 = ifelse(rank_1835 == 0, "not present", "present"),
+         present_both = ifelse(present_rnc == "present" & present_35 == "present", 
+                               "both", 
+                               "only RNC"), 
+         present_both = ifelse(rank_rnc == 0 & present_both != "both", 
+                               "only C1835", present_both)) %>%  
+  filter(present_both != "only RNC") %>% 
+  ggplot(aes(x = rank_1835, y = perc_1835, fill = present_both)) + 
+  geom_col() + 
+  scale_fill_manual(values = c(met.brewer(name = "Veronese")[3],
+                               met.brewer(name = "Veronese")[6]))
+```

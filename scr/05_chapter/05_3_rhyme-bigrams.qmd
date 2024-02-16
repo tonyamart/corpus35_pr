@@ -243,7 +243,14 @@ rm(bigram_freq_full, bigram_freq_rhymes, hapax_archive, hapax_per_year,
 
 ## Fig. 5-1-2. RNC / C1835 - Random samples rhyme intersection
 
-REMOVE RNC TEXTS before 1830
+Select only rhymes before year 1830 from canonic corpus
+
+```{r}
+rnc_rhymes_before1830 <- rnc_rhymes %>% 
+  filter(as.numeric(year) < 1830)
+```
+
+Run loop that will take 100 random samples from each year of Corpus-1835 and compare it with the full set of rhymes from RNC
 
 ```{r}
 x_1 <- NULL
@@ -262,9 +269,9 @@ for (j in 1:100) { # take 100 random samples for each year
     y <- unique(rhymes_1835$year)[i]
     year_count[i] <- y
   
-    # select all unique rhymes from canonic corpus before 1835
-    x_1 <- rnc_rhymes %>% 
-      filter(as.numeric(year) < as.numeric(y)) %>% 
+    # select all unique rhymes from canonic corpus before 1830
+    x_1 <- rnc_rhymes_before1830 %>% 
+      #filter(as.numeric(year) < as.numeric(y)) %>% 
       select(rhyme_alph) %>% 
       distinct() %>% 
       pull(rhyme_alph)
@@ -298,6 +305,110 @@ for (j in 1:100) { # take 100 random samples for each year
 head(df)
 glimpse(df)
 ```
+
+```{r}
+df %>% 
+  ggplot(aes(x = as.numeric(year_count), 
+             y = n, group = year_count)) + 
+  geom_boxplot() + 
+  geom_jitter(alpha = 0.3, color = met.brewer(name = "Veronese")[5]) + 
+  scale_y_continuous(limits = c(0,100)) + 
+  scale_x_continuous(breaks = c(1835:1840)) + 
+  labs(x = "Год",
+       y = "Число пересечений (из 100 возможных)" #,
+       #title = "Количество пересечений", 
+       #subtitle = "между случайной выборкой рифм из Корпуса-1835 (100 рифм, 100 итераций)\nи всеми известными рифмами из НКРЯ, датированными до соответствующего года"
+       )
+```
+
+```{r, eval=FALSE}
+ggsave(filename = "plots/fig_5-1-2.png", plot = last_plot(), dpi = 300,
+       width = 6, height = 4, bg = "white")
+```
+
+Some more analysis for 1835 rhymes? why the mean is so different?
+
+```{r}
+glimpse(rhymes_1835)
+glimpse(corpus_1835)
+
+rhymes_1835 %>%
+  filter(year == "1835") %>% 
+  left_join(corpus_1835 %>% select(text_id, author_text) %>% rename(id = text_id),
+            by = "id") %>% 
+  count(author_text, sort = T) %>% 
+  filter(author_text != "" & n > 50)
+```
+
+There is definitely a bias because of dates incompatibility in RNC & Corpus-1835 (e.g. reprints of Zhukovsky's poems included in C-1835 but also found in RNC before 1830). Perform the same loop without four canonical most frequent authors:
+
+```{r}
+
+# filter out authors
+rhymes_test <- rhymes_1835 %>%
+  left_join(corpus_1835 %>% select(text_id, author_text) %>% rename(id = text_id),
+            by = "id") %>% 
+  filter(!author_text %in% c("Жуковский В.А.", "Крылов И.А.", "Баратынский Е.А.",
+                             "Пушкин А.С."))
+
+
+
+# loop
+
+x_1 <- NULL
+x_2 <- NULL
+year_count <- NULL
+perc_intersect <- NULL
+
+random <- NULL
+df <- NULL
+
+
+for (j in 1:100) { # take 100 random samples for each year
+  
+  for (i in 1:length(unique(rhymes_test$year))) {
+  
+    y <- unique(rhymes_test$year)[i]
+    year_count[i] <- y
+  
+    # select all unique rhymes from canonic corpus before 1830
+    x_1 <- rnc_rhymes_before1830 %>% 
+      #filter(as.numeric(year) < as.numeric(y)) %>% 
+      select(rhyme_alph) %>% 
+      distinct() %>% 
+      pull(rhyme_alph)
+    
+    # take 100 random rhymes from corpus-1835
+    x_2 <- rhymes_test %>% 
+      filter(as.numeric(year) %in% as.numeric(y)) %>% 
+      select(rhyme_alph) %>% 
+      distinct() %>% 
+      sample_n(100) %>% 
+      pull(rhyme_alph)
+    
+    # length(x_1) # all rhymes before year x
+    # length(x_2) # 100 random unique rhymes
+    
+    # count number of intersections
+    test <- length(intersect(x_1, x_2))
+    # length(test)
+  
+    perc_intersect[i] <- test
+  }
+  
+  random <- tibble(
+      a = j,
+      year_count = unlist(year_count),
+      n = unlist(perc_intersect))
+  
+    df <- rbind(df, random)
+}
+
+head(df)
+glimpse(df)
+```
+
+Plot
 
 ```{r}
 df %>% 

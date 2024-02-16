@@ -52,10 +52,11 @@ rnc_rhymes <- read.csv("../../data/ch5/rnc_rhymes.csv") %>% select(-X)
 
 glimpse(rnc_rhymes)
 
-rnc_rhymes %>% 
-  mutate(poem_id = str_replace(poem_id, "RNC_", "RNC__")) %>% 
-  separate(poem_id, into = c("corpus", "id"), sep = "__") %>% 
-  separate(id, into = c("id", "year"), sep = "_") 
+# to separate year if needed:
+# rnc_rhymes %>% 
+#   mutate(poem_id = str_replace(poem_id, "RNC_", "RNC__")) %>% 
+#   separate(poem_id, into = c("corpus", "id"), sep = "__") %>% 
+#   separate(id, into = c("id", "year"), sep = "_") 
 ```
 
 ## Extract rhyme pairs
@@ -429,163 +430,9 @@ nrow(rhymes) # 81 746
 nrow(rhymes_end) # 81 334
 ```
 
-Save
+### Save
 
 ```{r, eval=FALSE}
 write.csv(file = "../../data/ch5/rhymes_parsed_closure.csv", rhymes_end)
 write.csv(file = "../../data/ch5/rhymes_parsed.csv", rhymes)
-```
-
-## Rhymer data
-
-```{r}
-rhymer <- read_file("../../data/ch5/rhymer.txt")
-
-rhymer <- tibble(word = rhymer) %>% 
-  separate_rows(word, sep = "\n") %>% 
-  filter(word != "") %>% 
-  mutate(word = tolower(word)) 
-
-nrow(rhymer) # 1000 !
-```
-
-```{r}
-head(rhymer)
-```
-
-```{r}
-# real top of the words on these endings in RNC
-
-# glimpse(rnc_rhymes)
-
-rnc_rhymes %>% 
-  select(from, to, poem_id) %>% 
-  pivot_longer(!poem_id, names_to = "group", values_to = "word") %>% 
-  mutate(word = tolower(word)) %>% 
-  count(word, sort = T) %>% 
-  mutate(ending = ifelse(nchar(word) < 2, paste0("_", word), word),
-         ending = str_extract(ending, "\\w{2}$")) %>% 
-  filter(ending %in% c("ба", "ва", "га")) # 545 rows / words on ba-va-ga
-
-# join rhymer & rnc data
-rnc_rhymer <- rnc_rhymes %>% 
-  select(from, to, poem_id) %>% 
-  pivot_longer(!poem_id, names_to = "group", values_to = "word") %>% 
-  mutate(word = tolower(word)) %>% 
-  count(word, sort = T) %>% 
-  mutate(ending = ifelse(nchar(word) < 2, paste0("_", word), word),
-         ending = str_extract(ending, "\\w{2}$")) %>% 
-  filter(ending %in% c("ба", "ва", "га")) %>% 
-  # group_by(ending) %>% 
-  # mutate(rank = row_number()) %>% 
-  # ungroup() %>% 
-  left_join(rhymer %>% mutate(group = "rhymer"), 
-             by = "word") %>% 
-  distinct() 
-
-rnc_rhymer
-rnc_rhymer[is.na(rnc_rhymer)] <- "not_found"
-
-rnc_rhymer %>% 
-  ggplot(aes(x = rank, y = n, fill = group)) + geom_col() + theme_minimal() #+ 
-  #facet_wrap(~ending, scales = "free")
-
-rnc_rhymer %>% 
-  filter(rank > 24) %>% 
-  ggplot(aes(x = rank, y = n, fill = group)) + geom_col() + theme_minimal() #+ 
-  #facet_wrap(~ending, scales = "free")
-
-rnc_rhymer %>% 
-  count(group, sort = T) %>% 
-  mutate(perc = round(n / nrow(rnc_rhymer) * 100, 1))
-```
-
-```{r}
-# Same for the corpus_1835
-rhymes %>% 
-  select(id, from, to) %>% 
-  pivot_longer(!id, names_to = "group", values_to = "word") %>% 
-  mutate(word = tolower(word)) %>% 
-  count(word, sort = T) %>% 
-  mutate(ending = ifelse(nchar(word) < 2, paste0("_", word), word),
-         ending = str_extract(word, "\\w{2}$")) %>% 
-  filter(ending %in% c("ба", "ва", "га")) # 309 
-
-c1835_rhymer <- rhymes %>% 
-  select(id, from, to) %>% 
-  pivot_longer(!id, names_to = "group", values_to = "word") %>% 
-  mutate(word = tolower(word)) %>% 
-  count(word, sort = T) %>% 
-  mutate(ending = ifelse(nchar(word) < 2, paste0("_", word), word),
-         ending = str_extract(word, "\\w{2}$")) %>% 
-  filter(ending %in% c("ба", "ва", "га")) %>% 
-  #group_by(ending) %>% 
-  #mutate(rank = row_number()) %>% 
-  #ungroup() %>% 
-  left_join(rhymer %>% mutate(group = "rhymer"), 
-             by = "word") %>% 
-  distinct()
-
-c1835_rhymer
-c1835_rhymer[is.na(c1835_rhymer)] <- "not found"
-
-c1835_rhymer %>% 
-  ggplot(aes(x = rank, y = n, fill = group)) + geom_col() + theme_minimal() # + 
-  #facet_wrap(~ending, scales = "free")
-
-c1835_rhymer %>% 
-  filter(rank > 19) %>% 
-  ggplot(aes(x = rank, y = n, fill = group)) + geom_col() + theme_minimal() # + 
-  # facet_wrap(~ending, scales = "free")
-
-c1835_rhymer %>% 
-  count(group, sort = T) %>% 
-  mutate(perc = round(n / nrow(c1835_rhymer) * 100, 1))
-```
-
-Rhymes intersection between the same -ba-va-ga sets in rnc / c1835
-
-```{r}
-rnc_bavaga <- rnc_rhymes %>% 
-  select(from, to, poem_id) %>% 
-  pivot_longer(!poem_id, names_to = "group", values_to = "word") %>% 
-  mutate(word = tolower(word)) %>% 
-  count(word, sort = T) %>% 
-  mutate(ending = ifelse(nchar(word) < 2, paste0("_", word), word),
-         ending = str_extract(ending, "\\w{2}$")) %>% 
-  filter(ending %in% c("ба", "ва", "га")) %>% 
-  mutate(rank_rnc = row_number())
-
-c1835_bavaga <- rhymes %>% 
-  select(id, from, to) %>% 
-  pivot_longer(!id, names_to = "group", values_to = "word") %>% 
-  mutate(word = tolower(word)) %>% 
-  count(word, sort = T) %>% 
-  mutate(ending = ifelse(nchar(word) < 2, paste0("_", word), word),
-         ending = str_extract(word, "\\w{2}$")) %>% 
-  filter(ending %in% c("ба", "ва", "га")) %>% 
-  mutate(rank_1835 = row_number())
-
-bavaga_full <- rnc_bavaga %>% 
-  mutate(perc_rnc = round( n / nrow(rnc_bavaga) * 100, 1 )) %>% 
-  select(-n, -ending) %>% 
-  full_join(c1835_bavaga %>% 
-              mutate(perc_1835 = round( n / nrow(c1835_bavaga) * 100, 1 )) %>% 
-              select(-n, -ending), 
-            by = "word")
-
-bavaga_full[is.na(bavaga_full)] <- 0
-
-nrow(bavaga_full)
-
-bavaga_full %>% 
-  mutate(present_rnc = ifelse(rank_rnc == 0, "not present", "present"),
-         present_35 = ifelse(rank_1835 == 0, "not present", "present"),
-         present_both = ifelse(present_rnc == "present" & present_35 == "present", 
-                               "both", 
-                               "only RNC"), 
-         present_both = ifelse(rank_rnc == 0 & present_both != "both", 
-                               "only C1835", present_both)) %>% 
-  count(present_both) %>% 
-  mutate(perc = round( n / nrow(bavaga_full) * 100, 1 ))
 ```

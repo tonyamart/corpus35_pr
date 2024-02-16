@@ -191,6 +191,10 @@ ggsave("plots/fig_5-1-1.png", plot = last_plot(), dpi = 300,
        width = 8, height = 6, bg = "white")
 ```
 
+Q: would it be feasible to try to fit the zipfR model ?
+
+<https://zipfr.r-forge.r-project.org>
+
 Number of rhymes found in the two corpora is very different (considerbly
 more texts in corpus-1835 for the respective years)
 
@@ -321,7 +325,17 @@ rm(bigram_freq_full, bigram_freq_rhymes, hapax_archive, hapax_per_year,
    total, total_count, unigram_freq_full, unigram_freq_rhymes)
 ```
 
-## Fig. 5-1-2. RNC / C1835 - Random samples rhyme interection
+## Fig. 5-1-2. RNC / C1835 - Random samples rhyme intersection
+
+Select only rhymes before year 1830 from canonic corpus
+
+``` r
+rnc_rhymes_before1830 <- rnc_rhymes %>% 
+  filter(as.numeric(year) < 1830)
+```
+
+Run loop that will take 100 random samples from each year of Corpus-1835
+and compare it with the full set of rhymes from RNC
 
 ``` r
 x_1 <- NULL
@@ -340,9 +354,9 @@ for (j in 1:100) { # take 100 random samples for each year
     y <- unique(rhymes_1835$year)[i]
     year_count[i] <- y
   
-    # select all unique rhymes from canonic corpus before 1835
-    x_1 <- rnc_rhymes %>% 
-      filter(as.numeric(year) < as.numeric(y)) %>% 
+    # select all unique rhymes from canonic corpus before 1830
+    x_1 <- rnc_rhymes_before1830 %>% 
+      #filter(as.numeric(year) < as.numeric(y)) %>% 
       select(rhyme_alph) %>% 
       distinct() %>% 
       pull(rhyme_alph)
@@ -379,12 +393,12 @@ head(df)
     # A tibble: 6 × 3
           a year_count     n
       <int> <chr>      <int>
-    1     1 1840          38
-    2     1 1837          34
-    3     1 1838          48
-    4     1 1836          32
-    5     1 1835          60
-    6     1 1839          32
+    1     1 1840          21
+    2     1 1837          25
+    3     1 1838          32
+    4     1 1836          37
+    5     1 1835          55
+    6     1 1839          29
 
 ``` r
 glimpse(df)
@@ -394,7 +408,7 @@ glimpse(df)
     Columns: 3
     $ a          <int> 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4,…
     $ year_count <chr> "1840", "1837", "1838", "1836", "1835", "1839", "1840", "18…
-    $ n          <int> 38, 34, 48, 32, 60, 32, 38, 34, 37, 40, 62, 36, 50, 42, 42,…
+    $ n          <int> 21, 25, 32, 37, 55, 29, 27, 23, 38, 32, 54, 31, 27, 26, 32,…
 
 ``` r
 df %>% 
@@ -411,7 +425,217 @@ df %>%
        )
 ```
 
-![](05_3_rhyme-bigrams.markdown_strict_files/figure-markdown_strict/unnamed-chunk-16-1.png)
+![](05_3_rhyme-bigrams.markdown_strict_files/figure-markdown_strict/unnamed-chunk-17-1.png)
+
+``` r
+ggsave(filename = "plots/fig_5-1-2.png", plot = last_plot(), dpi = 300,
+       width = 6, height = 4, bg = "white")
+```
+
+Some more analysis for 1835 rhymes? why the mean is so different?
+
+``` r
+glimpse(rhymes_1835)
+```
+
+    Rows: 81,360
+    Columns: 7
+    $ corpus     <chr> "M", "M", "M", "M", "M", "M", "M", "M", "M", "M", "M", "M",…
+    $ id         <chr> "P_1938", "P_1938", "P_1938", "C_156__20", "C_156__20", "C_…
+    $ year       <chr> "1840", "1840", "1840", "1837", "1837", "1837", "1837", "18…
+    $ rhyme_pair <chr> "краса небеса", "огневым земным", "красавицей красавице", "…
+    $ rhyme_alph <chr> "краса небеса", "земным огневым", "красавице красавицей", "…
+    $ from       <chr> "краса", "огневым", "красавицей", "око", "силки", "стонет",…
+    $ to         <chr> "небеса", "земным", "красавице", "высоко", "легки", "догони…
+
+``` r
+glimpse(corpus_1835)
+```
+
+    Rows: 4,799
+    Columns: 20
+    $ text_id       <chr> "P_1", "P_10", "P_100", "P_1000", "P_1001", "P_1002", "P…
+    $ A_ID          <chr> "", "A-50", "A-7", "A-41", "A-139", "A-11", "A-163", "A-…
+    $ author_sign   <chr> "", "Л. Якубович", "Кольцов", "Ф. Глинка", "Н. Прокопови…
+    $ author_text   <chr> "", "Якубович Л.А.", "Кольцов А.В.", "Глинка Ф.Н.", "Про…
+    $ text_title    <chr> "Солдатская песня", "Молния", "Ночлег чумаков", "Утешите…
+    $ text_subtitle <chr> "", "", "Сельские картины", "", "", "", "", "", "", "", …
+    $ first_line    <chr> "Ох жизнь, молодецкая", "Зачем с небесной высоты", "В бл…
+    $ year          <chr> "1835", "1835", "1836", "1838", "1838", "1838", "1838", …
+    $ path_text     <chr> "../../data/corpus1835/periodicals/per_raw//P_1.txt", ".…
+    $ source_text   <chr> "Сев_пч. 1835. №12. C. 46", "БдЧ. 1835. Т.8. Отд. 1. C. …
+    $ COL_ID        <chr> "", "", "", "", "", "", "", "", "", "", "", "", "", "", …
+    $ corpus        <chr> "per", "per", "per", "per", "per", "per", "per", "per", …
+    $ text_raw      <chr> "Ох, жизнь молодецкая,\nБравая, солдатская!\nКак осенняя…
+    $ text_cln      <chr> "Ох, жизнь молодецкая,\nБравая, солдатская!\nКак осенняя…
+    $ text_lemm     <chr> "ох, жизнь молодецкий,\nбравый, солдатский!\nкак осенний…
+    $ text_acc      <chr> "Ох, жизнь молоде'цкая,\nБра'вая, солда'тская!\nКак осе'…
+    $ meter         <fct> Other?, Iamb, Iamb, Iamb, Trochee, Iamb, Trochee, Iamb, …
+    $ feet          <chr> "?", "3", "4", "4", "4", "4", "other", "4", "6", "5", "4…
+    $ formula       <chr> "Other?_?", "Iamb_3", "Iamb_4", "Iamb_4", "Trochee_4", "…
+    $ n_lines       <int> 38, 16, 98, 77, 28, 12, 44, 25, 31, 28, 100, 16, 17, 60,…
+
+``` r
+rhymes_1835 %>%
+  filter(year == "1835") %>% 
+  left_join(corpus_1835 %>% select(text_id, author_text) %>% rename(id = text_id),
+            by = "id") %>% 
+  count(author_text, sort = T) %>% 
+  filter(author_text != "" & n > 50)
+```
+
+            author_text    n
+    1    Жуковский В.А. 3351
+    2       Крылов И.А. 3160
+    3  Баратынский Е.А. 1758
+    4        Зилов А.М. 1282
+    5   Бенедиктов В.Г.  845
+    6     Тимофеев А.В.  653
+    7       Меркли М.М.  554
+    8       Деларю М.Д.  403
+    9      Савурский Н.  386
+    10      Пушкин А.С.  338
+    11        Венгер Н.  279
+    12    Геевский С.Л.  255
+    13      Менцов Ф.Н.  227
+    14       Ершов П.П.  202
+    15     Кольцов А.В.  176
+    16  Прокопович Н.Я.  175
+    17      Глинка Ф.Н.  171
+    18      Козлов И.И.  155
+    19       Лебедев В.  136
+    20     Аксаков К.С.  125
+    21     Сорокин М.П.  122
+    22   Ознобишин Д.П.  107
+    23      Красов В.И.   87
+    24     Гогниев И.Е.   86
+    25  Ростопчина Е.П.   81
+    26      Глинка А.П.   76
+    27    Алипанов Е.И.   75
+    28      Банников А.   75
+    29    Якубович Л.А.   72
+    30     Галанин И.Д.   68
+    31             П.П.   65
+    32               С.   62
+    33      Языков Н.М.   56
+    34          Е. Ш-ий   54
+    35          Лихачев   53
+    36      Ставелов Н.   53
+    37     Хомяков А.С.   52
+
+There is definitely a bias because of dates incompatibility in RNC &
+Corpus-1835 (e.g. reprints of Zhukovsky’s poems included in C-1835 but
+also found in RNC before 1830). Perform the same loop without four
+canonical most frequent authors:
+
+``` r
+# filter out authors
+rhymes_test <- rhymes_1835 %>%
+  left_join(corpus_1835 %>% select(text_id, author_text) %>% rename(id = text_id),
+            by = "id") %>% 
+  filter(!author_text %in% c("Жуковский В.А.", "Крылов И.А.", "Баратынский Е.А.",
+                             "Пушкин А.С."))
+```
+
+    Warning in left_join(., corpus_1835 %>% select(text_id, author_text) %>% : Detected an unexpected many-to-many relationship between `x` and `y`.
+    ℹ Row 2118 of `x` matches multiple rows in `y`.
+    ℹ Row 1014 of `y` matches multiple rows in `x`.
+    ℹ If a many-to-many relationship is expected, set `relationship =
+      "many-to-many"` to silence this warning.
+
+``` r
+# loop
+
+x_1 <- NULL
+x_2 <- NULL
+year_count <- NULL
+perc_intersect <- NULL
+
+random <- NULL
+df <- NULL
+
+
+for (j in 1:100) { # take 100 random samples for each year
+  
+  for (i in 1:length(unique(rhymes_test$year))) {
+  
+    y <- unique(rhymes_test$year)[i]
+    year_count[i] <- y
+  
+    # select all unique rhymes from canonic corpus before 1830
+    x_1 <- rnc_rhymes_before1830 %>% 
+      #filter(as.numeric(year) < as.numeric(y)) %>% 
+      select(rhyme_alph) %>% 
+      distinct() %>% 
+      pull(rhyme_alph)
+    
+    # take 100 random rhymes from corpus-1835
+    x_2 <- rhymes_test %>% 
+      filter(as.numeric(year) %in% as.numeric(y)) %>% 
+      select(rhyme_alph) %>% 
+      distinct() %>% 
+      sample_n(100) %>% 
+      pull(rhyme_alph)
+    
+    # length(x_1) # all rhymes before year x
+    # length(x_2) # 100 random unique rhymes
+    
+    # count number of intersections
+    test <- length(intersect(x_1, x_2))
+    # length(test)
+  
+    perc_intersect[i] <- test
+  }
+  
+  random <- tibble(
+      a = j,
+      year_count = unlist(year_count),
+      n = unlist(perc_intersect))
+  
+    df <- rbind(df, random)
+}
+
+head(df)
+```
+
+    # A tibble: 6 × 3
+          a year_count     n
+      <int> <chr>      <int>
+    1     1 1840          30
+    2     1 1837          25
+    3     1 1838          34
+    4     1 1836          35
+    5     1 1835          35
+    6     1 1839          34
+
+``` r
+glimpse(df)
+```
+
+    Rows: 600
+    Columns: 3
+    $ a          <int> 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4,…
+    $ year_count <chr> "1840", "1837", "1838", "1836", "1835", "1839", "1840", "18…
+    $ n          <int> 30, 25, 34, 35, 35, 34, 31, 21, 23, 33, 28, 29, 34, 30, 34,…
+
+Plot
+
+``` r
+df %>% 
+  ggplot(aes(x = as.numeric(year_count), 
+             y = n, group = year_count)) + 
+  geom_boxplot() + 
+  geom_jitter(alpha = 0.3, color = met.brewer(name = "Veronese")[5]) + 
+  scale_y_continuous(limits = c(0,100)) + 
+  scale_x_continuous(breaks = c(1835:1840)) + 
+  labs(x = "Год",
+       y = "Число пересечений (из 100 возможных)" #,
+       #title = "Количество пересечений", 
+       #subtitle = "между случайной выборкой рифм из Корпуса-1835 (100 рифм, 100 итераций)\nи всеми известными рифмами из НКРЯ, датированными до соответствующего года"
+       )
+```
+
+![](05_3_rhyme-bigrams.markdown_strict_files/figure-markdown_strict/unnamed-chunk-21-1.png)
 
 ``` r
 ggsave(filename = "plots/fig_5-1-2.png", plot = last_plot(), dpi = 300,

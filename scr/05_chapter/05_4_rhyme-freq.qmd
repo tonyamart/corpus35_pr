@@ -15,6 +15,7 @@ library(tidygraph)
 library(ggraph)
 
 library(MetBrewer)
+library(patchwork)
 theme_set(theme_minimal())
 ```
 
@@ -27,7 +28,10 @@ rhymes <- read.csv("../../data/ch5/rhymes_parsed_closure.csv") %>%
   mutate(rhyme_alph = tolower(rhyme_alph),
          rhyme_pair = tolower(rhyme_pair),
          from = tolower(from),
-         to = tolower(to))
+         to = tolower(to)) %>% 
+  # fix typo
+  mutate(from = ifelse(from == "искуства", "искусства", from),
+         to = ifelse(to == "искуства", "искусства", to))
 glimpse(rhymes)
 ```
 
@@ -42,6 +46,17 @@ Metadata
 
 ```{r}
 corpus_1835 <- readRDS("../../data/corpus1835/corpus_1835.Rds")
+```
+
+Import rhymer data
+
+```{r}
+rhymer <- read_file("../../data/ch5/rhymer.txt")
+
+rhymer <- tibble(word = rhymer) %>% 
+  separate_rows(word, sep = "\n") %>% 
+  filter(word != "") %>% 
+  mutate(word = tolower(word)) 
 ```
 
 # bigrams
@@ -89,6 +104,14 @@ print(paste("Number of rhyme pairs encountered 10 and more times:",
               pull(rhyme_alph) %>% 
               length()
             ))
+
+
+rhymes %>% 
+  count(rhyme_alph, sort = T) %>% 
+  filter(n > 9) %>% 
+  summarise(frequent_rhymes = sum(n), 
+            total_rhymes = nrow(rhymes),
+            perc_freq_rhymes = round((frequent_rhymes/total_rhymes) * 100, 3))    
 ```
 
 Examples of top rhymes in Corpus-1835
@@ -155,6 +178,9 @@ rhyme_freq <- rhymes %>%
   mutate(rank_rhyme = row_number())
 
 head(rhyme_freq, 100)
+
+rhymes %>% 
+  filter(str_detect(from, "варшав") | str_detect(to, "варшав"))
 ```
 
 Comparison of ranked lists demonstration (tau max = 1, tau min = -1):
@@ -228,7 +254,7 @@ word <- rhymes %>%
   filter(str_detect(from, "любви") | str_detect(to, "любви")) %>% 
   filter(str_detect(from, "и$") & str_detect(to, "и$"))
 
-print(paste("Number of rhyme pairs including the word 'мечты':", nrow(word)))
+print(paste("Number of rhyme pairs including the word 'любви':", nrow(word)))
 ```
 
 Fastly create a network out of these words and look at the frequency of words & pairs
@@ -261,9 +287,53 @@ word_net %>%
   # activate(edges) %>% 
   # filter(n > 1) %>% 
   ggraph('kk') + 
-  geom_edge_link(aes(width = n), alpha = 0.5) + 
-  geom_node_point(aes(size = n), alpha = 0.5, color = "blue") + 
-  geom_node_text(aes(label = source) #, hjust = 1, vjust = -1
+  geom_edge_link(aes(width = n, alpha = n), color = met.brewer("Veronese")[6]) + 
+  geom_node_point(aes(size = 20), color = met.brewer("Veronese")[7]) + 
+  geom_node_text(aes(label = source) , 
+                 hjust = 0.5, vjust = -0.8,
+                 size = 6
+                 )
+
+
+```
+
+Same net but without non-frequent edges
+
+```{r}
+edges_freq <- word %>% 
+  count(rhyme_alph) %>% 
+  filter(n > 1)
+
+edgelist <- word %>% 
+  inner_join(edges_freq, by = "rhyme_alph") %>% 
+  select(from, to, n, from_pos, to_pos)
+
+node_freq <- word %>% 
+  unnest_tokens(input = rhyme_pair, output = word, token = "words") %>% 
+  count(word, sort = T) %>% 
+  rename(source = word) 
+
+nodelist <- tibble(source = unique(c(edgelist$from, edgelist$to))) %>% 
+  #mutate(idn = row_number()) %>% 
+  left_join(node_freq, by = "source")
+nodelist
+
+
+
+word_net <- tbl_graph(nodes = nodelist,
+                       edges = edgelist, 
+                       directed = FALSE)
+
+# same with no edges with freq 1
+word_net %>% 
+  # activate(edges) %>% 
+  # filter(n > 1) %>% 
+  ggraph('kk') + 
+  geom_edge_link(aes(width = n, alpha = n), color = met.brewer("Veronese")[6]) + 
+  geom_node_point(aes(size = 20), color = met.brewer("Veronese")[7]) + 
+  geom_node_text(aes(label = source) , 
+                 hjust = 1.1, vjust = -.05,
+                 size = 10
                  )
 ```
 
@@ -274,99 +344,313 @@ word_net %>%
 # how connected is this net? how it looks like? which words are in the very centre?
 ```
 
-### ending net
+## Endings
+
+### todo Freq of char 2grams
+
+```{r}
+
+```
+
+### todo Freq of char 3grams
+
+```{r}
+
+```
+
+#### net fn
+
+Function to create a custom net from selected df (see columns for 'ending' above)
+
+```{r}
+ending_net <- function(ending, edges_min) {
+  
+  # count frequency of edges
+  edges_freq <- ending %>% 
+    count(rhyme_alph)
+  
+  # create edgelist
+  edgelist <- ending %>% 
+    left_join(edges_freq, by = "rhyme_alph") %>% 
+    select(from, to, n, from_pos, to_pos) %>% 
+    filter(n > edges_min) # filter edges with freq lower than edges_min
+  
+  # count nodes frequency
+  node_freq <- ending %>% 
+    unnest_tokens(input = rhyme_pair, output = word, token = "words") %>% 
+    count(word, sort = T) %>% 
+    rename(source = word) 
+  
+  # create nodelist
+  nodelist <- tibble(source = unique(c(edgelist$from, edgelist$to))) %>% 
+    #mutate(idn = row_number()) %>% 
+    left_join(node_freq, by = "source") %>% 
+    # create a column about a word's / node's presence in rhymer
+    mutate(rhymer_pr = ifelse(source %in% rhymer$word, "present", "not_present"))
+    #filter(n > 10)
+  
+  # nodelist
+  
+  # create graph
+  ending_net <- tbl_graph(nodes = nodelist,
+                         edges = edgelist, 
+                         directed = FALSE)
+}
+
+```
+
+#### -va rhyme
+
+Select rhyme pairs with a particular ending
 
 ```{r}
 ending <- rhymes %>% 
   filter(str_detect(from, "ва$") & str_detect(to, "ва$"))
 
 print(paste("Number of rhyme pairs ending with '-ва':", nrow(ending)))
+
+glimpse(ending)
+```
+
+Ending net without filtering
+
+```{r}
+# create the full network with no restriction on the edge frequency
+va_full <- ending_net(ending, edges_min = 0)
+
+va_full %>% 
+  ggraph('kk') + 
+  geom_edge_link(aes(width = n , alpha = n
+                     ), color = met.brewer("Veronese")[7]) + 
+  geom_node_point(aes(size = n , 
+                      color = rhymer_pr
+                      ), alpha = 0.95 #, color = met.brewer("Veronese")[7]
+                  ) + 
+  geom_node_text(aes(label = source,
+                     alpha = n
+                     ) #, hjust = 1, vjust = -1
+                 ) + 
+  scale_color_manual(values = c(met.brewer("Veronese")[2],
+                                met.brewer("Veronese")[5]))
+
+# ggsave("plots/net_ending_test.png", plot = last_plot(), 
+#        width = 12, height = 9, 
+#        dpi = 300, bg = "white")
+```
+
+The same network with filtering out the edges appeared only once
+
+```{r}
+va_freq1 <- ending_net(ending, edges_min = 1)
+
+va_freq1 %>% 
+  ggraph('kk') + 
+  geom_edge_link(aes(width = n, alpha = n), color = met.brewer("Veronese")[5]) + 
+  geom_node_point(aes(size = n), alpha = 0.95, color = met.brewer("Veronese")[7]) + 
+  geom_node_text(aes(label = source #, alpha = n
+                     ) , hjust = 0.5, vjust = -1
+                 )
+
+# ggsave("plots/net_ending_test_MF.png", plot = last_plot(), 
+#        width = 12, height = 9, 
+#        dpi = 300, bg = "white")
+```
+
+Separate graphs for masculine / feminine endings
+
+```{r}
+masc <- ending %>% 
+  filter(from_closure == "masc" & to_closure == "masc") 
+
+nrow(masc)
+
+va_masc <- ending_net(masc, edges_min = 0)
+
+
+va_m_net <- va_masc %>% 
+  ggraph('kk') + 
+  geom_edge_link(aes(width = n, alpha = n), color = met.brewer("Veronese")[4]) + 
+  geom_node_point(aes(size = n), alpha = 0.95, color = met.brewer("Veronese")[7]) + 
+  geom_node_text(aes(label = source , #alpha = n
+                     color = rhymer_pr
+                     ) , 
+                 hjust = 0.5, vjust = -1,
+                 size = 6
+                 ) + 
+  labs(title = "Мужские рифмы") +
+  theme(legend.position = "None",
+        plot.title = element_text(size = 20)) + 
+  scale_color_manual(values = c(met.brewer("Veronese")[2],
+                                met.brewer("Veronese")[7]))
+
+
+va_m_net
+```
+
+Feminine
+
+```{r}
+fem <- ending %>% 
+  filter(from_closure == "fem" & to_closure == "fem") 
+
+nrow(fem)
+
+va_fem <- ending_net(fem, edges_min = 1)
+
+
+va_f_net <- va_fem %>% 
+  ggraph('kk') + 
+  geom_edge_link(aes(width = n, alpha = n), color = met.brewer("Veronese")[3]) + 
+  geom_node_point(aes(size = n), alpha = 0.95, color = met.brewer("Veronese")[7]) + 
+  geom_node_text(aes(label = source , #alpha = n
+                     color = rhymer_pr
+                     ) , 
+                 hjust = 0.5, vjust = -1,
+                 size = 6
+                 ) + 
+  labs(title = "Женские рифмы") +
+  theme(legend.position = "None",
+        plot.title = element_text(size = 20)) + 
+  scale_color_manual(values = c(met.brewer("Veronese")[2],
+                                met.brewer("Veronese")[7]))
+
+va_f_net
 ```
 
 ```{r}
+layout <- "
+AAA#BBBB
+AAA#BBBB
+"
 
-edges_freq <- ending %>% 
-  count(rhyme_alph)
+va_m_net  + va_f_net + plot_layout(design = layout)
 
-edgelist <- ending %>% 
-  left_join(edges_freq, by = "rhyme_alph") %>% 
-  select(from, to, n, from_pos, to_pos) #%>% 
-  #filter(n > 1)
+ggsave(filename = "plots/va_masc_fem_net.png", plot = last_plot(), dpi = 300,
+       width = 12, heigh = 9, bg = "white")
+```
 
-node_freq <- ending %>% 
-  unnest_tokens(input = rhyme_pair, output = word, token = "words") %>% 
-  count(word, sort = T) %>% 
-  rename(source = word) 
+#### -ba rhymes
 
-nodelist <- tibble(source = unique(c(edgelist$from, edgelist$to))) %>% 
-  #mutate(idn = row_number()) %>% 
-  left_join(node_freq, by = "source") #%>% 
-  #filter(n > 1)
+Less frequent ending -ba
 
-nodelist
+```{r}
+ba_ending <- rhymes %>% 
+  filter(str_detect(from, "ба$") & str_detect(to, "ба$")) 
 
+print(paste("Number of rhyme pairs ending with '-ба':", nrow(ba_ending)))
 
-ending_net <- tbl_graph(nodes = nodelist,
-                       edges = edgelist, 
-                       directed = FALSE)
+# glimpse(ba_ending)
+```
 
-ending_net %>% 
-  # activate(edges) %>% 
-  # filter(n > 1) %>% 
-  # activate(nodes) %>% 
-  # filter(n > 1) %>% 
+Full network
+
+```{r}
+ba_full <- ending_net(ba_ending, edges_min = 0)
+
+ba_full %>% activate(nodes)
+
+ba_full %>%
   ggraph('kk') + 
-  geom_edge_link(aes(width = n, alpha = n), color = met.brewer("Veronese")[5]) + 
-  geom_node_point(aes(size = n), alpha = 0.5, color = "blue") + 
-  geom_node_text(aes(label = source, alpha = n) #, hjust = 1, vjust = -1
-                 )
+  geom_edge_link(aes(width = n, alpha = n), color = met.brewer("Veronese")[6]) + 
+  geom_node_point(aes(size = n, alpha = n)) + 
+  geom_node_text(aes(label = source, 
+                     color = rhymer_pr) , hjust = 0, vjust = 1.5
+                 ) + 
+  scale_color_manual(values = c(met.brewer("Veronese")[3],
+                                met.brewer("Veronese")[7]))
+```
 
-ggsave("plots/net_ending_test.png", plot = last_plot(), 
-       width = 12, height = 9, 
-       dpi = 300, bg = "white")
+Masculine & feminine devision
+
+```{r}
+ba_masc <- ba_ending %>% 
+  filter(from_closure == "masc" & to_closure == "masc")
+
+nrow(ba_masc)
+
+ba_masc <- ending_net(ba_masc, edges_min = 0)
+
+
+ba_m_net <- ba_masc %>% 
+  ggraph('kk') + 
+  geom_edge_link(aes(width = n, alpha = n), color = met.brewer("Veronese")[4]) + 
+  geom_node_point(aes(size = n), alpha = 0.95, color = met.brewer("Veronese")[7]) + 
+  geom_node_text(aes(label = source, #, alpha = n
+                     color = rhymer_pr) , 
+                 hjust = 0.5, vjust = -1,
+                 size = 6
+                 ) + 
+  labs(title = "Мужские рифмы") +
+  theme(legend.position = "None",
+        plot.title = element_text(size = 20)) + 
+  scale_color_manual(values = c(met.brewer("Veronese")[2],
+                                met.brewer("Veronese")[7]))
+
+ba_m_net
 ```
 
 ```{r}
-edges_freq <- ending %>% 
-  count(rhyme_alph)
+ba_fem <- ba_ending %>% 
+  filter(from_closure == "fem" & to_closure == "fem")
 
-edgelist <- ending %>% 
-  left_join(edges_freq, by = "rhyme_alph") %>% 
-  select(from, to, n, from_pos, to_pos) %>% 
-  filter(n > 2)
+ba_fem <- ending_net(ba_fem, edges_min = 0)
 
-node_freq <- ending %>% 
-  unnest_tokens(input = rhyme_pair, output = word, token = "words") %>% 
-  count(word, sort = T) %>% 
-  rename(source = word) 
-
-nodelist <- tibble(source = unique(c(edgelist$from, edgelist$to))) %>% 
-  #mutate(idn = row_number()) %>% 
-  left_join(node_freq, by = "source") #%>% 
-  #filter(n > 10)
-
-nodelist
-
-
-ending_net <- tbl_graph(nodes = nodelist,
-                       edges = edgelist, 
-                       directed = FALSE)
-
-ending_net %>% 
-  # activate(edges) %>% 
-  # filter(n > 1) %>% 
-  # activate(nodes) %>% 
-  # filter(n > 1) %>% 
+ba_f_net <- ba_fem %>% 
   ggraph('kk') + 
-  geom_edge_link(aes(width = n, alpha = n), color = met.brewer("Veronese")[5]) + 
-  geom_node_point(aes(size = n), alpha = 0.5, color = "blue") + 
-  geom_node_text(aes(label = source, alpha = n) #, hjust = 1, vjust = -1
-                 )
+  geom_edge_link(aes(width = n, alpha = n), color = met.brewer("Veronese")[3]) + 
+  geom_node_point(aes(size = n), alpha = 0.95, color = met.brewer("Veronese")[7]) + 
+  geom_node_text(aes(label = source, #, alpha = n
+                     color = rhymer_pr
+                     ) , 
+                 hjust = 0.5, vjust = -1,
+                 size = 6
+                 ) + 
+  labs(title = "Женские рифмы") +
+  theme(legend.position = "None",
+        plot.title = element_text(size = 20)) + 
+  scale_color_manual(values = c(met.brewer("Veronese")[2],
+                                met.brewer("Veronese")[7]))
 
-ggsave("plots/net_ending_test_MF.png", plot = last_plot(), 
-       width = 12, height = 9, 
-       dpi = 300, bg = "white")
+ba_f_net
 ```
+
+Merge feminine & masc nets
+
+```{r}
+layout <- "
+AAAA#BBBBB
+AAAA#BBBBB
+"
+
+ba_m_net  + ba_f_net + plot_layout(design = layout)
+
+ggsave(filename = "plots/ba_masc_fem_net.png", plot = last_plot(), dpi = 300,
+       width = 12, heigh = 9, bg = "white")
+```
+
+#### todo -oi rhymes
+
+to do
+
+-   percentage of -oi lines vs all lines
+
+-   \% of words on -oi in lines vs in rhyme
+
+-   distribution on POS / POS features in -oi rhyming words
+
+-   see if there's these processes that gasparov-skulacheva found & connected to the rhyme destabilisation processes
+
+```{r}
+
+```
+
+To do rest:
+
+-   add lemmas to words
+
+-   add POS-feats & lemmas to all words
+
+-   add abstract / concrete coeffs to nouns/adj in rhymes
 
 ## grammatical features frequency
 

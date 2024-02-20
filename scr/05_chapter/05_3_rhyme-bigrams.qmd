@@ -20,9 +20,17 @@ theme_set(theme_minimal())
 
 ```{r}
 rhymes_1835 <- read.csv("../../data/ch5/rhymes_parsed.csv") %>% 
-  select(-X) %>% distinct() %>% # fix bag 
+  select(-X) %>% # distinct() %>% # fix bag 
   mutate(corpus = "M",
-         id = str_remove(id, "M__"))
+         id = str_remove(id, "M__")) %>% 
+  # fix lowering everything
+  mutate(rhyme_alph = tolower(rhyme_alph),
+         rhyme_pair = tolower(rhyme_pair),
+         from = tolower(from),
+         to = tolower(to)) %>% 
+  # fix typo
+  mutate(from = ifelse(from == "искуства", "искусства", from),
+         to = ifelse(to == "искуства", "искусства", to))
 
 glimpse(rhymes_1835)
 ```
@@ -340,31 +348,58 @@ rhymes_1835 %>%
   filter(author_text != "" & n > 50)
 ```
 
-There is definitely a bias because of dates incompatibility in RNC & Corpus-1835 (e.g. reprints of Zhukovsky's poems included in C-1835 but also found in RNC before 1830). Perform the same loop without four canonical most frequent authors:
+There is definitely a bias because of dates incompatibility in RNC & Corpus-1835 (e.g. reprints of Zhukovsky's poems included in C-1835 but also found in RNC before 1830). Perform the same loop without four canonical most frequent authors.
+
+We can also take into account if the intersected rhyme was in the list of the most frequent rhymes in general. That would mean that these rhymes are stable & redundant.
+
+To count which of the top rhymes are repeated: change \s to \_, paste rhymes & then count.
 
 ```{r}
-
 # filter out authors
 rhymes_test <- rhymes_1835 %>%
   left_join(corpus_1835 %>% select(text_id, author_text) %>% rename(id = text_id),
             by = "id") %>% 
   filter(!author_text %in% c("Жуковский В.А.", "Крылов И.А.", "Баратынский Е.А.",
-                             "Пушкин А.С."))
+                             "Пушкин А.С.")) %>% 
+  mutate(rhyme_alph = str_replace(rhyme_alph, " ", "_"))
 
 
 
+rnc_rhymes_before1830 <- rnc_rhymes_before1830 %>% 
+  mutate(rhyme_alph = str_replace(rhyme_alph, " ", "_"))
+
+# count most freq rhymes
+top_rnc <- rnc_rhymes_before1830 %>% 
+  count(rhyme_alph, sort = T) 
+
+head(top_rnc)
+
+top_rnc %>% pull(n) %>% quantile(c(0.5, 0.9, 0.95, 0.98, 0.99, 0.991, 1))
+
+top_rnc_rhymes <- top_rnc %>% 
+  filter(n > 9) %>% 
+  pull(rhyme_alph)
+
+print(paste("Length of the vector of rhymes appearing more than 10 times:", 
+            length(top_rnc_rhymes))) 
+```
+
+```{r}
 # loop
 
 x_1 <- NULL
 x_2 <- NULL
 year_count <- NULL
 perc_intersect <- NULL
+perc_top <- NULL
+top_counter <- NULL
 
+t <- NULL
 random <- NULL
 df <- NULL
 
 
-for (j in 1:100) { # take 100 random samples for each year
+for (j in 1:5) { # take 100 random samples for each year
   
   for (i in 1:length(unique(rhymes_test$year))) {
   
@@ -394,12 +429,18 @@ for (j in 1:100) { # take 100 random samples for each year
     # length(test)
   
     perc_intersect[i] <- test
+    
+    t <- intersect(x_1, x_2)
+    perc_top[i] <- length(intersect(t, top_rnc_rhymes))
+    top_counter[i] <- paste(intersect(t, top_rnc_rhymes), collapse = " ")
+    
   }
   
   random <- tibble(
       a = j,
       year_count = unlist(year_count),
-      n = unlist(perc_intersect))
+      n = unlist(perc_intersect),
+      top = unlist(perc_top))
   
     df <- rbind(df, random)
 }
@@ -416,6 +457,9 @@ df %>%
              y = n, group = year_count)) + 
   geom_boxplot() + 
   geom_jitter(alpha = 0.3, color = met.brewer(name = "Veronese")[5]) + 
+  geom_jitter(data = df, aes(x = as.numeric(year_count), 
+                             y = top, group = year_count), 
+              colour = met.brewer("Veronese")[2], alpha = 0.5) + 
   scale_y_continuous(limits = c(0,100)) + 
   scale_x_continuous(breaks = c(1835:1840)) + 
   labs(x = "Год",

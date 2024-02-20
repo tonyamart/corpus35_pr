@@ -32,7 +32,14 @@ rhymes <- read.csv("../../data/ch5/rhymes_parsed_closure.csv") %>%
   # fix typo
   mutate(from = ifelse(from == "искуства", "искусства", from),
          to = ifelse(to == "искуства", "искусства", to))
+
 glimpse(rhymes)
+
+
+print(paste("Total number of rhymed texts:", 
+            rhymes %>% 
+              select(id) %>% distinct() %>% nrow()
+  ))
 ```
 
 Check rhyme detection
@@ -46,6 +53,7 @@ Metadata
 
 ```{r}
 corpus_1835 <- readRDS("../../data/corpus1835/corpus_1835.Rds")
+
 ```
 
 Import rhymer data

@@ -399,7 +399,7 @@ random <- NULL
 df <- NULL
 
 
-for (j in 1:5) { # take 100 random samples for each year
+for (j in 1:100) { # take 100 random samples for each year
   
   for (i in 1:length(unique(rhymes_test$year))) {
   
@@ -440,7 +440,8 @@ for (j in 1:5) { # take 100 random samples for each year
       a = j,
       year_count = unlist(year_count),
       n = unlist(perc_intersect),
-      top = unlist(perc_top))
+      perc_top = unlist(perc_top),
+      rhymes_top = unlist(top_counter))
   
     df <- rbind(df, random)
 }
@@ -449,27 +450,80 @@ head(df)
 glimpse(df)
 ```
 
-Plot
+Look into the top-freq RNC pairs which were found in trials most frequently
 
 ```{r}
+# top rhymes
 df %>% 
-  ggplot(aes(x = as.numeric(year_count), 
-             y = n, group = year_count)) + 
-  geom_boxplot() + 
-  geom_jitter(alpha = 0.3, color = met.brewer(name = "Veronese")[5]) + 
-  geom_jitter(data = df, aes(x = as.numeric(year_count), 
-                             y = top, group = year_count), 
-              colour = met.brewer("Veronese")[2], alpha = 0.5) + 
-  scale_y_continuous(limits = c(0,100)) + 
-  scale_x_continuous(breaks = c(1835:1840)) + 
-  labs(x = "Год",
-       y = "Число пересечений (из 100 возможных)" #,
-       #title = "Количество пересечений", 
-       #subtitle = "между случайной выборкой рифм из Корпуса-1835 (100 рифм, 100 итераций)\nи всеми известными рифмами из НКРЯ, датированными до соответствующего года"
-       )
+  select(rhymes_top) %>% 
+  separate_rows(rhymes_top, sep = " ") %>% 
+  count(rhymes_top, sort = T) %>% 
+  head(20)
+
+# distribution
+df %>% 
+  select(rhymes_top) %>% 
+  separate_rows(rhymes_top, sep = " ") %>% 
+  count(rhymes_top, sort = T) %>% 
+  mutate(rank = row_number()) %>% 
+  ggplot(aes(x = rank, y = n)) + geom_col() + theme(axis.text.x = element_blank())
+```
+
+Create a boxplot for percentage of intersections
+
+```{r}
+glimpse(df)
+df %>% 
+  select(-rhymes_top, -a) %>% 
+  pivot_longer(!year_count) %>% 
+  mutate(name = ifelse(name == "n", "Всего пересечений", "Пересечений среди частотных рифм НКРЯ")) %>% 
+  ggplot(aes(x = as.factor(year_count), 
+             y = value, color = name)) + 
+  
+  geom_boxplot(position = "dodge") + 
+  
+  geom_point(position = position_jitterdodge(), alpha = 0.2) + 
+  
+  scale_color_manual(values = c(met.brewer("Veronese")[5],
+                                met.brewer("Veronese")[3])) + 
+  expand_limits(y = c(0, 100)) + 
+  labs(x = "Год", 
+       y = "Число пересечений (из 100 возможных)",
+       color = "") +
+  theme(legend.position = "bottom", 
+        axis.text = element_text(size = 10),
+        axis.title = element_text(size = 12),
+        legend.text = element_text(size = 12))
+
+
 ```
 
 ```{r, eval=FALSE}
 ggsave(filename = "plots/fig_5-1-2.png", plot = last_plot(), dpi = 300,
-       width = 6, height = 4, bg = "white")
+       width = 8, height = 6, bg = "white")
+```
+
+```{r}
+# earlier version of the plot
+# df
+#   ggplot(aes(x = as.numeric(year_count), 
+#              y = n, group = year_count)) + 
+#   geom_boxplot(color = met.brewer("Veronese")[7]) + 
+#   geom_jitter(alpha = 0.3, color = met.brewer(name = "Veronese")[5]) + 
+#   
+#   geom_boxplot(data = df, 
+#                aes(x = as.numeric(year_count), 
+#                    y = perc_top, 
+#                    group = year_count), 
+#                color = met.brewer("Veronese")[1]) + 
+#   geom_jitter(data = df, aes(x = as.numeric(year_count), 
+#                              y = perc_top, group = year_count), 
+#               colour = met.brewer("Veronese")[3], alpha = 0.2) + 
+#   scale_y_continuous(limits = c(0,100)) + 
+#   scale_x_continuous(breaks = c(1835:1840)) + 
+#   labs(x = "Год",
+#        y = "Число пересечений (из 100 возможных)" #,
+#        #title = "Количество пересечений", 
+#        #subtitle = "между случайной выборкой рифм из Корпуса-1835 (100 рифм, 100 итераций)\nи всеми известными рифмами из НКРЯ, датированными до соответствующего года"
+#        )
 ```

@@ -26,10 +26,22 @@ rhymer <- read_file("../../data/ch5/rhymer.txt")
 rhymer <- tibble(word = rhymer) %>% 
   separate_rows(word, sep = "\n") %>% 
   filter(word != "") %>% 
-  mutate(word = tolower(word)) 
+  mutate(word = tolower(word),
+         word = str_replace(word, "^(\\w+)/\\w+$", "\\1"),
+         word = str_remove_all(word, "[[:punct:]]|[[:space:]]"))
 
 nrow(rhymer) # 1000 
 head(rhymer)
+```
+
+Rhymer own ending freq
+
+```{r}
+rhymer %>% 
+  mutate(ending = ifelse(nchar(word) < 2, paste0("_", word), word),
+         ending = str_extract(word, "\\w\\w$")) %>% 
+  count(ending)
+  # filter(!ending %in% c("ба", "ва", "га"))
 ```
 
 load RNC & Corpus-1835 rhymes
@@ -88,10 +100,22 @@ rnc_rhymer %>%
                                met.brewer(name = "Veronese")[6])) #+ 
   #facet_wrap(~ending, scales = "free")
 
+
+# ending words in total in rnc
+rnc_total_endings <- rnc_rhymer %>% 
+  count(ending)
+
 # percentage of found / not found rhymes IN RHYMER
 rnc_rhymer %>% 
+  # count number of included/not found words on an ending
+  group_by(ending) %>% 
   count(group, sort = T) %>% 
-  mutate(perc = round(n / nrow(rnc_rhymer) * 100, 1))
+  ungroup() %>% 
+  # attach total counts to count %
+  left_join(rnc_total_endings %>% rename(total_rnc = n), by = "ending") %>% 
+  mutate(perc = round((n / total_rnc) * 100 , 2))
+
+# glimpse(rnc_rhymer)
 ```
 
 ### C-1835 comparison
@@ -140,6 +164,20 @@ c1835_rhymer %>%
 c1835_rhymer %>% 
   count(group, sort = T) %>% 
   mutate(perc = round(n / nrow(c1835_rhymer) * 100, 1))
+
+c1835_total_endings <- c1835_rhymer %>% 
+  count(ending)
+
+# percentage of found / not found rhymes IN RHYMER
+c1835_rhymer %>% 
+  # count number of included/not found words on an ending
+  group_by(ending) %>% 
+  count(group, sort = T) %>% 
+  ungroup() %>% 
+  # attach total counts to count %
+  left_join(c1835_total_endings %>% rename(total_1835 = n), by = "ending") %>% 
+  mutate(perc = round((n / total_1835) * 100 , 2)) %>% 
+  arrange(-desc(ending))
 ```
 
 ### RNC / C-1835 intersection

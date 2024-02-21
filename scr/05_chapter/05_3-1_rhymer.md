@@ -41,7 +41,9 @@ rhymer <- read_file("../../data/ch5/rhymer.txt")
 rhymer <- tibble(word = rhymer) %>% 
   separate_rows(word, sep = "\n") %>% 
   filter(word != "") %>% 
-  mutate(word = tolower(word)) 
+  mutate(word = tolower(word),
+         word = str_replace(word, "^(\\w+)/\\w+$", "\\1"),
+         word = str_remove_all(word, "[[:punct:]]|[[:space:]]"))
 
 nrow(rhymer) # 1000 
 ```
@@ -61,6 +63,33 @@ head(rhymer)
     4 маштаба
     5 ухаба  
     6 штаба  
+
+Rhymer own ending freq
+
+``` r
+rhymer %>% 
+  mutate(ending = ifelse(nchar(word) < 2, paste0("_", word), word),
+         ending = str_extract(word, "\\w\\w$")) %>% 
+  count(ending)
+```
+
+    # A tibble: 10 × 2
+       ending     n
+       <chr>  <int>
+     1 ба       126
+     2 ва       699
+     3 га       166
+     4 за         1
+     5 иы         1
+     6 ла         1
+     7 мы         2
+     8 на         1
+     9 ра         1
+    10 <NA>       2
+
+``` r
+  # filter(!ending %in% c("ба", "ва", "га"))
+```
 
 load RNC & Corpus-1835 rhymes
 
@@ -149,7 +178,7 @@ rnc_rhymer %>%
                                met.brewer(name = "Veronese")[6]))#+ 
 ```
 
-![](05_3-1_rhymer.markdown_strict_files/figure-markdown_strict/unnamed-chunk-4-1.png)
+![](05_3-1_rhymer.markdown_strict_files/figure-markdown_strict/unnamed-chunk-5-1.png)
 
 ``` r
   #facet_wrap(~ending, scales = "free")
@@ -162,22 +191,40 @@ rnc_rhymer %>%
                                met.brewer(name = "Veronese")[6])) #+ 
 ```
 
-![](05_3-1_rhymer.markdown_strict_files/figure-markdown_strict/unnamed-chunk-4-2.png)
+![](05_3-1_rhymer.markdown_strict_files/figure-markdown_strict/unnamed-chunk-5-2.png)
 
 ``` r
   #facet_wrap(~ending, scales = "free")
 
+
+# ending words in total in rnc
+rnc_total_endings <- rnc_rhymer %>% 
+  count(ending)
+
 # percentage of found / not found rhymes IN RHYMER
 rnc_rhymer %>% 
+  # count number of included/not found words on an ending
+  group_by(ending) %>% 
   count(group, sort = T) %>% 
-  mutate(perc = round(n / nrow(rnc_rhymer) * 100, 1))
+  ungroup() %>% 
+  # attach total counts to count %
+  left_join(rnc_total_endings %>% rename(total_rnc = n), by = "ending") %>% 
+  mutate(perc = round((n / total_rnc) * 100 , 2))
 ```
 
-    # A tibble: 2 × 3
-      group         n  perc
-      <chr>     <int> <dbl>
-    1 rhymer      280  54.4
-    2 not_found   235  45.6
+    # A tibble: 6 × 5
+      ending group         n total_rnc  perc
+      <chr>  <chr>     <int>     <int> <dbl>
+    1 ва     rhymer      190       376  50.5
+    2 ва     not_found   186       376  49.5
+    3 га     rhymer       65       101  64.4
+    4 га     not_found    36       101  35.6
+    5 ба     rhymer       28        38  73.7
+    6 ба     not_found    10        38  26.3
+
+``` r
+# glimpse(rnc_rhymer)
+```
 
 ### C-1835 comparison
 
@@ -254,7 +301,7 @@ c1835_rhymer %>%
                                met.brewer(name = "Veronese")[6])) # + 
 ```
 
-![](05_3-1_rhymer.markdown_strict_files/figure-markdown_strict/unnamed-chunk-5-1.png)
+![](05_3-1_rhymer.markdown_strict_files/figure-markdown_strict/unnamed-chunk-6-1.png)
 
 ``` r
   #facet_wrap(~ending, scales = "free")
@@ -266,7 +313,7 @@ c1835_rhymer %>%
                                met.brewer(name = "Veronese")[6])) # + 
 ```
 
-![](05_3-1_rhymer.markdown_strict_files/figure-markdown_strict/unnamed-chunk-5-2.png)
+![](05_3-1_rhymer.markdown_strict_files/figure-markdown_strict/unnamed-chunk-6-2.png)
 
 ``` r
   # facet_wrap(~ending, scales = "free")
@@ -279,8 +326,34 @@ c1835_rhymer %>%
     # A tibble: 2 × 3
       group         n  perc
       <chr>     <int> <dbl>
-    1 rhymer      203    69
-    2 not found    91    31
+    1 rhymer      205  69.7
+    2 not found    89  30.3
+
+``` r
+c1835_total_endings <- c1835_rhymer %>% 
+  count(ending)
+
+# percentage of found / not found rhymes IN RHYMER
+c1835_rhymer %>% 
+  # count number of included/not found words on an ending
+  group_by(ending) %>% 
+  count(group, sort = T) %>% 
+  ungroup() %>% 
+  # attach total counts to count %
+  left_join(c1835_total_endings %>% rename(total_1835 = n), by = "ending") %>% 
+  mutate(perc = round((n / total_1835) * 100 , 2)) %>% 
+  arrange(-desc(ending))
+```
+
+    # A tibble: 6 × 5
+      ending group         n total_1835  perc
+      <chr>  <chr>     <int>      <int> <dbl>
+    1 ба     rhymer       25         28  89.3
+    2 ба     not found     3         28  10.7
+    3 ва     rhymer      130        206  63.1
+    4 ва     not found    76        206  36.9
+    5 га     rhymer       50         60  83.3
+    6 га     not found    10         60  16.7
 
 ### RNC / C-1835 intersection
 
@@ -375,7 +448,7 @@ bavaga_full %>%
                                met.brewer(name = "Veronese")[6]))
 ```
 
-![](05_3-1_rhymer.markdown_strict_files/figure-markdown_strict/unnamed-chunk-6-1.png)
+![](05_3-1_rhymer.markdown_strict_files/figure-markdown_strict/unnamed-chunk-7-1.png)
 
 ``` r
 bavaga_full %>% 
@@ -393,4 +466,4 @@ bavaga_full %>%
                                met.brewer(name = "Veronese")[6]))
 ```
 
-![](05_3-1_rhymer.markdown_strict_files/figure-markdown_strict/unnamed-chunk-6-2.png)
+![](05_3-1_rhymer.markdown_strict_files/figure-markdown_strict/unnamed-chunk-7-2.png)

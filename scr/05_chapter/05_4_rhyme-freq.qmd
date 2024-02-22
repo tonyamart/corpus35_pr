@@ -6,7 +6,7 @@ editor: visual
 
 ### load pckg
 
-```{r}
+```{r, warning=FALSE, message=FALSE}
 library(tidyverse)
 library(tidytext)
 
@@ -38,7 +38,8 @@ glimpse(rhymes)
 
 print(paste("Total number of rhymed texts:", 
             rhymes %>% 
-              select(id) %>% distinct() %>% nrow()
+              select(id) %>% distinct() %>% nrow(),
+            "\nTotal number of rhymes:", nrow(rhymes)
   ))
 ```
 
@@ -92,34 +93,19 @@ rhymes %>%
   count(rhyme_alph) %>% summary()
 
 rhymes %>% 
-  count(rhyme_alph) %>% pull(n) %>% quantile(c(0.90, 0.95, 0.97, 0.99, 1))
+  count(rhyme_alph) %>% pull(n) %>% quantile(c(0.90, 0.95, 0.97, 0.99, 0.991, 1))
 
 print("Number of rhymes enountered more than 9 times (99% percentile)")
 rhymes %>% 
   count(rhyme_alph, sort = T) %>% 
-  filter(n >= 9) %>% 
+  filter(n > 9) %>% 
   nrow()
 ```
 
-Pull top 500 rhymes: the ones which are encountered 10 or more times
+### 
 
 ```{r}
-print(paste("Number of rhyme pairs encountered 10 and more times:", 
-            rhymes %>% 
-              count(rhyme_alph, sort = T) %>% 
-              filter(n > 9) %>% 
-              #head(500) %>% 
-              pull(rhyme_alph) %>% 
-              length()
-            ))
 
-
-rhymes %>% 
-  count(rhyme_alph, sort = T) %>% 
-  filter(n > 9) %>% 
-  summarise(frequent_rhymes = sum(n), 
-            total_rhymes = nrow(rhymes),
-            perc_freq_rhymes = round((frequent_rhymes/total_rhymes) * 100, 3))    
 ```
 
 Examples of top rhymes in Corpus-1835
@@ -661,6 +647,22 @@ To do rest:
 -   add abstract / concrete coeffs to nouns/adj in rhymes
 
 ## grammatical features frequency
+
+Prepare data for POS & features tagging in pymystem (see 00_1_rhymetagger_pos)
+
+```{r, eval=FALSE}
+corpus <- readRDS("../../data/corpus1835/corpus_1835_metrics.Rds")
+
+unique_words <- corpus %>% 
+  select(text_id, text_cln) %>% 
+  unnest_tokens(input = text_cln, output = word, token = "words") %>% 
+  count(word, sort = T) %>% 
+  pull(word)
+
+head(unique_words)
+
+writeLines(unique_words, "../../data/ch5/corpus_1835_unique_words.txt")
+```
 
 Next step: look into grammatical features of the MFW in the two corpora - for that ling annotation for the whole corpus-1835 is needed!
 

@@ -20,7 +20,7 @@ theme_set(theme_minimal())
 
 ```{r}
 rhymes_1835 <- read.csv("../../data/ch5/rhymes_parsed.csv") %>% 
-  select(-X) %>% # distinct() %>% # fix bag 
+  select(-X) %>% distinct() %>% # fix bag 
   mutate(corpus = "M",
          id = str_remove(id, "M__")) %>% 
   # fix lowering everything
@@ -79,6 +79,39 @@ rhymes <- rbind(rhymes_1835, rnc_rhymes)
 glimpse(rhymes)
 
 table(rhymes$corpus) # quick check in the number of rhymes found
+```
+
+### table 5-1-1: Pull top 5 rhymes in each year 
+
+```{r}
+total_year <- rhymes_1835 %>% 
+  count(year)
+
+total_year
+
+rhymes_1835 %>% 
+  group_by(year) %>% 
+  count(rhyme_alph, sort = T) %>% 
+  mutate(rank = row_number()) %>% 
+  top_n(n, n = 10) %>% 
+  arrange(-desc(year)) %>% 
+  ungroup() %>% 
+  left_join(total_year %>% rename(total = n), by = "year") %>% 
+  mutate(perc = round((n / total) * 100, 2)) 
+
+
+rhymes_1835 %>% 
+  group_by(year) %>% 
+  count(rhyme_alph, sort = T) %>% 
+  mutate(rank = row_number()) %>% 
+  top_n(n, n = 5) %>% 
+  arrange(-desc(year)) %>% 
+  ungroup() %>% 
+  left_join(total_year %>% rename(total = n), by = "year") %>% 
+  mutate(perc = round((n / total) * 100, 2)) %>% 
+  group_by(year) %>%
+  summarise(
+    sum_perc = sum(perc))
 ```
 
 ## Fig. 5-1-1. Bigram freq
@@ -140,7 +173,8 @@ rbind(unigram_freq_full, unigram_freq_rhymes,
   scale_fill_manual(values = c(met.brewer(name = "Veronese")[1],
                                 met.brewer(name = "Veronese")[2],
                                 met.brewer(name = "Veronese")[4],
-                                met.brewer(name = "Veronese")[6]))
+                                met.brewer(name = "Veronese")[6])) + 
+  theme(text = element_text(size = 12))
 ```
 
 ```{r, eval=FALSE}

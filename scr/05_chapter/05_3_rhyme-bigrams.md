@@ -16,7 +16,7 @@ theme_set(theme_minimal())
 
 ``` r
 rhymes_1835 <- read.csv("../../data/ch5/rhymes_parsed.csv") %>% 
-  select(-X) %>% # distinct() %>% # fix bag 
+  select(-X) %>% distinct() %>% # fix bag 
   mutate(corpus = "M",
          id = str_remove(id, "M__")) %>% 
   # fix lowering everything
@@ -31,7 +31,7 @@ rhymes_1835 <- read.csv("../../data/ch5/rhymes_parsed.csv") %>%
 glimpse(rhymes_1835)
 ```
 
-    Rows: 81,746
+    Rows: 81,334
     Columns: 10
     $ id         <chr> "P_1938", "P_1938", "P_1938", "C_156__20", "C_156__20", "C_…
     $ rhyme_pair <chr> "краса небеса", "огневым земным", "красавицей красавице", "…
@@ -112,7 +112,7 @@ rhymes <- rbind(rhymes_1835, rnc_rhymes)
 glimpse(rhymes)
 ```
 
-    Rows: 227,931
+    Rows: 227,519
     Columns: 7
     $ corpus     <chr> "M", "M", "M", "M", "M", "M", "M", "M", "M", "M", "M", "M",…
     $ id         <chr> "P_1938", "P_1938", "P_1938", "C_156__20", "C_156__20", "C_…
@@ -128,7 +128,76 @@ table(rhymes$corpus) # quick check in the number of rhymes found
 
 
          M    RNC 
-     81772 146159 
+     81360 146159 
+
+### table 5-1-1: Pull top 5 rhymes in each year
+
+``` r
+total_year <- rhymes_1835 %>% 
+  count(year)
+
+total_year
+```
+
+      year     n
+    1 1835 17768
+    2 1836 11237
+    3 1837 16656
+    4 1838 14217
+    5 1839  8633
+    6 1840 12849
+
+``` r
+rhymes_1835 %>% 
+  group_by(year) %>% 
+  count(rhyme_alph, sort = T) %>% 
+  mutate(rank = row_number()) %>% 
+  top_n(n, n = 10) %>% 
+  arrange(-desc(year)) %>% 
+  ungroup() %>% 
+  left_join(total_year %>% rename(total = n), by = "year") %>% 
+  mutate(perc = round((n / total) * 100, 2)) 
+```
+
+    # A tibble: 67 × 6
+       year  rhyme_alph       n  rank total  perc
+       <chr> <chr>        <int> <int> <int> <dbl>
+     1 1835  нет свет        44     1 17768  0.25
+     2 1835  ночи очи        32     2 17768  0.18
+     3 1835  нас час         24     3 17768  0.14
+     4 1835  меня огня       23     4 17768  0.13
+     5 1835  мечты ты        23     5 17768  0.13
+     6 1835  вновь любовь    22     6 17768  0.12
+     7 1835  глас час        21     7 17768  0.12
+     8 1835  дней моей       19     8 17768  0.11
+     9 1835  дня меня        19     9 17768  0.11
+    10 1835  грудь путь      18    10 17768  0.1 
+    # ℹ 57 more rows
+
+``` r
+rhymes_1835 %>% 
+  group_by(year) %>% 
+  count(rhyme_alph, sort = T) %>% 
+  mutate(rank = row_number()) %>% 
+  top_n(n, n = 5) %>% 
+  arrange(-desc(year)) %>% 
+  ungroup() %>% 
+  left_join(total_year %>% rename(total = n), by = "year") %>% 
+  mutate(perc = round((n / total) * 100, 2)) %>% 
+  group_by(year) %>%
+  summarise(
+    sum_perc = sum(perc))
+```
+
+    # A tibble: 6 × 2
+      year  sum_perc
+      <chr>    <dbl>
+    1 1835      0.83
+    2 1836      1.12
+    3 1837      0.7 
+    4 1838      1.09
+    5 1839      1.08
+    6 1840      1.05
 
 ## Fig. 5-1-1. Bigram freq
 
@@ -189,10 +258,11 @@ rbind(unigram_freq_full, unigram_freq_rhymes,
   scale_fill_manual(values = c(met.brewer(name = "Veronese")[1],
                                 met.brewer(name = "Veronese")[2],
                                 met.brewer(name = "Veronese")[4],
-                                met.brewer(name = "Veronese")[6]))
+                                met.brewer(name = "Veronese")[6])) + 
+  theme(text = element_text(size = 12))
 ```
 
-![](05_3_rhyme-bigrams.markdown_strict_files/figure-markdown_strict/unnamed-chunk-8-1.png)
+![](05_3_rhyme-bigrams.markdown_strict_files/figure-markdown_strict/unnamed-chunk-9-1.png)
 
 ``` r
 ggsave("plots/fig_5-1-1.png", plot = last_plot(), dpi = 300,
@@ -216,7 +286,7 @@ rhymes %>%
                                met.brewer(name = "Veronese")[7]))
 ```
 
-![](05_3_rhyme-bigrams.markdown_strict_files/figure-markdown_strict/unnamed-chunk-10-1.png)
+![](05_3_rhyme-bigrams.markdown_strict_files/figure-markdown_strict/unnamed-chunk-11-1.png)
 
 ## Hapax richness
 
@@ -236,8 +306,8 @@ rhymes %>%
     # A tibble: 2 × 4
       corpus     n perc_rnc perc_1835
       <chr>  <int>    <dbl>     <dbl>
-    1 M      43966     30.1      53.8
-    2 RNC    76086     52.1      93.0
+    1 M      44026     30.1      54.1
+    2 RNC    76086     52.1      93.5
 
 Number of hapax legomena in each 5-year period in RNC
 
@@ -272,7 +342,7 @@ rnc_rhymes %>%
         legend.text = element_text(size = 14))
 ```
 
-![](05_3_rhyme-bigrams.markdown_strict_files/figure-markdown_strict/unnamed-chunk-12-1.png)
+![](05_3_rhyme-bigrams.markdown_strict_files/figure-markdown_strict/unnamed-chunk-13-1.png)
 
 Hapax richness in each year in corpus-1835
 
@@ -292,12 +362,12 @@ head(hapax_per_year)
     # A tibble: 6 × 2
       year  hapax
       <chr> <int>
-    1 1835  12573
-    2 1836   8362
-    3 1837  12252
-    4 1838   9778
-    5 1839   6650
-    6 1840   9262
+    1 1835  12587
+    2 1836   8373
+    3 1837  12275
+    4 1838   9788
+    5 1839   6662
+    6 1840   9277
 
 ``` r
 # total number of rhymes
@@ -320,12 +390,12 @@ hapax_archive
     # A tibble: 6 × 4
       year  hapax total perc_archive
       <chr> <int> <int>        <dbl>
-    1 1835  12573 14244         88.3
-    2 1836   8362  9362         89.3
-    3 1837  12252 13773         89  
-    4 1838   9778 11257         86.9
-    5 1839   6650  7352         90.5
-    6 1840   9262 10463         88.5
+    1 1835  12587 14244         88.4
+    2 1836   8373  9362         89.4
+    3 1837  12275 13773         89.1
+    4 1838   9788 11257         87  
+    5 1839   6662  7352         90.6
+    6 1840   9277 10463         88.7
 
 ``` r
 # Discard unused vars
@@ -401,12 +471,12 @@ head(df)
     # A tibble: 6 × 3
           a year_count     n
       <int> <chr>      <int>
-    1     1 1840          33
-    2     1 1837          26
-    3     1 1838          35
-    4     1 1836          34
-    5     1 1835          44
-    6     1 1839          33
+    1     1 1840          27
+    2     1 1837          32
+    3     1 1838          32
+    4     1 1836          33
+    5     1 1835          43
+    6     1 1839          39
 
 ``` r
 glimpse(df)
@@ -416,7 +486,7 @@ glimpse(df)
     Columns: 3
     $ a          <int> 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4,…
     $ year_count <chr> "1840", "1837", "1838", "1836", "1835", "1839", "1840", "18…
-    $ n          <int> 33, 26, 35, 34, 44, 33, 28, 31, 31, 27, 46, 34, 31, 30, 31,…
+    $ n          <int> 27, 32, 32, 33, 43, 39, 26, 18, 30, 22, 58, 22, 28, 27, 34,…
 
 ``` r
 df %>% 
@@ -433,7 +503,7 @@ df %>%
        )
 ```
 
-![](05_3_rhyme-bigrams.markdown_strict_files/figure-markdown_strict/unnamed-chunk-17-1.png)
+![](05_3_rhyme-bigrams.markdown_strict_files/figure-markdown_strict/unnamed-chunk-18-1.png)
 
 ``` r
 ggsave(filename = "plots/fig_5-1-2.png", plot = last_plot(), dpi = 300,
@@ -446,7 +516,7 @@ Some more analysis for 1835 rhymes? why the mean is so different?
 glimpse(rhymes_1835)
 ```
 
-    Rows: 81,772
+    Rows: 81,360
     Columns: 7
     $ corpus     <chr> "M", "M", "M", "M", "M", "M", "M", "M", "M", "M", "M", "M",…
     $ id         <chr> "P_1938", "P_1938", "P_1938", "C_156__20", "C_156__20", "C_…
@@ -493,28 +563,28 @@ rhymes_1835 %>%
 ```
 
             author_text    n
-    1    Жуковский В.А. 3400
+    1    Жуковский В.А. 3351
     2       Крылов И.А. 3160
-    3  Баратынский Е.А. 1759
-    4        Зилов А.М. 1292
+    3  Баратынский Е.А. 1758
+    4        Зилов А.М. 1282
     5   Бенедиктов В.Г.  845
-    6     Тимофеев А.В.  655
+    6     Тимофеев А.В.  653
     7       Меркли М.М.  554
     8       Деларю М.Д.  403
     9      Савурский Н.  386
-    10      Пушкин А.С.  340
+    10      Пушкин А.С.  338
     11        Венгер Н.  279
     12    Геевский С.Л.  255
     13      Менцов Ф.Н.  227
-    14       Ершов П.П.  203
+    14       Ершов П.П.  202
     15     Кольцов А.В.  176
-    16      Глинка Ф.Н.  175
-    17  Прокопович Н.Я.  175
+    16  Прокопович Н.Я.  175
+    17      Глинка Ф.Н.  171
     18      Козлов И.И.  155
     19       Лебедев В.  136
     20     Аксаков К.С.  125
     21     Сорокин М.П.  122
-    22   Ознобишин Д.П.  112
+    22   Ознобишин Д.П.  107
     23      Красов В.И.   87
     24     Гогниев И.Е.   86
     25  Ростопчина Е.П.   81
@@ -522,11 +592,11 @@ rhymes_1835 %>%
     27    Алипанов Е.И.   75
     28      Банников А.   75
     29    Якубович Л.А.   72
-    30     Галанин И.Д.   71
+    30     Галанин И.Д.   68
     31             П.П.   65
     32               С.   62
-    33          Е. Ш-ий   58
-    34      Языков Н.М.   56
+    33      Языков Н.М.   56
+    34          Е. Ш-ий   54
     35          Лихачев   53
     36      Ставелов Н.   53
     37     Хомяков А.С.   52
@@ -664,12 +734,12 @@ head(df)
     # A tibble: 6 × 5
           a year_count     n perc_top rhymes_top                                    
       <int> <chr>      <int>    <int> <chr>                                         
-    1     1 1840          26        7 бед_свет закон_сон вино_оно заря_царя леса_не…
-    2     1 1837          37        4 нет_ответ звуки_муки мечты_цветы морозы_розы  
-    3     1 1838          30        5 волны_полный милой_унылой милый_силой дубравы…
-    4     1 1836          31        3 красота_мечта друг_дух вдохновений_гений      
-    5     1 1835          45        6 волю_долю мечты_ты краса_небеса дали_печали б…
-    6     1 1839          24        4 взор_гор дней_своей богу_дорогу моей_своей    
+    1     1 1840          28        4 свет_совет красоты_цветы закон_он него_своего 
+    2     1 1837          26        1 конец_отец                                    
+    3     1 1838          24        5 годы_свободы будет_забудет вдохновенья_наслаж…
+    4     1 1836          42        4 крови_любови воды_природы небесам_там взор_пр…
+    5     1 1835          36        7 моей_сей звон_он лиру_миру года_природа непог…
+    6     1 1839          28        3 вновь_любовь душой_мной люблю_терплю          
 
 ``` r
 glimpse(df)
@@ -679,9 +749,9 @@ glimpse(df)
     Columns: 5
     $ a          <int> 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4,…
     $ year_count <chr> "1840", "1837", "1838", "1836", "1835", "1839", "1840", "18…
-    $ n          <int> 26, 37, 30, 31, 45, 24, 23, 28, 36, 27, 35, 26, 25, 28, 33,…
-    $ perc_top   <int> 7, 4, 5, 3, 6, 4, 4, 7, 4, 3, 6, 4, 3, 2, 5, 4, 4, 1, 5, 2,…
-    $ rhymes_top <chr> "бед_свет закон_сон вино_оно заря_царя леса_небеса бытия_мо…
+    $ n          <int> 28, 26, 24, 42, 36, 28, 30, 30, 35, 39, 41, 25, 26, 27, 26,…
+    $ perc_top   <int> 4, 1, 5, 4, 7, 3, 5, 5, 8, 2, 4, 7, 3, 6, 5, 5, 5, 7, 11, 3…
+    $ rhymes_top <chr> "свет_совет красоты_цветы закон_он него_своего", "конец_оте…
 
 Look into the top-freq RNC pairs which were found in trials most
 frequently
@@ -698,26 +768,26 @@ df %>%
     # A tibble: 20 × 2
        rhymes_top                  n
        <chr>                   <int>
-     1 лет_след                   14
-     2 милой_унылой               14
-     3 муки_разлуки               14
-     4 горе_море                  13
-     5 побед_свет                 13
-     6 вершины_долины             12
-     7 высоты_ты                  12
-     8 много_строго               12
-     9 блаженства_совершенства    11
-    10 вдохновений_гений          11
-    11 волны_полны                11
-    12 друзья_я                   11
-    13 думы_угрюмый               11
-    14 звуки_руки                 11
-    15 меня_я                     11
-    16 муку_руку                  11
-    17 брани_длани                10
-    18 вас_раз                    10
-    19 взор_приговор              10
-    20 воле_поле                  10
+     1 звуки_муки                 15
+     2 мести_чести                14
+     3 дни_они                    13
+     4 дум_ум                     12
+     5 ей_своей                   12
+     6 людей_страстей             12
+     7 народы_природы             12
+     8 твой_тобой                 12
+     9 дней_моей                  11
+    10 душой_тобой                11
+    11 звон_он                    11
+    12 камень_пламень             11
+    13 нет_поэт                   11
+    14 природы_свободы            11
+    15 блаженства_совершенства    10
+    16 валы_скалы                 10
+    17 говорит_горит              10
+    18 день_тень                  10
+    19 душа_хороша                10
+    20 забавы_славы               10
 
 ``` r
 # distribution
@@ -729,7 +799,7 @@ df %>%
   ggplot(aes(x = rank, y = n)) + geom_col() + theme(axis.text.x = element_blank())
 ```
 
-![](05_3_rhyme-bigrams.markdown_strict_files/figure-markdown_strict/unnamed-chunk-22-1.png)
+![](05_3_rhyme-bigrams.markdown_strict_files/figure-markdown_strict/unnamed-chunk-23-1.png)
 
 Create a boxplot for percentage of intersections
 
@@ -741,9 +811,9 @@ glimpse(df)
     Columns: 5
     $ a          <int> 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4,…
     $ year_count <chr> "1840", "1837", "1838", "1836", "1835", "1839", "1840", "18…
-    $ n          <int> 26, 37, 30, 31, 45, 24, 23, 28, 36, 27, 35, 26, 25, 28, 33,…
-    $ perc_top   <int> 7, 4, 5, 3, 6, 4, 4, 7, 4, 3, 6, 4, 3, 2, 5, 4, 4, 1, 5, 2,…
-    $ rhymes_top <chr> "бед_свет закон_сон вино_оно заря_царя леса_небеса бытия_мо…
+    $ n          <int> 28, 26, 24, 42, 36, 28, 30, 30, 35, 39, 41, 25, 26, 27, 26,…
+    $ perc_top   <int> 4, 1, 5, 4, 7, 3, 5, 5, 8, 2, 4, 7, 3, 6, 5, 5, 5, 7, 11, 3…
+    $ rhymes_top <chr> "свет_совет красоты_цветы закон_он него_своего", "конец_оте…
 
 ``` r
 df %>% 
@@ -769,7 +839,7 @@ df %>%
         legend.text = element_text(size = 12))
 ```
 
-![](05_3_rhyme-bigrams.markdown_strict_files/figure-markdown_strict/unnamed-chunk-23-1.png)
+![](05_3_rhyme-bigrams.markdown_strict_files/figure-markdown_strict/unnamed-chunk-24-1.png)
 
 ``` r
 ggsave(filename = "plots/fig_5-1-2.png", plot = last_plot(), dpi = 300,

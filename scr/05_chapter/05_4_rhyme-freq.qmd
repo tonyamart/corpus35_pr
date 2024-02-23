@@ -10,7 +10,7 @@ editor: visual
 library(tidyverse)
 library(tidytext)
 
-library(igraph)
+# library(igraph)
 library(tidygraph)
 library(ggraph)
 
@@ -50,11 +50,37 @@ rhymes %>%
   filter(id == "M__P_1938")
 ```
 
+Translate POS tags
+
+```{r}
+unique(c(rhymes$from_pos, rhymes$to_pos))
+
+rhymes %>% 
+  filter(from_pos == "INTJ") %>% 
+  select(from, from_pos, from_feats) %>% 
+  sample_n(5)
+
+# translation based on this descr: https://ruscorpora.ru/page/instruction-morph/ 
+pos_transl <- tibble(old_tag = c("S", "V", "APRO", "SPRO", 
+                   "A", "ADV", "NUM", "ADVPRO",
+                   "INTJ", "PART", "PR", "ANUM", "CONJ"),
+       pos = c("NOUN", "VERB", "aPRON", "nPRON", 
+               "ADJ", "ADV", "NUM", "advPRON",
+               "INTJ", "PART", "ADP", "adjNUM", "CONJ"),
+       upos = c("NOUN", "VERB", "PRON", "PRON", 
+               "ADJ", "ADV", "NUM", "PRON",
+               "INTJ", "PART", "ADP", "NUM", "CONJ"))
+```
+
 Metadata
 
 ```{r}
 corpus_1835 <- readRDS("../../data/corpus1835/corpus_1835.Rds")
 
+# attach meter & formula data to rhymes data
+rhymes <- rhymes %>% 
+  mutate(text_id = str_remove(id, "M__")) %>% 
+  left_join(corpus_1835 %>% select(text_id, meter, formula), by = "text_id")
 ```
 
 Import rhymer data
@@ -68,7 +94,7 @@ rhymer <- tibble(word = rhymer) %>%
   mutate(word = tolower(word)) 
 ```
 
-# bigrams
+# words
 
 ## basic stats
 
@@ -102,12 +128,6 @@ rhymes %>%
   nrow()
 ```
 
-### 
-
-```{r}
-
-```
-
 Examples of top rhymes in Corpus-1835
 
 ```{r}
@@ -116,124 +136,17 @@ rhymes %>%
   head(30)
 ```
 
-# words
-
-## freq distribution of rhyme words
-
-```{r}
-# summary statistics of rhyme word counts
-rhymes %>% 
-  unnest_tokens(input = rhyme_pair, output = word, token = "words") %>% 
-  count(word, sort = T) %>% summary()
-
-# most frequent rhyme words
-rhymes %>% 
-  unnest_tokens(input = rhyme_pair, output = word, token = "words") %>% 
-  count(word, sort = T) %>% 
-  head(50)
-```
-
-### MFW in rhymes vs all
-
-Frequency of inline words
-
-```{r}
-inline_freq <- corpus_1835 %>% 
-  select(text_raw) %>% 
-  separate_rows(text_raw, sep = "\n") %>% 
-  
-  # remove last word in a line
-  
-  # remove lines with no words
-  filter(text_raw != "" & !str_detect(text_raw, "^[[:punct:]]+$|^[[:space:]]+$")) %>% 
-  # remove spaced & punctuation in the end of the line
-  mutate(text_cln = str_remove_all(text_raw, "\\W+$|\\s+$"),
-         # replace the last word as endword tag
-         text_cln = str_replace_all(text_cln, "\\w+$", "_ENDWORD_")) %>% 
-  select(text_cln) %>% 
-  # remove endword tags
-  mutate(text_cln = str_remove_all(text_cln, "_ENDWORD_")) %>% 
-  
-  # count remaining words
-  unnest_tokens(input = text_cln, output = word, token = "words") %>% 
-  count(word, sort = T) %>% 
-  mutate(rank_inline = row_number())
-
-head(inline_freq)
-```
+Example of rhymes with Warsaw
 
 ```{r}
 
 # glimpse(rhymes)
 
-rhyme_freq <- rhymes %>% 
-  unnest_tokens(input = rhyme_pair, output = word, token = "words") %>% 
-  count(word, sort = T) %>% 
-  mutate(rank_rhyme = row_number())
-
-head(rhyme_freq, 100)
-
 rhymes %>% 
   filter(str_detect(from, "варшав") | str_detect(to, "варшав"))
 ```
 
-Comparison of ranked lists demonstration (tau max = 1, tau min = -1):
-
-```{r}
-cor.test(c(1,2,3,4,5), c(1,2,3,4,5), method = "kendall")
-cor.test(c(1,2,3,4,5), c(3,2,5,1,4), method = "kendall")
-cor.test(c(1,2,3,4,5), c(5,4,3,2,1), method = "kendall")
-```
-
-Tests for correlation between ranks in rhyme vs in inline words
-
-MFW-100
-
-```{r}
-mfw_100_rhyme <- inline_freq %>% 
-  head(100) %>% 
-  select(-n) %>% 
-  left_join(rhyme_freq %>% select(-n), by = "word") %>% 
-  drop_na()
-
-cor.test(mfw_100_rhyme$rank_inline, mfw_100_rhyme$rank_rhyme, method = "kendall")
-
-mfw_100_rhyme %>% 
-  arrange(-desc(rank_rhyme))
-```
-
-MFW-1000
-
-```{r}
-mfw_1000 <- inline_freq[1:1000,] %>% select(-n)
-
-mfw_1000_rhyme <- mfw_1000 %>% 
-  left_join(rhyme_freq %>% select(-n), by = "word") %>% 
-  drop_na()
-
-head(mfw_1000_rhyme)
-
-cor.test(mfw_1000_rhyme$rank_inline, mfw_1000_rhyme$rank_rhyme, method = "kendall")
-```
-
-MFW-10000
-
-```{r}
-mfw_10000_rhyme <- inline_freq %>% 
-  head(10000) %>% 
-  select(-n) %>% 
-  left_join(rhyme_freq %>% select(-n), by = "word") %>% 
-  drop_na()
-
-cor.test(mfw_10000_rhyme$rank_inline, mfw_10000_rhyme$rank_rhyme, method = "kendall")
-```
-
-```{r}
-rm(inline_freq, mfw_100_rhyme, mfw_1000, mfw_1000_rhyme, mfw_10000_rhyme,
-   rhyme_freq, n_hapax_legomenas)
-```
-
-### One-word network test
+### one-word network test
 
 ```{r}
 
@@ -331,26 +244,604 @@ word_net %>%
                  )
 ```
 
-### mfw net
+# Meters division 
 
 ```{r}
-# top 10-20 masc / fem / dactyllic rhymewords & the net of words rhyming with them
-# how connected is this net? how it looks like? which words are in the very centre?
+# glimpse(rhymes)
+# glimpse(corpus_1835)
+
+# Number of rhymes by meter
+rhymes %>% 
+  count(meter, sort = T)
+
+# extract only iambs
+iamb_rhymes <- rhymes %>% 
+  filter(meter == "Iamb")
+
+# extract only trochees
+tr_rhymes <- rhymes %>% 
+  filter(meter == "Trochee")
+
+# number of rhyme pairs in iamb and in trochee
+nrow(iamb_rhymes)
+nrow(tr_rhymes)
+```
+
+Attach upos tags to metadata
+
+```{r}
+iamb_rhymes <- iamb_rhymes %>% 
+  left_join(pos_transl %>% 
+              select(old_tag, upos) %>% 
+              rename(from_pos = old_tag,
+                     from_upos = upos),
+            by = "from_pos") %>% 
+  left_join(pos_transl %>% 
+              select(old_tag, upos) %>% 
+              rename(to_pos = old_tag,
+                     to_upos = upos),
+            by = "to_pos") 
+
+tr_rhymes <- tr_rhymes %>% 
+  left_join(pos_transl %>% 
+              select(old_tag, upos) %>% 
+              rename(from_pos = old_tag,
+                     from_upos = upos),
+            by = "from_pos") %>% 
+  left_join(pos_transl %>% 
+              select(old_tag, upos) %>% 
+              rename(to_pos = old_tag,
+                     to_upos = upos),
+            by = "to_pos") 
+```
+
+### closures in meters
+
+```{r}
+# types of closures in meters (percentage)
+# table(iamb_rhymes$from_closure)/nrow(iamb_rhymes)*100
+# table(tr_rhymes$from_closure)/nrow(tr_rhymes)*100
+# table(tr_rhymes$to_closure)/nrow(tr_rhymes)*100
+
+closures <- rhymes %>% 
+  select(id, from_closure, to_closure, meter, formula) 
+
+total_meters <- closures %>% count(meter) %>% rename(total = n)
+
+# count only matching closure types
+closures %>% 
+  filter(from_closure == to_closure) %>% 
+  count(from_closure, meter, sort = T) %>% 
+  left_join(total_meters, by = "meter") %>% 
+  mutate(perc = round((n / total) * 100, 2)) %>% 
+  arrange(-desc(meter))
+
+
+total_formula <- closures %>% 
+  count(formula, sort = T) %>% 
+  rename(total = n) 
+  
+# same for formulas
+# count only matching closure types
+closures %>% 
+  filter(from_closure == to_closure) %>% 
+  count(from_closure, formula, sort = T) %>% 
+  left_join(total_formula, by = "formula") %>% 
+  mutate(perc = round((n / total) * 100, 2)) %>% 
+  arrange(-desc(formula))
+```
+
+not only matching pairs but all words as they are annotated
+
+```{r}
+# meters
+closures %>% 
+  select(-id, -formula) %>% 
+  pivot_longer(!meter) %>% 
+  count(meter, value) %>% 
+  left_join(closures %>% 
+    select(-id, -formula) %>% 
+    pivot_longer(!meter) %>% 
+    count(meter) %>% 
+    rename(total = n), by = "meter") %>% 
+  mutate(perc = round((n / total) * 100, 2)) %>% 
+  arrange(-desc(meter)) 
+
+
+# formulas
+closures %>% 
+  select(-id, -meter) %>% 
+  pivot_longer(!formula) %>% 
+  count(formula, value) %>% 
+  left_join(closures %>% 
+    select(-id, -meter) %>% 
+    pivot_longer(!formula) %>% 
+    count(formula) %>% 
+    rename(total = n), by = "formula") %>% 
+  mutate(perc = round((n / total) * 100, 2)) %>% 
+  filter(str_detect(formula, "Iamb|Trochee") & value != "" & !is.na(value)) %>% 
+  arrange(-desc(formula)) 
+```
+
+### fn
+
+Functions to count and print different metrics
+
+```{r}
+top_pairs <- function(rhymes_df, clausula, n = 20) {
+  rhymes_df %>% 
+    filter(from_closure == clausula & to_closure == clausula) %>% 
+    count(rhyme_alph, sort = T) %>% 
+    head(n)
+}
+
+# NB create upos columns for this fn
+pos_pairs <- function(rhymes_df, clausula, n = 20) {
+  rhymes_df %>% 
+  filter(from_closure == clausula & to_closure == clausula) %>% 
+  mutate(pos_pair = paste(from_upos, "-", to_upos)) %>% 
+  count(pos_pair, sort = T) %>% 
+  mutate(perc = round((n / nrow(rhymes_df %>% 
+                                  filter(from_closure == clausula & 
+                                           to_closure == clausula))
+                       ) * 100, 2)) %>% 
+  head(n)
+}
+```
+
+### top rhyme pairs
+
+```{r}
+# masc
+print("Top pairs in iamb w/ masculine clausula:")
+top_pairs(iamb_rhymes, "masc", 20)
+
+print("Top pairs in trochee w/ masculine clausula:")
+top_pairs(tr_rhymes, "masc", 20)
+
+# fem
+print("Top pairs in iamb w/ feminine clausula:")
+top_pairs(iamb_rhymes, "fem", 20)
+
+print("Top pairs in trochee w/ feminine clausula:")
+top_pairs(tr_rhymes, "fem", 20)
+
+# dactyllic
+print("Top pairs in iamb w/ dactyllic clausula:")
+top_pairs(iamb_rhymes, "dactylic", 20)
+
+print("Top pairs in trochee w/ dactyllic clausula:")
+top_pairs(tr_rhymes, "dactylic", 20)
+```
+
+### Top POS in pairs
+
+```{r}
+# masc
+print("Top POS pairs in iamb w/ masculine clausula:")
+pos_pairs(iamb_rhymes, "masc", 20)
+
+print("Top POS pairs in trochee w/ masculine clausula:")
+pos_pairs(tr_rhymes, "masc", 20)
+
+# fem
+print("Top POS pairs in iamb w/ feminine clausula:")
+pos_pairs(iamb_rhymes, "fem", 20)
+
+print("Top POS pairs in trochee w/ feminine clausula:")
+pos_pairs(tr_rhymes, "fem", 20)
+
+print("Top POS pairs in trochee w/ dactyllic clausula:")
+pos_pairs(tr_rhymes, "dactylic", 20)
+```
+
+### perc of POS 
+
+POS freq in rhymes
+
+```{r}
+iamb_rhymes %>% 
+  select(id, from_upos, to_upos) %>% 
+  pivot_longer(!id) %>% 
+  count(value, sort = T) %>% 
+  mutate(perc = round( n / (iamb_rhymes %>% 
+              select(id, from_upos, to_upos) %>% 
+              pivot_longer(!id) %>% 
+              nrow()) 
+              * 100, 2)
+         )
+
+tr_rhymes %>% 
+  select(id, from_upos, to_upos) %>% 
+  pivot_longer(!id) %>% 
+  count(value, sort = T) %>% 
+  mutate(perc = round( n / (tr_rhymes %>% 
+              select(id, from_upos, to_upos) %>% 
+              pivot_longer(!id) %>% 
+              nrow()) 
+              * 100, 2)
+         )
+```
+
+Inline pos
+
+```{r}
+all_pos <- read.csv("../../data/ch5/corpus_1835_pos.csv") %>% 
+  select(-X) %>% 
+  mutate(pos_feats = pos,
+         pos = str_extract(pos, "^\\w+="),
+         pos = str_remove(pos, "="),
+         pos = ifelse(is.na(pos), str_extract(pos_feats, "^\\w+,"), pos),
+         pos = str_remove(pos, ",")) %>% 
+  left_join(pos_transl %>% rename(pos_plus = pos, 
+                                  pos = old_tag), 
+            by = "pos")
+
+glimpse(all_pos)
+
+head(all_pos, 250)
+```
+
+Extract freqs of inline words and add pos tags
+
+```{r}
+inline_freq <- corpus_1835 %>% 
+  select(text_raw, meter) %>% 
+  separate_rows(text_raw, sep = "\n") %>% 
+  
+  # remove last word in a line
+  
+  # remove lines with no words
+  filter(text_raw != "" & !str_detect(text_raw, "^[[:punct:]]+$|^[[:space:]]+$")) %>% 
+  # remove spaced & punctuation in the end of the line
+  mutate(text_cln = str_remove_all(text_raw, "\\W+$|\\s+$"),
+         # replace the last word as endword tag
+         text_cln = str_replace_all(text_cln, "\\w+$", "_ENDWORD_")) %>% 
+  select(text_cln, meter) %>% 
+  # remove endword tags
+  mutate(text_cln = str_remove_all(text_cln, "_ENDWORD_")) %>% 
+  
+  # count remaining words
+  unnest_tokens(input = text_cln, output = word, token = "words") %>% 
+  count(word, meter, sort = T) 
+
+head(inline_freq, 20)
+
+total_meters <- inline_freq %>% 
+  count(meter) %>% rename(total = n)
+
+inline_freq %>% 
+  left_join(all_pos %>% rename(word = word_from), by = "word") %>% 
+  count(upos, meter, sort = TRUE) %>% 
+  left_join(total_meters, by = "meter") %>% 
+  mutate(perc = round((n / total) * 100 , 2)) %>% 
+  arrange(-desc(meter))
+
+```
+
+Top words in iamb masc / fem rhymes
+
+```{r}
+iamb_rhymes %>% 
+  filter(from_closure == "masc" & to_closure == "masc") %>% 
+  select(id, from, to) %>% 
+  pivot_longer(!id) %>% 
+  count(value, sort = T) %>% head(20)
+
+iamb_rhymes %>% 
+  filter(from_closure == "fem" & to_closure == "fem") %>% 
+  select(id, from, to) %>% 
+  pivot_longer(!id) %>% 
+  count(value, sort = T) %>% head(20)
+
+tr_rhymes %>% 
+  filter(from_closure == "masc" & to_closure == "masc") %>% 
+  select(id, from, to) %>% 
+  pivot_longer(!id) %>% 
+  count(value, sort = T) %>% head(20)
+
+tr_rhymes %>% 
+  filter(from_closure == "fem" & to_closure == "fem") %>% 
+  select(id, from, to) %>% 
+  pivot_longer(!id) %>% 
+  count(value, sort = T) %>% head(20)
 ```
 
 ## Endings
 
-### todo Freq of char 2grams
+### Freq of char 2grams
+
+#### IAMB - extract endings
+
+```{r}
+# glimpse(iamb_rhymes)
+
+iamb_endings <- iamb_rhymes %>% 
+
+  # add char if word is too short
+  mutate(from = ifelse(nchar(from) < 2, paste0("_", from), from),
+         to = ifelse(nchar(to) < 2, paste0("_", to), to)) %>% 
+  
+  # create paired vars
+  mutate(ending = paste0("-",str_extract(from, "\\w{2}$"), 
+                         " -", str_extract(to, "\\w{2}$")),
+         upos_pair = paste(from_upos, to_upos),
+         feats_pair = paste(from_feats, " ---- ", to_feats),
+         closure_pair = paste(from_closure, to_closure)) %>% 
+  select(meter, rhyme_pair, ending, upos_pair, closure_pair, feats_pair)
+
+glimpse(iamb_endings)
+```
+
+#### all bigram endings stats
+
+```{r}
+iamb_endings %>% 
+  count(ending, sort = T) %>% 
+  mutate(perc = round((n / nrow(iamb_endings)) * 100, 2)) %>% 
+  head(30)
+
+# masculine endings
+iamb_endings %>% 
+  filter(str_detect(closure_pair, "masc")) %>% 
+  count(ending, sort = T) %>% 
+  mutate(perc = round(n / nrow(iamb_endings %>% 
+                                  filter(str_detect(closure_pair, "masc"))) * 100, 2)) %>% 
+  head(20)
+
+
+# fem endings
+iamb_endings %>% 
+  filter(str_detect(closure_pair, "fem")) %>% 
+  count(ending, sort = T) %>% 
+  mutate(perc = round(n / nrow(iamb_endings %>% 
+                                  filter(str_detect(closure_pair, "fem"))) * 100, 2)) %>% 
+  head(20)
+```
+
+#### oi-oi analysis
 
 ```{r}
 
+iamb_endings %>% 
+  count(ending, closure_pair, sort = T) %>% 
+  mutate(perc = round((n / nrow(iamb_endings)) * 100, 2)) %>% 
+  filter(ending == "-ой -ой")
+
+iamb_endings %>% 
+  filter(ending == "-ой -ой" & closure_pair == "fem fem") %>% head()
+
+iamb_endings %>% 
+  filter(ending == "-ой -ой") %>% 
+  count(upos_pair, sort = T) 
+
+iamb_endings %>% 
+  filter(ending == "-ой -ой") %>% 
+  count(feats_pair, sort = T) %>% 
+  head(25)
 ```
 
-### todo Freq of char 3grams
+### -oi inline freq
 
 ```{r}
+glimpse(inline_freq)
+
+meters_total <- inline_freq %>% 
+  group_by(meter) %>% 
+  summarise(meter = meter,
+              total = sum(n)) %>% distinct()
+
+inline_freq %>% 
+  mutate(word = ifelse(nchar(word) < 2, paste0("_", word), word),
+         ending = str_extract(word, "\\w{2}$")) %>% 
+  count(meter, ending, sort = T) %>% 
+  left_join(meters_total, by = "meter") %>% 
+  mutate(perc = round((n / total) * 100, 2) ) %>% 
+  group_by(meter) %>% 
+  slice_max(order_by = perc, n = 5)
+```
+
+-oi rhyme freq
+
+```{r}
+meters_total <- rhymes %>% 
+  select(meter, from, to) %>% 
+  count(meter, sort = T) %>% 
+  rename(total = n)
+
+rhymes %>% 
+  select(meter, from, to) %>% 
+  pivot_longer(!meter, values_to = "word") %>% 
+  mutate(word = ifelse(nchar(word) < 2, paste0("_", word), word),
+         ending = str_extract(word, "\\w{2}$")) %>% 
+  count(ending, meter) %>% 
+  left_join(meters_total, by = "meter") %>% 
+  mutate(perc = round((n / total) * 100, 2) ) %>% 
+  group_by(meter) %>% 
+  slice_max(order_by = perc, n = 5)
+
+
+# freq in only masculine rhymes
+all_masc_words <- rhymes %>% 
+  select(meter, from, to, from_closure, to_closure) %>% 
+  mutate(from = paste0(from, "__", from_closure),
+         to = paste0(to, "__", to_closure)) %>% 
+  select(-from_closure, -to_closure) %>% 
+  pivot_longer(!meter, values_to = "word") %>% 
+  filter(str_detect(word, "__masc")) %>% 
+  select(-name) %>% 
+  mutate(word = str_remove(word, "__masc"))
+  
+
+meters_total <- all_masc_words %>% count(meter) %>% rename(total = n)
+
+all_masc_words %>% 
+  mutate(word = ifelse(nchar(word) < 2, paste0("_", word), word),
+         ending = str_extract(word, "\\w{2}$")) %>% 
+  count(ending, meter) %>% 
+  left_join(meters_total, by = "meter") %>% 
+  mutate(perc = round((n / total) * 100, 2) ) %>% 
+  group_by(meter) %>% 
+  slice_max(order_by = perc, n = 5)
+```
+
+### TROCHEE
+
+```{r}
+tr_endings <- tr_rhymes %>% 
+
+  # add char if word is too short
+  mutate(from = ifelse(nchar(from) < 2, paste0("_", from), from),
+         to = ifelse(nchar(to) < 2, paste0("_", to), to)) %>% 
+  
+  # create paired vars
+  mutate(ending = paste0("-",str_extract(from, "\\w{2}$"), 
+                         " -", str_extract(to, "\\w{2}$")),
+         upos_pair = paste(from_upos, to_upos),
+         feats_pair = paste(from_feats, " ---- ", to_feats),
+         closure_pair = paste(from_closure, to_closure)) %>% 
+  select(meter, rhyme_pair, ending, upos_pair, closure_pair, feats_pair)
+
+glimpse(tr_endings)
+```
+
+#### all endings stats
+
+```{r}
+tr_endings %>% 
+  count(ending, sort = T) %>% 
+  mutate(perc = round((n / nrow(tr_endings)) * 100, 2)) %>% 
+  head(30)
+
+# masculine endings
+tr_endings %>% 
+  filter(str_detect(closure_pair, "masc")) %>% 
+  count(ending, sort = T) %>% 
+  mutate(perc = round(n / nrow(tr_endings %>% 
+                                  filter(str_detect(closure_pair, "masc"))) * 100, 2)) %>% 
+  head(20)
+
+
+# fem endings
+tr_endings %>% 
+  filter(str_detect(closure_pair, "fem")) %>% 
+  count(ending, sort = T) %>% 
+  mutate(perc = round(n / nrow(tr_endings %>% 
+                                  filter(str_detect(closure_pair, "fem"))) * 100, 2)) %>% 
+  head(20)
+
+# dactyllic
+tr_endings %>% 
+  filter(str_detect(closure_pair, "dactylic")) %>% 
+  count(ending, sort = T) %>% 
+  mutate(perc = round(n / nrow(tr_endings %>% 
+                                  filter(str_detect(closure_pair, "dactylic"))) * 100, 2)) %>% 
+  head(20)
 
 ```
+
+#### oi oi analysis
+
+```{r}
+tr_endings %>% 
+  count(ending, closure_pair, sort = T) %>% 
+  mutate(perc = round((n / nrow(tr_endings)) * 100, 2)) %>% 
+  filter(ending == "-ой -ой")
+
+tr_endings %>% 
+  filter(ending == "-ой -ой" & closure_pair == "fem fem") %>% head()
+
+tr_endings %>% 
+  filter(ending == "-ой -ой") %>% 
+  count(upos_pair, sort = T) 
+
+tr_endings %>% 
+  filter(ending == "-ой -ой") %>% 
+  count(feats_pair, sort = T) %>% 
+  head(25)
+```
+
+## Freq of char 3grams
+
+```{r}
+iamb_endings_3 <- iamb_rhymes %>% 
+
+  # add char if word is too short
+  mutate(from = ifelse(nchar(from) < 2, paste0("_", from), from),
+         to = ifelse(nchar(to) < 2, paste0("_", to), to)) %>% 
+  mutate(from = ifelse(nchar(from) < 3, paste0("_", from), from),
+         to = ifelse(nchar(to) < 3, paste0("_", to), to)) %>% 
+  
+  # create paired vars
+  mutate(ending = paste0("-",str_extract(from, "\\w{3}$"), 
+                         " -", str_extract(to, "\\w{3}$")),
+         upos_pair = paste(from_upos, to_upos),
+         feats_pair = paste(from_feats, " ---- ", to_feats),
+         closure_pair = paste(from_closure, to_closure)) %>% 
+  select(meter, rhyme_pair, ending, upos_pair, closure_pair, feats_pair)
+
+tr_endings_3 <- tr_rhymes %>% 
+
+  # add char if word is too short
+  mutate(from = ifelse(nchar(from) < 2, paste0("_", from), from),
+         to = ifelse(nchar(to) < 2, paste0("_", to), to)) %>% 
+  mutate(from = ifelse(nchar(from) < 3, paste0("_", from), from),
+         to = ifelse(nchar(to) < 3, paste0("_", to), to)) %>% 
+  
+  # create paired vars
+  mutate(ending = paste0("-",str_extract(from, "\\w{3}$"), 
+                         " -", str_extract(to, "\\w{3}$")),
+         upos_pair = paste(from_upos, to_upos),
+         feats_pair = paste(from_feats, " ---- ", to_feats),
+         closure_pair = paste(from_closure, to_closure)) %>% 
+  select(meter, rhyme_pair, ending, upos_pair, closure_pair, feats_pair)
+
+glimpse(iamb_endings_3)
+glimpse(tr_endings_3)
+```
+
+### Iamb
+
+```{r}
+iamb_endings_3 %>% 
+  count(ending, sort = T) %>% 
+  mutate(perc = round((n/nrow(iamb_endings_3)) * 100, 2))
+
+iamb_endings_3 %>% 
+  filter(str_detect(closure_pair, "masc")) %>% 
+  count(ending, sort = T) %>% 
+  mutate(perc = round((n/nrow(iamb_endings_3 %>% filter(str_detect(closure_pair, "masc")))) * 100, 2))
+
+iamb_endings_3 %>% 
+  filter(str_detect(closure_pair, "fem")) %>% 
+  count(ending, sort = T) %>% 
+  mutate(perc = round((n/nrow(iamb_endings_3 %>% filter(str_detect(closure_pair, "fem")))) * 100, 2))
+```
+
+### trochee
+
+```{r}
+tr_endings_3 %>% 
+  count(ending, sort = T) %>% 
+  mutate(perc = round((n/nrow(tr_endings_3)) * 100, 2))
+
+tr_endings_3 %>% 
+  filter(str_detect(closure_pair, "masc")) %>% 
+  count(ending, sort = T) %>% 
+  mutate(perc = round((n/nrow(tr_endings_3 %>% filter(str_detect(closure_pair, "masc")))) * 100, 2))
+
+tr_endings_3 %>% 
+  filter(str_detect(closure_pair, "fem")) %>% 
+  count(ending, sort = T) %>% 
+  mutate(perc = round((n/nrow(tr_endings_3 %>% filter(str_detect(closure_pair, "fem")))) * 100, 2))
+
+tr_endings_3 %>% 
+  filter(str_detect(closure_pair, "dactylic")) %>% 
+  count(ending, sort = T) %>% 
+  mutate(perc = round((n/nrow(tr_endings_3 %>% filter(str_detect(closure_pair, "dactylic")))) * 100, 2))
+```
+
+## Network viz
 
 #### net fn
 
@@ -662,34 +1153,4 @@ unique_words <- corpus %>%
 head(unique_words)
 
 writeLines(unique_words, "../../data/ch5/corpus_1835_unique_words.txt")
-```
-
-Next step: look into grammatical features of the MFW in the two corpora - for that ling annotation for the whole corpus-1835 is needed!
-
-mb later compare the MFW ranked lists for nouns, verbs & adjectives (probably pronouns as well)
-
-```{r}
-# MF features in rhyme
-
-total_items_rhyme <- length(c(rhymes$from_feats, rhymes$to_feats))
-
-tibble(feature = c(rhymes$from_feats, rhymes$to_feats)) %>% 
-  count(feature, sort = T) %>% 
-  mutate(perc = round( (n / total_items_rhyme) * 100, 2 ))
-```
-
-#### masc rhymes
-
-```{r}
-from_masc <- rhymes %>% 
-  filter(from_closure == "masc") %>% pull(from_feats)
-
-to_masc <- rhymes %>% 
-  filter(to_closure == "masc") %>% pull(to_feats)
-
-total_masc <- length(c(from_masc, to_masc))
-
-tibble(feats = c(from_masc, to_masc)) %>% 
-  count(feats, sort = T) %>% 
-  mutate(perc = round(n / total_masc * 100 , 1))
 ```

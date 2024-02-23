@@ -81,7 +81,7 @@ glimpse(rhymes)
 table(rhymes$corpus) # quick check in the number of rhymes found
 ```
 
-### table 5-1-1: Pull top 5 rhymes in each year 
+### table 5-1-1: Pull top 5 rhymes in each year
 
 ```{r}
 total_year <- rhymes_1835 %>% 
@@ -560,4 +560,276 @@ ggsave(filename = "plots/fig_5-1-2.png", plot = last_plot(), dpi = 300,
 #        #title = "Количество пересечений", 
 #        #subtitle = "между случайной выборкой рифм из Корпуса-1835 (100 рифм, 100 итераций)\nи всеми известными рифмами из НКРЯ, датированными до соответствующего года"
 #        )
+```
+
+## Kendall rank cor
+
+How much rankings within language are similar to those in rhyme freq
+
+### inline freq
+
+Calculate frequency of words which are not in rhyme position
+
+```{r}
+inline_freq <- corpus_1835 %>% 
+  select(text_raw) %>% 
+  separate_rows(text_raw, sep = "\n") %>% 
+  
+  # remove last word in a line
+  
+  # remove lines with no words
+  filter(text_raw != "" & !str_detect(text_raw, "^[[:punct:]]+$|^[[:space:]]+$")) %>% 
+  # remove spaced & punctuation in the end of the line
+  mutate(text_cln = str_remove_all(text_raw, "\\W+$|\\s+$"),
+         # replace the last word as endword tag
+         text_cln = str_replace_all(text_cln, "\\w+$", "_ENDWORD_")) %>% 
+  select(text_cln) %>% 
+  # remove endword tags
+  mutate(text_cln = str_remove_all(text_cln, "_ENDWORD_")) %>% 
+  
+  # count remaining words
+  unnest_tokens(input = text_cln, output = word, token = "words") %>% 
+  count(word, sort = T) %>% 
+  mutate(rank_inline = row_number())
+
+head(inline_freq)
+```
+
+### rhyme words freq
+
+```{r}
+rhyme_freq <- rhymes_1835 %>% 
+  unnest_tokens(input = rhyme_pair, output = word, token = "words") %>% 
+  count(word, sort = T) %>% 
+  mutate(rank_rhyme = row_number())
+
+head(rhyme_freq)
+```
+
+### ranks cor test
+
+Comparison of ranked lists demonstration (tau max = 1, tau min = -1):
+
+```{r}
+cor.test(c(1,2,3,4,5), c(1,2,3,4,5), method = "kendall")
+cor.test(c(1,2,3,4,5), c(3,2,5,1,4), method = "kendall")
+cor.test(c(1,2,3,4,5), c(5,4,3,2,1), method = "kendall")
+```
+
+#### mfw 100
+
+```{r}
+mfw_100_rhyme <- rhyme_freq %>% 
+  head(100) %>% 
+  select(-n) %>% 
+  left_join(inline_freq %>% select(-n), by = "word") %>% 
+  drop_na()
+
+cor.test(mfw_100_rhyme$rank_rhyme, mfw_100_rhyme$rank_inline, method = "kendall")
+
+mfw_100_rhyme %>% 
+  arrange(-desc(rank_rhyme)) %>% 
+  head(25)
+
+nrow(mfw_100_rhyme)
+```
+
+#### mfw 1000
+
+```{r}
+mfw_1000_rhyme <- rhyme_freq %>% 
+  head(1000) %>% 
+  select(-n) %>% 
+  left_join(inline_freq %>% select(-n), by = "word") %>% 
+  drop_na()
+
+head(mfw_1000_rhyme)
+
+cor.test(mfw_1000_rhyme$rank_rhyme, mfw_1000_rhyme$rank_inline, method = "kendall")
+```
+
+#### mfw 10000
+
+```{r}
+mfw_10000_rhyme <- rhyme_freq %>% 
+  head(10000) %>% 
+  select(-n) %>% 
+  left_join(inline_freq %>% select(-n), by = "word") %>% 
+  drop_na()
+
+cor.test(mfw_10000_rhyme$rank_rhyme, mfw_10000_rhyme$rank_inline, method = "kendall")
+```
+
+### iamb & trochee cor test separately
+
+#### iamb freq
+
+Calculate inline & rhyme freqs in iambic poems
+
+```{r}
+iamb_inline_freq <- corpus_1835 %>% 
+  filter(meter == "Iamb") %>% 
+  select(text_raw) %>% 
+  separate_rows(text_raw, sep = "\n") %>% 
+  
+  # remove last word in a line
+  
+  # remove lines with no words
+  filter(text_raw != "" & !str_detect(text_raw, "^[[:punct:]]+$|^[[:space:]]+$")) %>% 
+  # remove spaced & punctuation in the end of the line
+  mutate(text_cln = str_remove_all(text_raw, "\\W+$|\\s+$"),
+         # replace the last word as endword tag
+         text_cln = str_replace_all(text_cln, "\\w+$", "_ENDWORD_")) %>% 
+  select(text_cln) %>% 
+  # remove endword tags
+  mutate(text_cln = str_remove_all(text_cln, "_ENDWORD_")) %>% 
+  
+  # count remaining words
+  unnest_tokens(input = text_cln, output = word, token = "words") %>% 
+  count(word, sort = T) %>% 
+  mutate(rank_inline = row_number())
+
+head(iamb_inline_freq)
+
+iamb_rhyme_freq <- rhymes_1835 %>% 
+  # filter only iambic poems
+  left_join(corpus_1835 %>% select(text_id, meter) %>% rename(id = text_id),
+            by = "id") %>% 
+  filter(meter == "Iamb") %>% 
+  # count words
+  unnest_tokens(input = rhyme_pair, output = word, token = "words") %>% 
+  count(word, sort = T) %>% 
+  mutate(rank_rhyme = row_number())
+
+head(iamb_rhyme_freq)
+```
+
+#### cor texts
+
+```{r}
+mfw_100_rhyme <- iamb_rhyme_freq %>% 
+  head(100) %>% 
+  select(-n) %>% 
+  left_join(iamb_inline_freq %>% select(-n), by = "word") %>% 
+  drop_na()
+
+cor.test(mfw_100_rhyme$rank_rhyme, mfw_100_rhyme$rank_inline, method = "kendall")
+
+mfw_100_rhyme %>% 
+  arrange(-desc(rank_rhyme)) %>% 
+  head(50)
+
+nrow(mfw_100_rhyme)
+
+### --- tests for 1000 and 10 000 MFW --- 
+mfw_1000_rhyme <- iamb_rhyme_freq %>% 
+  head(1000) %>% 
+  select(-n) %>% 
+  left_join(iamb_inline_freq %>% select(-n), by = "word") %>% 
+  drop_na()
+
+cor.test(mfw_1000_rhyme$rank_rhyme, mfw_1000_rhyme$rank_inline, method = "kendall")
+
+mfw_1000_rhyme %>% 
+  arrange(-desc(rank_rhyme)) %>% 
+  tail(25)
+
+# 10 000 
+
+mfw_10000_rhyme <- iamb_rhyme_freq %>% 
+  head(10000) %>% 
+  select(-n) %>% 
+  left_join(iamb_inline_freq %>% select(-n), by = "word") %>% 
+  drop_na()
+
+cor.test(mfw_10000_rhyme$rank_rhyme, mfw_10000_rhyme$rank_inline, method = "kendall")
+
+mfw_10000_rhyme %>% 
+  arrange(-desc(rank_rhyme)) %>% 
+  tail(25)
+```
+
+#### trochee freqs
+
+```{r}
+tr_inline_freq <- corpus_1835 %>% 
+  filter(meter == "Trochee") %>% 
+  select(text_raw) %>% 
+  separate_rows(text_raw, sep = "\n") %>% 
+  
+  # remove last word in a line
+  
+  # remove lines with no words
+  filter(text_raw != "" & !str_detect(text_raw, "^[[:punct:]]+$|^[[:space:]]+$")) %>% 
+  # remove spaced & punctuation in the end of the line
+  mutate(text_cln = str_remove_all(text_raw, "\\W+$|\\s+$"),
+         # replace the last word as endword tag
+         text_cln = str_replace_all(text_cln, "\\w+$", "_ENDWORD_")) %>% 
+  select(text_cln) %>% 
+  # remove endword tags
+  mutate(text_cln = str_remove_all(text_cln, "_ENDWORD_")) %>% 
+  
+  # count remaining words
+  unnest_tokens(input = text_cln, output = word, token = "words") %>% 
+  count(word, sort = T) %>% 
+  mutate(rank_inline = row_number())
+
+head(tr_inline_freq)
+
+tr_rhyme_freq <- rhymes_1835 %>% 
+  # filter only iambic poems
+  left_join(corpus_1835 %>% select(text_id, meter) %>% rename(id = text_id),
+            by = "id") %>% 
+  filter(meter == "Trochee") %>% 
+  # count words
+  unnest_tokens(input = rhyme_pair, output = word, token = "words") %>% 
+  count(word, sort = T) %>% 
+  mutate(rank_rhyme = row_number())
+
+head(tr_rhyme_freq)
+```
+
+Cor tests
+
+```{r}
+mfw_100_rhyme <- tr_rhyme_freq %>% 
+  head(100) %>% 
+  select(-n) %>% 
+  left_join(tr_inline_freq %>% select(-n), by = "word") %>% 
+  drop_na()
+
+cor.test(mfw_100_rhyme$rank_rhyme, mfw_100_rhyme$rank_inline, method = "kendall")
+
+mfw_100_rhyme %>% 
+  arrange(-desc(rank_rhyme)) %>% 
+  head(50)
+
+nrow(mfw_100_rhyme)
+
+### --- tests for 1000 and 10 000 MFW --- 
+mfw_1000_rhyme <- tr_rhyme_freq %>% 
+  head(1000) %>% 
+  select(-n) %>% 
+  left_join(tr_inline_freq %>% select(-n), by = "word") %>% 
+  drop_na()
+
+cor.test(mfw_1000_rhyme$rank_rhyme, mfw_1000_rhyme$rank_inline, method = "kendall")
+
+mfw_1000_rhyme %>% 
+  arrange(-desc(rank_rhyme)) %>% 
+  tail(25)
+
+# 10 000 
+
+mfw_10000_rhyme <- tr_rhyme_freq %>% 
+  head(10000) %>% 
+  select(-n) %>% 
+  left_join(tr_inline_freq %>% select(-n), by = "word") %>% 
+  drop_na()
+
+cor.test(mfw_10000_rhyme$rank_rhyme, mfw_10000_rhyme$rank_inline, method = "kendall")
+
+mfw_10000_rhyme %>% 
+  arrange(-desc(rank_rhyme)) %>% 
+  tail(25)
 ```

@@ -94,7 +94,9 @@ rhymer <- tibble(word = rhymer) %>%
   mutate(word = tolower(word)) 
 ```
 
-Add ending stress annotation
+# todo
+
+Add ending stress annotation ------------ move this to 05_2 !
 
 ```{r}
 vec_acc <- read_file("../../data/ch5/corpus_1835_rhymewords.accented.txt")
@@ -486,7 +488,7 @@ print("Top POS pairs in iamb w/ feminine clausula:")
 pos_pairs(iamb_rhymes, "fem", 20)
 
 print("Top POS pairs in trochee w/ feminine clausula:")
-pos_pairs(tr_rhymes, "fem", 20)
+pos_pairs(tr_rhymes, "fem", 40)
 
 print("Top POS pairs in trochee w/ dactyllic clausula:")
 pos_pairs(tr_rhymes, "dactylic", 20)
@@ -497,11 +499,15 @@ pos_pairs(tr_rhymes, "dactylic", 20)
 POS freq in rhymes
 
 ```{r}
+glimpse(iamb_rhymes)
+
 iamb_rhymes %>% 
+  filter(from_closure == "fem" & to_closure == "fem") %>% 
   select(id, from_upos, to_upos) %>% 
   pivot_longer(!id) %>% 
   count(value, sort = T) %>% 
   mutate(perc = round( n / (iamb_rhymes %>% 
+                  filter(from_closure == "fem" & to_closure == "fem") %>% 
               select(id, from_upos, to_upos) %>% 
               pivot_longer(!id) %>% 
               nrow()) 
@@ -509,10 +515,14 @@ iamb_rhymes %>%
          )
 
 tr_rhymes %>% 
+  
+  filter(from_closure == "dactylic" & to_closure == "dactylic") %>% 
   select(id, from_upos, to_upos) %>% 
   pivot_longer(!id) %>% 
   count(value, sort = T) %>% 
   mutate(perc = round( n / (tr_rhymes %>% 
+                              
+  filter(from_closure == "dactylic" & to_closure == "dactylic") %>% 
               select(id, from_upos, to_upos) %>% 
               pivot_longer(!id) %>% 
               nrow()) 
@@ -649,7 +659,7 @@ iamb_endings %>%
   sample_n(10)
 ```
 
-####  all bigram endings stats
+#### all bigram endings stats
 
 ```{r}
 iamb_endings %>% 
@@ -933,8 +943,12 @@ iamb_masc %>%
 iamb_masc %>% 
   count(ending, sort = T) %>% 
   mutate(rank = row_number()) %>% 
-  filter(rank < 101) %>% 
-  ggplot(aes(x = rank, y = n)) + geom_col()
+  filter(rank < 1001) %>% 
+  ggplot(aes(x = rank, y = n)) + geom_col(fill = met.brewer("Veronese")[4],
+                                          alpha = 0.6) + 
+  geom_line(linewidth = 0.6, color = met.brewer("Veronese")[7]) + 
+  
+  labs(x = "Ранг", y = "Частота")
 ```
 
 Count number of pos combinations
@@ -951,29 +965,52 @@ head(ranks)
 iamb_masc %>% 
   filter(!str_detect(upos_pair, "NA")) %>% 
   group_by(ending) %>% 
-  count(upos_pair, sort = F) %>% 
-  count(ending, sort = T) %>% 
-  left_join(ranks, by = "ending") %>% 
-  filter(rank < 1000) %>% 
-  ggplot(aes(x = rank, y = n)) + geom_line(linewidht = 0.1) + geom_col(alpha = 0.2)
-```
+  count(upos_pair, sort = T) %>% 
+  filter(ending == "-ой -ой")
 
-```{r}
-
-im_upos <- iamb_masc %>% 
+iamb_masc %>% 
   filter(!str_detect(upos_pair, "NA")) %>% 
   group_by(ending) %>% 
   count(upos_pair, sort = F) %>% 
   count(ending, sort = T) %>% 
   left_join(ranks, by = "ending") %>% 
-  filter(rank < 51) %>% 
+  filter(rank < 1000) %>% 
+  ggplot(aes(x = rank, y = n)) + 
+  geom_line(linewidth = 0.3, color = met.brewer("Veronese")[7]) + 
+  geom_col(alpha = 0.3, fill = met.brewer("Veronese")[4]) +
+  labs(x = "Ранг окончания по частотности", 
+       y = "Количество комбинаций \nчастей речи внутри окончания")
+```
+
+```{r}
+
+im_upos <- iamb_masc %>% 
+  filter(!str_detect(upos_pair, "NA") #& !str_detect(ending, "дней")
+         ) %>% 
+  group_by(ending) %>% 
+  count(upos_pair, sort = F) %>% 
+  count(ending, sort = T) %>% 
+  left_join(ranks, by = "ending") %>% 
+  filter(rank > 21 & rank < 51) %>% 
   mutate(label = paste0(rank, ending),
-         group = ifelse(n < 5, "less variation", "more variation"))
+         group = ifelse(n < 5, "Менее вариатиавная", "Более вариативная"))
 
 im_upos %>% 
-  ggplot(aes(x = rank, y = n, fill = group)) + geom_col(alpha = 0.5) + 
+  ggplot(aes(x = rank, y = n, fill = group)) + 
+  geom_col(alpha = 0.8) + 
   coord_flip() + scale_x_reverse(breaks = im_upos$rank,
-                                 labels = im_upos$label) 
+                                 labels = im_upos$label) + 
+  scale_fill_manual(values = c(met.brewer("Veronese")[4],
+                               met.brewer("Veronese")[3])) + 
+  labs(x = "Ранг окончания по частотности",
+       y = "Количество комбинаций частей речи",
+       fill = "") + 
+  theme(legend.position = "bottom", 
+        text = element_text(size = 18)) + 
+  ylim(c(0, 25))
+
+ggsave("plots/pos_variation.png", plot = last_plot(), 
+       width = 12, height = 7, dpi = 300, bg = "white")
 ```
 
 ```{r}
@@ -1009,15 +1046,18 @@ im_rank_feat <- iamb_masc %>%
   count(ending, sort = T) %>% 
   left_join(ranks, by = "ending") %>% 
   filter(rank < 41) %>% 
-  mutate(label = paste0(rank, " ", ending)) 
+  mutate(label = paste0(rank, " ", ending),
+         group = ifelse(n < 25, "less variation", "more variation")) 
 
 
 im_rank_feat %>% 
-  ggplot(aes(x = rank, y = n)) + geom_col() + 
+  ggplot(aes(x = rank, y = n, fill = group)) + geom_col(alpha = 0.7) + 
   #scale_x_continuous(breaks = im_rank_feat$rank, labels = im_rank_feat$label) + 
   #theme(axis.text.x = element_text(angle = 270)) + 
   coord_flip() + scale_x_reverse(breaks = im_rank_feat$rank,
-                                 labels = im_rank_feat$label) 
+                                 labels = im_rank_feat$label) + 
+  scale_fill_manual(values = c(met.brewer("Veronese")[4],
+                               met.brewer("Veronese")[3]))
 ```
 
 ## Network viz
@@ -1183,14 +1223,14 @@ va_f_net
 
 ```{r}
 layout <- "
-AAA#BBBB
-AAA#BBBB
+AAAA#BBBBB
+AAAA#BBBBB
 "
 
 va_m_net  + va_f_net + plot_layout(design = layout)
 
 ggsave(filename = "plots/va_masc_fem_net.png", plot = last_plot(), dpi = 300,
-       width = 12, heigh = 9, bg = "white")
+       width = 15, heigh = 9, bg = "white")
 ```
 
 #### -ba rhymes
@@ -1289,7 +1329,7 @@ AAAA#BBBBB
 ba_m_net  + ba_f_net + plot_layout(design = layout)
 
 ggsave(filename = "plots/ba_masc_fem_net.png", plot = last_plot(), dpi = 300,
-       width = 12, heigh = 9, bg = "white")
+       width = 15, heigh = 9, bg = "white")
 ```
 
 #### todo -oi rhymes

@@ -77,6 +77,7 @@ rhymes_1835_t <- rhymes_1835 %>%
 rhymes_1835_t %>% 
   sample_n(10)
 
+# check for errors
 rhymes_1835_t %>% 
   filter(is.na(rhyme_pair))
 ```
@@ -102,7 +103,7 @@ nrow(sequencies) # total number of unique sequencies - 7304
 
 Statistics of pairs & sequences
 
-```{r}
+```{r, eval=FALSE}
 # total number of rhymed pairs
 rhymes_1835_t %>% 
   filter(str_detect(rhyme_pair, "^\\w+ \\w+$")) %>% distinct() %>% nrow()
@@ -137,35 +138,35 @@ print(paste("Number of rhyme pairs (non-unique) from sequences:", nrow(x)))
 Extract table with all unique words & their POS+features
 
 ```{r}
-glimpse(rhymes_1835)
-
-pos_tags <- rhymes_1835 %>% 
-  select(rhyme_words, pos) %>% 
-  distinct() %>% 
-  rename(feats = pos) %>% 
-  mutate(pos = str_extract(feats, "^\\w+(,|=)"),
-         pos = str_remove(pos, ',|=')) 
-
-head(pos_tags)
-
+# glimpse(rhymes_1835)
+# 
+# pos_tags <- rhymes_1835 %>% 
+#   select(rhyme_words, pos) %>% 
+#   distinct() %>% 
+#   rename(feats = pos) %>% 
+#   mutate(pos = str_extract(feats, "^\\w+(,|=)"),
+#          pos = str_remove(pos, ',|=')) 
+# 
+# head(pos_tags)
+glimpse(x)
 ```
 
 Add POS tags
 
 ```{r}
 seq_fin <- as_tibble(x) %>% 
-  # attach POS tag to 'from' word
-  left_join(pos_tags %>% 
-              rename(from = rhyme_words,
-                     from_pos = pos,
-                     from_feats = feats),
-            by = "from") %>% 
-  # attach POS tag to 'to' word
-  left_join(pos_tags %>% 
-              rename(to = rhyme_words, 
-                     to_pos = pos,
-                     to_feats = feats), 
-            by = "to") %>% 
+  # # attach POS tag to 'from' word
+  # left_join(pos_tags %>% 
+  #             rename(from = rhyme_words,
+  #                    from_pos = pos,
+  #                    from_feats = feats),
+  #           by = "from") %>% 
+  # # attach POS tag to 'to' word
+  # left_join(pos_tags %>% 
+  #             rename(to = rhyme_words, 
+  #                    to_pos = pos,
+  #                    to_feats = feats), 
+  #           by = "to") %>% 
   # paste rhyme bigram in a separate column
   mutate(rhyme_pair = paste(from, to), 
          id = paste0("M__", id),
@@ -192,18 +193,18 @@ rhymes_1835_t <- rhymes_1835_t %>%
 
     mutate(ft = rhyme_pair) %>% 
     separate(ft, c("from", "to"), sep = " ") %>% 
-  
-    # attach POS tag to 'from' word
-    left_join(pos_tags %>% rename(from = rhyme_words,
-                                 from_pos = pos,
-                                 from_feats = feats),
-             by = "from") %>% 
     
-    # attach POS tag to `to` word
-    left_join(pos_tags %>% rename(to = rhyme_words,
-                                 to_pos = pos,
-                                 to_feats = feats),
-             by = "to") %>% 
+    # # attach POS tag to 'from' word
+    # left_join(pos_tags %>% rename(from = rhyme_words,
+    #                              from_pos = pos,
+    #                              from_feats = feats),
+    #          by = "from") %>% 
+    # 
+    # # attach POS tag to `to` word
+    # left_join(pos_tags %>% rename(to = rhyme_words,
+    #                              to_pos = pos,
+    #                              to_feats = feats),
+    #          by = "to") %>% 
     select(-rhymes, -poem_id, -pos) %>% 
     distinct()
 
@@ -217,18 +218,19 @@ Merge with pairs sequencies
 ```{r}
 glimpse(seq_fin)
 
-# reorder columns to match with rhymes_1835_t
-seq_fin <- seq_fin %>% select(id, rhyme_pair, 
-                              from, to, 
-                              from_pos, from_feats,
-                              to_pos, to_feats)
-
 rhymes <- rbind(rhymes_1835_t, seq_fin)
+
+rhymes <- rhymes %>% 
+  # lowercase for all words
+  mutate(from = tolower(from),
+         to = tolower(to),
+         rhyme_pair = tolower(rhyme_pair))
 
 head(rhymes)
 rhymes %>% sample_n(10)
 nrow(rhymes) # total number of rhymes - 81 746
-length(unique(rhymes$rhyme_pair)) # number of unique rhymes - 59 584
+length(unique(rhymes$rhyme_pair)) # number of unique rhymes - 58 951
+
 ```
 
 ## Reorder rhyme words
@@ -295,9 +297,25 @@ print(paste("Number of unique rhymes after reordering:",
             length(unique(rhymes$rhyme_alph)) ))
 ```
 
-## Ending type
+## save data
 
-Extract data as a vector of words for accentuation
+```{r, eval=FALSE}
+rhymes <- rhymes %>% select(-rhyme_pair)
+
+write.csv(rhymes, "../../data/corpus1835/sql_db/rhyme_pairs.csv")
+```
+
+# Rhyme words
+
+```{r}
+# rhymes <- read.csv("../../data/corpus1835/sql_db/rhyme_pairs.csv") %>% select(-X)
+
+# glimpse(rhymes)
+```
+
+### add accents
+
+Extract data as a vector of unique rhyme words for accentuation
 
 ```{r, eval=FALSE}
 vec <- NULL
@@ -326,13 +344,13 @@ rw_acc <- tibble(accented = vec_acc) %>% # create one-cell tibble
   
 rw_acc <- rw_acc %>% 
   # add id columns
-   mutate(doc_id = "", 
+   mutate(doc_id = row_number(), 
          row_id = row_number())
 
 head(rw_acc)
 ```
 
-### extract closure type
+### binarisation
 
 Upload function to rewrite letters & ' stress annotation to binary
 
@@ -368,71 +386,266 @@ to_binary <- function(df,document="doc_id",text="acc_text") {
 }
 ```
 
-Apply function & binarise
+```{r}
+b <- to_binary(rw_acc, text = "accented")
+
+# head(b)
+# glimpse(rw_acc)
+
+words <- rw_acc %>% 
+  select(-doc_id) %>% 
+  left_join(b %>% select(-doc_id), by = "row_id") %>% 
+  select(-row_id) %>% 
+  mutate(accented = tolower(accented),
+         word = tolower(word))
+
+words %>% sample_n(10)
+```
+
+Fix words with no stress - ru_accent_poet doesn't stress one-syllable words
 
 ```{r}
-# quick test on the first 10 words
+words %>% 
+  filter(!str_detect(accented, "'")) %>% distinct()
+```
 
-to_binary(rw_acc[1:10,], text = "accented") %>% 
-  ungroup() %>% 
-  select(-doc_id) %>% 
-  left_join(rw_acc %>% select(-doc_id), by = "row_id") %>% 
-  mutate(closure_pattern = str_replace_all(stress_pattern, "^.*?(1)(0)?(0)?$", "\\1\\2\\3"),
-         closure_pattern = ifelse(closure_pattern == 0, 1, closure_pattern),
-         closure = ifelse(closure_pattern == "10", "fem", ""),
-         closure = ifelse(closure_pattern == "1", "masc", closure),
-         closure = ifelse(closure_pattern == "100", "dactylic", closure)) %>% 
-  select(accented, word, stress_pattern, closure, closure_pattern)
+#### add ë stress
+
+```{r}
+words <- words %>% 
+  mutate(word_acc = ifelse(str_detect(word, "ё"),
+                           str_replace(accented, "ё", "ё'"),
+                           accented))
+
+words %>% 
+  filter(str_detect(word, "ё")) %>% head()
+
+words %>% 
+  filter(!str_detect(word, "ё")) %>% head()
+```
+
+#### one-syl words
+
+```{r}
+words %>% 
+  filter(!str_detect(word_acc, "'") & stress_pattern != "0") # non-one-syl words without stress
+
+# number of one-syllable words without a stress
+words %>% 
+  filter(!str_detect(word_acc, "'") & stress_pattern == "0") %>% nrow()
+
+# example of these words
+words %>% 
+  filter(!str_detect(word_acc, "'")) %>% sample_n(10)
 ```
 
 ```{r}
-words_stressed <- to_binary(rw_acc, text = "accented") %>% 
-  ungroup() %>% 
-  select(-doc_id) %>% 
-  left_join(rw_acc %>% select(-doc_id), by = "row_id") %>% 
-  mutate(closure_pattern = str_replace_all(stress_pattern, "^.*?(1)(0)?(0)?$", "\\1\\2\\3"),
-         closure_pattern = ifelse(closure_pattern == 0, 1, closure_pattern),
-         closure = ifelse(closure_pattern == "10", "fem", ""),
-         closure = ifelse(closure_pattern == "1", "masc", closure),
-         closure = ifelse(closure_pattern == "100", "dactylic", closure)) %>% 
-  select(accented, word, stress_pattern, closure, closure_pattern)
+# extract and pull words without stresses
+test_words <- words %>% 
+  filter(!str_detect(word_acc, "'") & stress_pattern == "0") %>% 
+  pull(word_acc) 
 
-head(words_stressed)
-rm(rw_acc)
-```
+head(test_words)
+test_words <- tolower(test_words)
 
-Attach closure data to rhymes
+# create vowels vector 
+vowels <-  c("а", "е","ё", "у", "о", "ю", "я", "и", "ы", "э")
+vowels_vec <- paste0(vowels, collapse = "|")
 
-nb: this code result in redubplication, need to check (now just add distinct in the end)
 
-```{r}
-rhymes_end <- rhymes %>% 
-  # attach closure features to 'from' word
-  left_join(words_stressed %>% 
-              select(word, closure, closure_pattern) %>% 
-              rename(from = word,
-                     from_closure = closure,
-                     from_closure_pattern = closure_pattern),
-            by = "from") %>% 
+
+# create empty variables for a stres marking loop
+w <- NULL
+x <- NULL
+word <- NULL
+word_acc <- NULL
+
+# place a stress near every vowel
+for (j in 1:length(test_words)) {
+  # take one word
+  word <- test_words[j]
   
-  # attach closure features to 'to' word
-  left_join(words_stressed %>% 
-              select(word, closure, closure_pattern) %>% 
-              rename(to = word,
-                     to_closure = closure,
-                     to_closure_pattern = closure_pattern),
-            by = "to") %>% 
-  distinct()
+  for (i in 1:length(unlist(str_split(word, ""))) ) {
+    # split into characters
+    x <- str_split(word, "")[[1]][i]
+    # add stress if a vowel
+    if (str_detect(x, vowels_vec)) {
+      x <- paste0(x, "'")
+    } 
+    # attach with previous letters 
+    w <- append(w, x)
+  }
+  #w
+  w1 <- paste0(w, collapse = "") # merge into one string
+  w <- NULL # clean temporary variable
+  word_acc[j] <- w1 # write the word into a word vec
+  
+}
 
-head(rhymes_end)
+head(word_acc)
 
-nrow(rhymes) # 81 746
-nrow(rhymes_end) # 81 334
+one_syl <- tibble(word = test_words,
+       word_acc_new = word_acc) 
+
+one_syl %>% sample_n(10)
 ```
 
-### Save
+Return stressed words to the main `words` table
 
-```{r, eval=FALSE}
-write.csv(file = "../../data/ch5/rhymes_parsed_closure.csv", rhymes_end)
-write.csv(file = "../../data/ch5/rhymes_parsed.csv", rhymes)
+```{r}
+glimpse(words)
+
+words_acc <- words %>% 
+  left_join(one_syl, by = "word") %>% 
+  mutate(word_acc = ifelse(!is.na(word_acc_new),
+                           word_acc_new,
+                           word_acc)) %>% 
+  select(-accented, -word_acc_new) %>% 
+  # fix some typos
+  mutate(word_acc = str_replace(word_acc, "е'я", "ея'"),
+         stress_pattern = ifelse(word == "ея", "01", stress_pattern),
+         
+         word_acc = str_replace(word_acc, "ха'рит", "хари'т"),
+         stress_pattern = ifelse(word == "харит", "01", stress_pattern),
+         
+         word = str_replace(word, "искуства", "искусства"),
+         word_acc = str_replace(word_acc, "иску'ства", "иску'сства"),
+         
+         # fix ë
+         word_acc = str_replace(word_acc, "е'\"", "ё'"),
+         
+         # make everything lowercase AGAIN
+         word = tolower(word),
+         word_acc = tolower(word_acc),
+         
+         # add stress to two two-syll unstressed words
+         word_acc = str_replace(word_acc, "^нибудь$", "нибу'дь"),
+         stress_pattern = ifelse(word == "нибудь", "01", stress_pattern),
+         
+         word_acc = str_replace(word_acc, "^cтены$", "cтены'"),
+         stress_pattern = ifelse(word == "cтены", "01", stress_pattern),
+         
+         # fix one-syl stress pattern
+         stress_pattern = ifelse(stress_pattern == "0",
+                                 "1",
+                                 stress_pattern)
+         ) %>% 
+  select(word, word_acc, stress_pattern)
+```
+
+```{r}
+sample_n(words_acc, 10)
+```
+
+#### add closure type
+
+```{r}
+words_acc <- words_acc %>% 
+  mutate(closure_pattern = str_replace_all(stress_pattern, "^.*?(1)(0)?(0)?$", "\\1\\2\\3"),
+         closure_pattern = ifelse(closure_pattern == 0, 1, closure_pattern),
+         closure = ifelse(closure_pattern == "10", "fem", ""),
+         closure = ifelse(closure_pattern == "1", "masc", closure),
+         closure = ifelse(closure_pattern == "100", "dactylic", closure),
+         closure = ifelse(closure == "", "other", closure)) 
+
+sample_n(words_acc, 10)
+```
+
+Remove typos
+
+```{r}
+words_acc %>% filter(is.na(closure))
+
+words_acc <- words_acc %>% 
+  filter(!is.na(closure))
+```
+
+### add pos & feats
+
+Retrieve pos & grammar from the initial file `rhymes_1835`
+
+```{r}
+glimpse(rhymes_1835) 
+
+words_pos <- rhymes_1835 %>% 
+  select(rhyme_words, pos) %>% 
+  distinct() %>% 
+  mutate(feats = pos,
+         pos = str_extract(feats, "^\\w+(,|=)"),
+         pos = str_remove(pos, ',|=')
+         ) 
+  
+sample_n(words_pos, 10)
+
+# list of typos, foreign words, etc.
+words_pos %>% 
+  filter(is.na(pos)) %>% sample_n(20)
+
+words_pos <- words_pos %>% 
+  filter(!is.na(pos))
+```
+
+#### attach pos to main table
+
+```{r}
+# glimpse(words_acc)
+# glimpse(words_pos)
+
+words_acc <- words_acc %>% 
+  left_join(words_pos %>% rename(word = rhyme_words), by = "word")
+```
+
+```{r}
+# test if all words have accents
+words_acc %>% 
+  filter(!str_detect(word_acc, "'"))
+```
+
+## ending
+
+Extract ending
+
+```{r}
+endings <- words_acc %>% 
+   # extract the ending with the stress
+  mutate(ending_st = str_extract(word_acc, "\\w'.*?$"),
+         # add a letter if the ending is only one vowel (masc endings)
+         ending_st = ifelse(
+           str_detect(ending_st, "^\\w'$") & nchar(word_acc) > 2,
+           str_extract(word_acc, "\\w\\w'$"),
+           ending_st
+         ),
+         # column with the ending without the stress
+         ending = str_remove(ending_st, "'")) %>% 
+  select(word_acc, ending, ending_st)
+
+glimpse(endings)
+```
+
+Merge to the table
+
+```{r}
+glimpse(words_acc)
+
+# quick test if no ending is missed
+words_acc %>% 
+  left_join(endings, by = "word_acc") %>% 
+  filter(is.na(ending))
+
+# join
+words_acc <- words_acc %>% 
+  left_join(endings %>% select(-ending), by = "word_acc")
+```
+
+```{r}
+glimpse(words_acc)
+
+words_acc <- words_acc %>% 
+  mutate(id = row_number())
+```
+
+### save
+
+```{r}
+write.csv(words_acc, "../../data/corpus1835/sql_db/rhyme_words.csv")
 ```

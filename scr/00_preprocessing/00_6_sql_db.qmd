@@ -1,0 +1,393 @@
+---
+title: "Final DB compilation"
+format: html
+editor: visual
+---
+
+## Data preparation
+
+This notebook uses prepared data for cleaner version of poetry database. Although in the analysis mainly a combined file `corpus_1835.rds`\` is used, this database is created for an easier data retrieval from the full version of the corpus & its metadata.
+
+### load data & pckg
+
+```{r, warning=FALSE}
+library(tidyverse)
+
+### data
+
+# texts
+corpus_texts <- read.csv("../../data/corpus1835/corpus1835_texts_lemm_acc.csv") %>% select(-X) 
+
+print(paste0("corpus_texts: ", 
+             paste0(colnames(corpus_texts), collapse = ", ")))
+
+
+# metadata (main file used for analysis)
+text_meta <- readRDS("../../data/corpus1835/corpus_1835_metrics.Rds")
+print(paste0("text_meta: ", 
+             paste0(colnames(text_meta), collapse = ", ")))
+
+# sources - books
+books <- read.csv("../../meta/texts_books.csv") %>% select(-X)
+print(paste0("books: ", 
+             paste0(colnames(books), collapse = ", ")))
+
+# sources - periodicals
+per <- read.csv("../../meta/texts_periodicals.csv") %>% select(-X)
+print(paste0("periodicals: ", 
+             paste0(colnames(per), collapse = ", ")))
+```
+
+## sources
+
+Extract data for the table of sources for all texts (both from books and periodicals).
+
+### books
+
+First, extract selected columns from the book-level metadata.
+
+```{r}
+sources_books <- books %>% 
+  mutate(source_id = book_id,
+         type = "book",
+         class = paste0(book_type, " -- ", book_genre),
+         volume = "",
+         issue = "",
+         total_pages = book_pages
+         ) %>% 
+  select(source_id, 
+         type,
+         class, 
+         book_title,
+         city,
+         publisher,
+         year,
+         volume,
+         issue,
+         n_texts,
+         total_pages
+         ) %>% 
+  distinct()
+
+# left out:  
+# text attributes - author_text, text_title, text_subtitle, first_line, text_pages, path_text
+# old PK - COL_ID; 
+# author attributes - A_ID, author_sign, author_book, author_full_name
+# misc: path_raw
+
+glimpse(sources_books)
+length(unique(sources_books$source_id))
+```
+
+### periodicals
+
+Select columns from periodicals metadata
+
+```{r}
+# create new cols & source_id
+per_prep <- per %>% 
+  mutate(type = "periodicals",
+         class = "",
+         book_title = PER_ID,
+         publisher = "",
+         year = year,
+         volume = vol,
+         issue = num
+         )  %>% 
+  select(text_id, 
+         type,
+         class,
+         book_title,
+         #city,
+         publisher,
+         year,
+         volume,
+         issue, 
+         #n_texts,
+         #total_pages
+         ) %>% 
+  # create identifier
+  mutate(source_id_paste = paste(book_title, year, volume, issue))
+```
+
+Preparation of the periodicals data for merging
+
+```{r}
+# assign every separate issue with Per_ID
+unique_per_sources <- per_prep %>% 
+  select(-text_id) %>% 
+  distinct() %>% 
+  mutate(source_id = paste0("Per_", row_number())) %>% 
+  select(source_id_paste, source_id)
+
+head(unique_per_sources)
+
+per_prep <- per_prep %>% 
+  left_join(unique_per_sources, by = "source_id_paste") #%>% 
+  # select(-source_id_paste)
+
+glimpse(per_prep) # table that has source_id for each per text
+
+# calculate n texts within per sources (separate issues or volumes usually)
+n_texts <- per_prep %>% 
+  group_by(source_id) %>% 
+  count()
+
+# table for titles & cities
+unique(per_prep$book_title)
+per_cities <- tibble(
+      book_title = unique(per_prep$book_title),
+       city = c("СПб.", "СПб.", "СПб.", "СПб.", "СПб.", "СПб.", "СПб.", "М.",
+                "СПб.", "М.", "СПб.", "СПб."))
+
+```
+
+Final columns selection
+
+```{r}
+# add columns & create sources table
+sources_per <- per_prep %>% 
+  select(-text_id) %>% 
+  #select(source_id, everything()) %>% 
+  distinct() %>% 
+  # add n_texts values
+  left_join(n_texts, by = "source_id") %>% 
+  rename(n_texts = n) %>% 
+  # add cities
+  left_join(per_cities, by = "book_title") %>% 
+  # create empty column for total n of pages
+  mutate(total_pages = "") %>% 
+  # reorder all columns
+  select(source_id, 
+         type,
+         class,
+         book_title,
+         city,
+         publisher,
+         year,
+         volume,
+         issue, 
+         n_texts,
+         total_pages)
+```
+
+### merge
+
+Data format before the merge
+
+```{r}
+glimpse(sources_per)
+glimpse(sources_books)
+```
+
+```{r}
+# merge to have sources table
+sources <- rbind(sources_books, sources_per)
+
+glimpse(sources)
+
+length(unique(sources$source_id))
+
+sources[is.na(sources)] <- ""
+```
+
+Write sources table
+
+```{r, eval=FALSE}
+write.csv(sources, "../../data/corpus1835/sql_db/sources.csv")
+```
+
+## texts_meta
+
+Prepare central metadata table with keys for each text
+
+```{r}
+# attach periodicals source ids
+per_source_ids <- per_prep %>% 
+  select(text_id, source_id)
+
+# final columns selection
+texts_meta <- text_meta %>% 
+  left_join(per_source_ids, by = "text_id") %>% 
+  
+  # - attach source id to texts from cols: remove everything after __
+  mutate(source_id = ifelse(is.na(source_id) & str_detect(text_id, "C_"),
+                            str_remove(text_id, "__\\d+$"), 
+                            source_id)) %>% 
+  
+  mutate(text_page = str_extract(source_text, "C\\..*?$")) %>% 
+  
+  select(
+    text_id,
+    source_id,
+    A_ID,
+    text_title,
+    text_subtitle,
+    first_line,
+    text_page,
+    corpus,
+    meter,
+    feet,
+    n_lines
+  )
+
+# check
+glimpse(texts_meta)
+
+texts_meta[is.na(texts_meta)] <- ""
+```
+
+```{r, eval=FALSE}
+write.csv(texts_meta, "../../data/corpus1835/sql_db/texts_metadata.csv")
+```
+
+## authors
+
+Fast cleaning of the data about authors
+
+```{r}
+authors <- read.delim("../../meta/authors.tsv", sep = "\t")
+
+# glimpse(authors)
+
+authors_cln <- authors %>% 
+  rename(author_name = author,
+         author_sex = gender,
+         year_birth = birth,
+         year_death = death,
+         geo_location = cities_in_1830,
+         RP_loc = RP,
+         notes = links) %>% 
+  select(
+    A_ID,
+    author_name,
+    author_full_name,
+    author_sex,
+    year_birth,
+    year_death,
+    geo_location,
+    aristocracy,
+    stratum,
+    geo_location,
+    notes
+  ) 
+
+authors[is.na(authors)] <- ""
+
+glimpse(authors_cln)
+```
+
+```{r}
+write.csv(authors_cln, "../../data/corpus1835/sql_db/authors.csv")
+```
+
+## reviews
+
+load data
+
+```{r}
+# read the data about reviews on books
+reviews <- read.delim("../../meta/books_reviews.tsv", sep = "\t")
+# extended book data
+pb_full <- read.csv("../../data/ch1/01_4_poetry_books_1835_1840.csv")
+```
+
+```{r}
+# attach old book id COL_x from the full metadata
+col_id_merge <- pb_full %>% 
+  mutate(book_id = paste0("C_", id)) %>% 
+  select(book_id, COL_ID) %>% 
+  filter(COL_ID != "" & !is.na(COL_ID)) %>% 
+  distinct() 
+
+# head(col_id_merge)
+# unique(reviews$COL_ID)
+# unique(col_id_merge$COL_ID)
+
+reviews_all <- reviews %>% 
+  filter(COL_ID != "" & !is.na(COL_ID)) %>% 
+  left_join(col_id_merge, by = "COL_ID") %>% 
+  rename(source_id = book_id) %>% 
+  select(-Author, -Title, -City, -Printed_in..В.тип..., -Year, -id, -COL_ID)
+
+# retrieve review sources from the wide table
+reviews_sources <- reviews_all %>% 
+  mutate(JMNP = ifelse(JMNP_sign != "", paste0(JMNP, " -- ", JMNP_sign), JMNP),
+         Sev_pchela = ifelse(Sev_pchela_reviewer_sign != "", 
+                             paste0(Sev_pchela, " -- ", Sev_pchela_reviewer_sign),
+                             Sev_pchela)) %>% 
+  select(source_id, Sovr, OZ, CO, MN, Telescope, #JMNP_ukazatel, 
+         JMNP,
+         Sev_pchela, BdCH) %>%
+  filter(!is.na(source_id)) %>% 
+  pivot_longer(!source_id) %>% 
+  rename(source = name,
+        location = value) %>% 
+#  filter(!is.na(source_id)) %>% 
+  mutate(review_id = row_number(),
+         review_id_full = paste(review_id, source_id, source))
+  #head(20)
+
+# retrieve review scores from the wide table
+reviews_scores <- reviews_all %>% 
+  select(source_id, Sovr_score, OZ_score, CO_score, MN_score, Telescope_score, 
+         JMNP_score,
+         Sev_pch_score, BdCH_score) %>%
+  filter(!is.na(source_id)) %>% 
+  pivot_longer(!source_id) %>% 
+  #  filter(!is.na(source_id)) %>% 
+  rename(score = value) %>% 
+  mutate(review_id = row_number(),
+         name_cln = str_remove(name, "_score"),
+         name_cln = ifelse(name_cln == "Sev_pch", "Sev_pchela", name_cln),
+         review_id_full = paste(review_id, source_id, name_cln)) %>% 
+  select(-name, -source_id)
+
+# check missing scores review
+# reviews_scores %>% filter(str_detect(review_id_full, "90 Sev"))
+
+# combine sources and scores to a long table
+reviews_cln <- reviews_sources %>% 
+  left_join(reviews_scores, by = "review_id_full") %>% 
+  #filter(location != "") %>% 
+  mutate(review_id = paste0("R_", row_number())) %>% 
+  rename(review_source = source) %>% 
+  select(review_id, source_id, location,
+         review_source, score)
+
+# glimpse(reviews_cln)
+
+# count number of reviews to check the merge
+reviews_cln %>%
+  filter(score != "") %>% 
+  count(review_source)
+
+reviews_cln %>% 
+  filter(location != "") %>% 
+  # count(review_source) %>% 
+  # summarise(sum(n))
+  filter(location != "" & score == "")
+
+# write final version of the table
+reviews_loc <- reviews_cln %>% 
+  filter(location != "") %>% 
+  select(review_id, source_id, review_source, score, location)
+
+reviews_loc %>% head
+```
+
+Save new cleaner table
+
+```{r, eval=FALSE}
+write.csv(reviews_loc, file = "../../data/corpus1835/sql_db/reviews.csv")
+```
+
+## rhymes
+
+### rhyme pairs
+
+```{r}
+rhymes <- read.csv("../../data/ch5/rhymes_parsed_closure.csv") %>% select(-X)
+
+glimpse(rhymes)
+```

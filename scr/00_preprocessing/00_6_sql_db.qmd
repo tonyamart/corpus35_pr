@@ -194,7 +194,7 @@ sources[is.na(sources)] <- ""
 Write sources table
 
 ```{r, eval=FALSE}
-write.csv(sources, "../../data/corpus1835/sql_db/sources.csv")
+write.csv(sources, "../../data/corpus1835/sql_db/sources.csv", row.names = FALSE)
 ```
 
 ## texts_meta
@@ -217,6 +217,15 @@ texts_meta <- text_meta %>%
   
   mutate(text_page = str_extract(source_text, "C\\..*?$")) %>% 
   
+  mutate(meter = str_replace(meter, "Other\\?", "Other"),
+         feet = str_replace(feet, "\\?", "other"),
+         formula = paste0(meter, "_", feet)) %>% 
+  
+  # fix typos in A_ID
+  mutate(A_ID = str_replace(A_ID, "А", "A"),
+         A_ID = str_replace(A_ID, "-", "_")) %>% 
+  
+  
   select(
     text_id,
     source_id,
@@ -238,7 +247,9 @@ texts_meta[is.na(texts_meta)] <- ""
 ```
 
 ```{r, eval=FALSE}
-write.csv(texts_meta, "../../data/corpus1835/sql_db/texts_metadata.csv")
+write.csv(texts_meta, "../../data/corpus1835/sql_db/texts_metadata.csv", 
+          row.names = FALSE, 
+          fileEncoding = "UTF-8")
 ```
 
 ## authors
@@ -258,6 +269,7 @@ authors_cln <- authors %>%
          geo_location = cities_in_1830,
          RP_loc = RP,
          notes = links) %>% 
+  mutate(A_ID = str_replace_all(A_ID, "-", "_")) %>% 
   select(
     A_ID,
     author_name,
@@ -270,15 +282,20 @@ authors_cln <- authors %>%
     stratum,
     geo_location,
     notes
-  ) 
+  ) %>% 
+  add_row(
+    A_ID = "",
+    author_name = "Unknown author"
+  )
 
-authors[is.na(authors)] <- ""
+authors_cln[is.na(authors_cln)] <- ""
 
 glimpse(authors_cln)
 ```
 
 ```{r}
-write.csv(authors_cln, "../../data/corpus1835/sql_db/authors.csv")
+write.csv(authors_cln, "../../data/corpus1835/sql_db/authors.csv", 
+          row.names = FALSE)
 ```
 
 ## reviews
@@ -376,10 +393,15 @@ reviews_loc <- reviews_cln %>%
 reviews_loc %>% head
 ```
 
+### to do
+
+-   retrieve from pb_full books that don't exist in sources & add them to the sources table! (these are sources for 127 reviews lol)
+
 Save new cleaner table
 
 ```{r, eval=FALSE}
-write.csv(reviews_loc, file = "../../data/corpus1835/sql_db/reviews.csv")
+write.csv(reviews_loc, file = "../../data/corpus1835/sql_db/reviews.csv", 
+          row.names = FALSE)
 ```
 
 ## rhymes
@@ -390,4 +412,52 @@ write.csv(reviews_loc, file = "../../data/corpus1835/sql_db/reviews.csv")
 rhymes <- read.csv("../../data/ch5/rhymes_parsed_closure.csv") %>% select(-X)
 
 glimpse(rhymes)
+```
+
+tables
+
+```{r}
+texts_metadata <- read.csv("../../data/corpus1835/sql_db/texts_metadata.csv")
+sources <- read.csv("../../data/corpus1835/sql_db/sources.csv")
+reviews <- read.csv("../../data/corpus1835/sql_db/reviews.csv")
+authors <- read.csv("../../data/corpus1835/sql_db/authors.csv")
+rhyme_pairs <- read.csv("../../data/corpus1835/sql_db/rhyme_pairs.csv")
+
+
+glimpse(texts_metadata)
+table(texts_metadata$corpus)
+
+glimpse(sources)
+unique(sources$type)
+
+glimpse(authors)
+
+glimpse(reviews)
+
+glimpse(rhyme_pairs) # ID needed to be changed!!
+```
+
+```{r}
+sources_ids <- sources$source_id
+text_sources_ids <- unique(texts_metadata$source_id)
+
+setdiff(sources_ids, text_sources_ids)
+
+texts_metadata %>% 
+  left_join(sources, by = "source_id") %>% head()
+  filter(is.na(book_title))
+  
+sources %>% 
+  filter(source_id == "C_339")
+
+nrow(authors)
+
+authors_cln %>% 
+  filter(str_detect(author_name, "Кашкин"))
+
+unique(authors_cln$A_ID)
+unique(texts_metadata$A_ID)
+
+texts_metadata %>% 
+  filter(str_detect(A_ID, "А"))
 ```

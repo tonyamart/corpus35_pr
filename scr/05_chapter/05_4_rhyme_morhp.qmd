@@ -1,0 +1,342 @@
+---
+title: "05.2. Code"
+format: md
+editor: visual
+---
+
+## 5.2. Rhyme morphology & endings analysis
+
+## load data & pckg
+
+```{r, warning=FALSE, message=FALSE}
+library(tidyverse)
+library(tidytext)
+
+# library(igraph)
+# library(tidygraph)
+# library(ggraph)
+
+library(MetBrewer)
+library(patchwork)
+theme_set(theme_minimal())
+```
+
+Import metadata
+
+```{r}
+meta <- read.csv("../../data/corpus1835/sql_db/texts_metadata.csv")
+glimpse(meta)
+```
+
+Import data & merge words + grammatical features
+
+```{r}
+rhyme_pairs <- read.csv("../../data/corpus1835/sql_db/rhyme_pairs.csv") %>% 
+  rename(text_id = poem_id)
+
+glimpse(rhyme_pairs)
+```
+
+```{r}
+rhyme_words <- read.csv("../../data/corpus1835/sql_db/rhyme_words.csv", 
+                        
+                        # DON'T LET R EAT IAMBS AND DO INTEGER 01 => 1
+                        colClasses = c("stress_pattern" = "character",
+                                       "closure_pattern" = "character")) 
+
+glimpse(rhyme_words)
+
+# check if all words are unique
+length(unique(rhyme_words$word))
+nrow(rhyme_words)
+```
+
+Merge the rhyme pairs & words features
+
+First word
+
+```{r}
+nrow(rhyme_pairs) # Number of actual pairs (should not be exceeded by either of words tables)
+
+word_1 <- rhyme_pairs %>% 
+  select(text_id, rhyme_alph, from) %>% 
+  rename(word = from) %>% 
+  left_join(rhyme_words, by = "word") 
+
+nrow(word_1)
+head(word_1, 10)
+
+
+# check errors
+word_1 %>% 
+  filter(is.na(word_acc))
+
+word_1 %>% 
+  filter(is.na(pos))
+
+# remove errors
+word_1 <- word_1 %>% 
+  filter(!is.na(word_acc) & !is.na(pos))
+```
+
+Second word
+
+```{r}
+word_2 <- rhyme_pairs %>% 
+  select(text_id, rhyme_alph, to) %>% 
+  rename(word = to) %>% 
+  left_join(rhyme_words, by = "word")
+
+nrow(word_2) == nrow(rhyme_pairs) # must be true
+head(word_2, 10)
+
+
+# check errors
+word_2 %>% 
+  filter(is.na(word_acc))
+
+word_2 %>% 
+  filter(is.na(pos))
+
+# remove errors
+word_2 <- word_2 %>% 
+  filter(!is.na(word_acc) & !is.na(pos))
+
+nrow(word_2)
+```
+
+### select meters
+
+```{r}
+table(meta$meter)
+
+meter_lables <- meta %>% 
+  select(text_id, meter) %>% distinct()
+
+head(meter_lables)
+```
+
+## POS
+
+Merge all from-to words in one table
+
+```{r}
+all_words <- rbind(word_1, word_2)
+```
+
+rewrite POS tags
+
+```{r}
+pos_transl <- tibble(old_tag = c("S", "V", "APRO", "SPRO", 
+                   "A", "ADV", "NUM", "ADVPRO",
+                   "INTJ", "PART", "PR", "ANUM", "CONJ"),
+       pos = c("NOUN", "VERB", "aPRON", "nPRON", 
+               "ADJ", "ADV", "NUM", "advPRON",
+               "INTJ", "PART", "ADP", "adjNUM", "CONJ"),
+       upos = c("NOUN", "VERB", "PRON", "PRON", 
+               "ADJ", "ADV", "NUM", "PRON",
+               "INTJ", "PART", "ADP", "NUM", "CONJ"))
+
+all_words <- all_words %>% 
+  rename(old_tag = pos) %>% 
+  left_join(pos_transl, by = "old_tag")
+```
+
+Attach meter info
+
+```{r}
+nrow(all_words)
+
+all_words <- all_words %>% 
+  left_join(meter_lables, by = "text_id") 
+
+glimpse(all_words)
+```
+
+### Basic stats
+
+```{r}
+table(all_words$meter)
+```
+
+MFW in rhymes
+
+```{r}
+all_words %>% 
+  filter(closure == "other") %>% 
+  select(word_acc, closure_pattern) %>% 
+  #distinct() %>% 
+  nrow()
+# mostly wrongly annotated stresses (but very small number of words)
+```
+
+```{r}
+closures <- c("masc", "fem", "dactylic")
+
+all_words %>% 
+  filter(meter %in% c("Iamb", "Trochee") & closure %in% closures) %>% 
+  group_by(meter, closure) %>% 
+  count(word, sort = T) %>% 
+  slice_max(order_by = n, n = 5)
+```
+
+```{r}
+all_words %>% 
+  filter(meter %in% c("Dactyl", "Amphibrach", "Anapest") & closure %in% closures) %>% 
+  group_by(meter, closure) %>% 
+  count(word, sort = T) %>% 
+  slice_max(order_by = n, n = 5)
+```
+
+Total number of words in meter
+
+```{r}
+total_meter <- all_words %>% 
+  count(meter) %>% 
+  rename(total = n)
+```
+
+Number of masc / fem / dactyl endings
+
+```{r}
+all_words %>% 
+  filter(closure != "other" & meter != "Other") %>% 
+  group_by(meter) %>% 
+  count(closure) %>% 
+  left_join(total_meter, by = "meter") %>% 
+  mutate(perc = round((n / total) * 100, 2 ))
+```
+
+```{r}
+all_words %>% 
+  filter(meter == "Dactyl" & closure == "masc") %>% 
+  select(text_id, word_acc, closure_pattern)
+
+# meta %>% 
+#   filter(text_id == "P_294")
+```
+
+### top endings in meters
+
+```{r}
+
+iamb_closures <- all_words %>% 
+  filter(meter == "Iamb") %>% 
+  count(closure) %>% 
+  rename(total_closure = n) 
+
+all_words %>% 
+  filter(meter == "Iamb" & closure != "other") %>% 
+  group_by(meter, closure) %>% 
+  count(ending_st) %>% 
+  slice_max(order_by = n, n = 5) %>% 
+  ungroup() %>% 
+  left_join(total_meter, by = "meter") %>% 
+  # percentage of all words in iamb
+  mutate(perc_all_iambic = round((n / total) * 100, 2 )) %>% 
+  left_join(iamb_closures, by = "closure") %>% 
+  
+  # percentage of word of particular clausula type
+  mutate(perc_iamb_clos = round((n / total_closure) * 100, 2 )) %>% 
+  select(-total, -total_closure)
+```
+
+```{r}
+trochee_closures <- all_words %>% 
+  filter(meter == "Trochee") %>% 
+  count(closure) %>% 
+  rename(total_closure = n) 
+
+all_words %>% 
+  filter(meter == "Trochee" & closure != "other") %>% 
+  group_by(meter, closure) %>% 
+  count(ending_st) %>% 
+  slice_max(order_by = n, n = 5) %>% 
+  ungroup() %>% 
+  left_join(total_meter, by = "meter") %>% 
+  # percentage of all words in iamb
+  mutate(perc_all_tr = round((n / total) * 100, 2 )) %>% 
+  left_join(trochee_closures, by = "closure") %>% 
+  
+  # percentage of word of particular clausula type
+  mutate(perc_tr_clos = round((n / total_closure) * 100, 2 )) %>% 
+  select(-total, -total_closure)
+```
+
+### POS distribution in meters / endings
+
+#### iamb
+
+Total distribution of POS (all words
+
+```{r}
+all_words %>% 
+  filter(meter == "Iamb" & closure != "other") %>% 
+  count(meter, upos) %>% 
+  left_join(total_meter, by = "meter") %>% 
+  
+  # percentage of all words in iamb
+  mutate(perc_all_iambic = round((n / total) * 100, 2 )) %>% 
+  select(-meter, -total) %>% 
+  arrange(-desc(upos))
+```
+
+By clausula
+
+```{r}
+all_words %>% 
+  filter(meter == "Iamb" & closure != "other") %>% 
+  group_by(meter, closure) %>% 
+  count(meter, upos) %>% 
+  ungroup() %>% 
+  #left_join(total_meter, by = "meter") %>% 
+  
+  # percentage of all words in iamb
+  #mutate(perc_all_iambic = round((n / total) * 100, 2 )) # %>% 
+  left_join(iamb_closures, by = "closure") %>% 
+  # 
+  # # percentage of word of particular clausula type
+  mutate(perc_iamb_clos = round((n / total_closure) * 100, 2 )) %>% 
+  select(-total_closure)
+```
+
+#### trochee
+
+Total POS
+
+```{r}
+all_words %>% 
+  filter(meter == "Trochee" & closure != "other") %>% 
+  count(meter, upos) %>% 
+  left_join(total_meter, by = "meter") %>% 
+  
+  # percentage of all words in iamb
+  mutate(perc_all_iambic = round((n / total) * 100, 2 )) %>% 
+  select(-meter, -total) %>% 
+  arrange(-desc(upos))
+```
+
+By clausula
+
+```{r}
+all_words %>% 
+  filter(meter == "Trochee" & closure != "other") %>% 
+  group_by(meter, closure) %>% 
+  count(meter, upos) %>% 
+  ungroup() %>% 
+  #left_join(total_meter, by = "meter") %>% 
+  
+  # percentage of all words in iamb
+  #mutate(perc_all_iambic = round((n / total) * 100, 2 )) # %>% 
+  left_join(trochee_closures, by = "closure") %>% 
+  # 
+  # # percentage of word of particular clausula type
+  mutate(perc_tr_clos = round((n / total_closure) * 100, 2 )) %>% 
+  select(-total_closure)
+```
+
+```{r}
+texts <- read.csv("../../data/corpus1835/corpus1835_texts_lemm_acc.csv")
+
+texts %>% filter(text_id == "P_294") %>% pull(text_raw)
+```

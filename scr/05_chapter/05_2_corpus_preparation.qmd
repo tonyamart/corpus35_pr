@@ -24,8 +24,9 @@ The data tables are resulting from the poem parced with `RhymeTagger`, see the c
 
 ```{r}
 rhymes_1835 <- read.csv("../../data/ch5/corpus-35_rhymes.csv") %>% select(-X) %>% 
-  mutate(id = str_remove(poem_id, "\\.txt$"), # remove .txt for cleaner ids
-         id = paste0("M__", id)) # add a letter for "marginals" corpus
+  mutate(id = str_remove(poem_id, "\\.txt$") # remove .txt for cleaner ids
+         #id = paste0("M__", id) # add a letter for "marginals" corpus
+         ) 
 
 glimpse(rhymes_1835)
 ```
@@ -135,10 +136,10 @@ head(as_tibble(x))
 print(paste("Number of rhyme pairs (non-unique) from sequences:", nrow(x)))
 ```
 
-Extract table with all unique words & their POS+features
-
 ```{r}
 # glimpse(rhymes_1835)
+# 
+# Extract table with all unique words & their POS+features
 # 
 # pos_tags <- rhymes_1835 %>% 
 #   select(rhyme_words, pos) %>% 
@@ -169,7 +170,7 @@ seq_fin <- as_tibble(x) %>%
   #           by = "to") %>% 
   # paste rhyme bigram in a separate column
   mutate(rhyme_pair = paste(from, to), 
-         id = paste0("M__", id),
+         #id = paste0("M__", id),
          id = str_remove(id, "\\.txt")) 
 
 # head(seq_fin)
@@ -265,6 +266,8 @@ tibble(given = v,
        trues = true_order)
 ```
 
+Reorder words in all pairs
+
 ```{r}
 raw_pairs <- rhymes %>% pull(rhyme_pair) %>% unique() # extract unique pairs
 
@@ -290,7 +293,8 @@ Attach reordered pairs to the main data table
 ```{r}
 rhymes <- rhymes %>% 
   left_join(ordered, by = "rhyme_pair") %>% 
-  rename(rhyme_alph = true_pair)
+  rename(rhyme_alph = true_pair,
+         poem_id = id)
 
 head(rhymes)
 print(paste("Number of unique rhymes after reordering:", 
@@ -302,15 +306,37 @@ print(paste("Number of unique rhymes after reordering:",
 ```{r, eval=FALSE}
 rhymes <- rhymes %>% select(-rhyme_pair)
 
-write.csv(rhymes, "../../data/corpus1835/sql_db/rhyme_pairs.csv")
+write.csv(rhymes, "../../data/corpus1835/sql_db/rhyme_pairs.csv", 
+          row.names = FALSE)
 ```
 
 # Rhyme words
 
 ```{r}
-# rhymes <- read.csv("../../data/corpus1835/sql_db/rhyme_pairs.csv") %>% select(-X)
+rhymes <- read.csv("../../data/corpus1835/sql_db/rhyme_pairs.csv") 
 
-# glimpse(rhymes)
+glimpse(rhymes)
+```
+
+id = text_id + word w/o accent
+
+```{r}
+# endwords <- texts %>% 
+#   #sample_n(100) %>% 
+#   select(text_id, text_acc) %>% 
+#   # separate into lines
+#   separate_rows(text_acc, sep = "\n") %>% 
+#   # remove empty
+#   filter(text_acc != "" & !str_detect(text_acc, "^\\W+$")) %>% 
+#   # extract the last word
+#   mutate(line = str_remove_all(text_acc, "\\W+$|\\s$"),
+#          word_acc = str_extract(line, "\\w+'\\w+$"),
+#          word_acc = ifelse(is.na(word_acc), str_extract(line, "\\w+$"), word_acc)
+#          ) %>% 
+#   select(-text_acc)
+# 
+# endwords %>% 
+#   filter(!str_detect(word, "'"))
 ```
 
 ### add accents
@@ -321,7 +347,7 @@ Extract data as a vector of unique rhyme words for accentuation
 vec <- NULL
 vector <- NULL
 
-glimpse(rhymes)
+# glimpse(rhymes)
 
 vector <- paste0(unique(c(rhymes$from, rhymes$to)), collapse = "\n")
 
@@ -337,10 +363,10 @@ vec_acc <- read_file("../../data/ch5/corpus_1835_rhymewords.accented.txt")
 
 rw_acc <- tibble(accented = vec_acc) %>% # create one-cell tibble
   # separate one word = one row
-  separate_rows(accented, sep = "\n") %>% 
+  separate_rows(accented, sep = "\n") #%>% 
   
   # create word-id column with no stress 
-  mutate(word = str_remove_all(accented, "'")) 
+  #mutate(word = str_remove_all(accented, "'")) 
   
 rw_acc <- rw_acc %>% 
   # add id columns
@@ -348,6 +374,40 @@ rw_acc <- rw_acc %>%
          row_id = row_number())
 
 head(rw_acc)
+
+# compare if some words are missing
+nrow(rw_acc)
+length(unique(c(rhymes$from, rhymes$to)))
+```
+
+#### import words
+
+```{r}
+vec_words <- read_file("../../data/ch5/corpus_1835_rhymewords.txt")
+
+rw_words <- tibble(word = vec_words) %>% # create one-cell tibble
+  # separate one word = one row
+  separate_rows(word, sep = "\n") 
+  
+rw_words %>% 
+  mutate(row_id = row_number()) %>% head
+
+nrow(rw_words)
+nrow(rw_acc)
+
+# merge accented words with true words (ru_accent_poet merge ë in a strange way)
+rw_acc <- rw_acc %>% 
+  # select(-word) %>% 
+  cbind(rw_words) %>% 
+  select(word, accented, doc_id, row_id) 
+
+# quick check
+rw_acc %>% 
+  sample_n(10)
+
+nrow(rw_acc)
+
+rm(vec_acc, vec_words, rw_words)
 ```
 
 ### binarisation
@@ -402,6 +462,48 @@ words <- rw_acc %>%
 words %>% sample_n(10)
 ```
 
+### fix errors
+
+#### -енья
+
+```{r}
+glimpse(words)
+
+words %>% 
+  filter(str_detect(word, "еньем$") & !str_detect(accented, "е'ньем")
+         ) %>% distinct()
+
+eniem_words <- words %>% 
+  filter(str_detect(word, "еньем$") & !str_detect(accented, "е'ньем")) %>% 
+  distinct() %>% 
+  pull(word)
+
+head(eniem_words)
+
+words <- words %>% 
+  mutate(accented = ifelse(word %in% eniem_words, 
+                           str_remove(accented, "'"), # remove wrong stress
+                           accented
+                           ),
+         accented = ifelse(word %in% eniem_words, 
+                           # replace wrong stress
+                           str_replace(accented, "еньем$", "е'ньем"), 
+                           accented
+                           ),
+         stress_pattern = ifelse(word %in% eniem_words, 
+                           # replace wrong stress
+                           "10", 
+                           stress_pattern
+                           )
+         )
+
+# check
+words %>% 
+  filter(str_detect(word, "еньем$")) %>% distinct()
+```
+
+#### no stress
+
 Fix words with no stress - ru_accent_poet doesn't stress one-syllable words
 
 ```{r}
@@ -415,20 +517,25 @@ words %>%
 words <- words %>% 
   mutate(word_acc = ifelse(str_detect(word, "ё"),
                            str_replace(accented, "ё", "ё'"),
-                           accented))
+                           accented)) %>% 
+  # add a stress in accented words with ё (ru_accent_poet doesn't add a stress there)
+  mutate(word_acc = ifelse(str_detect(word_acc, "ё") & !str_detect(word_acc, "ё'"),
+                           str_replace(word_acc, "ё", "ё'"),
+                           word_acc))
 
 words %>% 
-  filter(str_detect(word, "ё")) %>% head()
+  filter(str_detect(word, "ё")) %>% sample_n(10)
 
 words %>% 
-  filter(!str_detect(word, "ё")) %>% head()
+  filter(!str_detect(word, "ё")) %>% sample_n(10)
 ```
 
 #### one-syl words
 
 ```{r}
 words %>% 
-  filter(!str_detect(word_acc, "'") & stress_pattern != "0") # non-one-syl words without stress
+  filter(!str_detect(word_acc, "'") & stress_pattern != "0" &
+           !str_detect(word_acc, "ё")) # non-one-syl words without stress
 
 # number of one-syllable words without a stress
 words %>% 
@@ -437,6 +544,8 @@ words %>%
 # example of these words
 words %>% 
   filter(!str_detect(word_acc, "'")) %>% sample_n(10)
+
+
 ```
 
 ```{r}
@@ -508,9 +617,6 @@ words_acc <- words %>%
          word_acc = str_replace(word_acc, "ха'рит", "хари'т"),
          stress_pattern = ifelse(word == "харит", "01", stress_pattern),
          
-         word = str_replace(word, "искуства", "искусства"),
-         word_acc = str_replace(word_acc, "иску'ства", "иску'сства"),
-         
          # fix ë
          word_acc = str_replace(word_acc, "е'\"", "ё'"),
          
@@ -537,6 +643,13 @@ words_acc <- words %>%
 sample_n(words_acc, 10)
 ```
 
+Detect duplicated words
+
+```{r}
+words_acc %>% 
+  count(word, sort = T)
+```
+
 #### add closure type
 
 ```{r}
@@ -558,6 +671,8 @@ words_acc %>% filter(is.na(closure))
 
 words_acc <- words_acc %>% 
   filter(!is.na(closure))
+
+nrow(words_acc)
 ```
 
 ### add pos & feats
@@ -567,22 +682,67 @@ Retrieve pos & grammar from the initial file `rhymes_1835`
 ```{r}
 glimpse(rhymes_1835) 
 
+# extract POS and Feats from earlier annotation
 words_pos <- rhymes_1835 %>% 
   select(rhyme_words, pos) %>% 
-  distinct() %>% 
   mutate(feats = pos,
          pos = str_extract(feats, "^\\w+(,|=)"),
-         pos = str_remove(pos, ',|=')
-         ) 
+         pos = str_remove(pos, ',|='),
+         rhyme_words = tolower(rhyme_words)
+         ) %>% 
+  rename(word = rhyme_words) %>% 
+  distinct() 
   
 sample_n(words_pos, 10)
 
 # list of typos, foreign words, etc.
 words_pos %>% 
   filter(is.na(pos)) %>% sample_n(20)
-
+# remove typos
 words_pos <- words_pos %>% 
   filter(!is.na(pos))
+```
+
+Cleaning
+
+```{r}
+# check number of words
+nrow(words_pos) 
+
+# extract words with two or more annotations
+doubles <- words_pos %>% 
+  count(word, sort = T) %>% 
+  filter(n > 1) %>% pull(word)
+
+# save the table for manual check
+x <- words_pos %>% 
+  filter(word %in% doubles) %>% 
+  arrange(-desc(word))
+
+# write.csv(x, "pos_check.csv")
+
+# read checked table with pos
+x1 <- read.delim("pos_check.csv", sep = ";")
+glimpse(x1)
+
+# return only selected rows
+x1_checked <- x1 %>% 
+  filter(X.1 == 1) %>% 
+  select(-X, -X.1)
+
+# extract no-doubles words
+words_nodoubles <- words_pos %>% 
+  filter(!word %in% doubles)
+
+# attach selected
+
+# glimpse(words_nodoubles)
+# glimpse(x1_checked)
+
+words_pos <- rbind(words_nodoubles, x1_checked)
+
+# check
+words_pos %>% count(word, sort = T) %>% head(10)
 ```
 
 #### attach pos to main table
@@ -592,7 +752,13 @@ words_pos <- words_pos %>%
 # glimpse(words_pos)
 
 words_acc <- words_acc %>% 
-  left_join(words_pos %>% rename(word = rhyme_words), by = "word")
+  left_join(words_pos, by = "word")
+
+nrow(words_acc)
+
+# some words are still reult in ocr errors, but most are tagged
+words_acc %>% 
+  filter(is.na(pos))
 ```
 
 ```{r}
@@ -601,7 +767,7 @@ words_acc %>%
   filter(!str_detect(word_acc, "'"))
 ```
 
-## ending
+## endings
 
 Extract ending
 
@@ -627,25 +793,38 @@ Merge to the table
 ```{r}
 glimpse(words_acc)
 
-# quick test if no ending is missed
-words_acc %>% 
-  left_join(endings, by = "word_acc") %>% 
-  filter(is.na(ending))
+# # quick test if no ending is missed
+# words_acc %>% 
+#   left_join(endings, by = "word_acc") %>% 
+#   filter(is.na(ending))
+
+nrow(words_acc)
+nrow(endings)
 
 # join
-words_acc <- words_acc %>% 
-  left_join(endings %>% select(-ending), by = "word_acc")
+words_acc_endings <- cbind(words_acc, endings %>% select(ending_st))
+
+words_acc_endings %>% select(word_acc, ending_st) %>% sample_n(10)
 ```
+
+Final data check
 
 ```{r}
-glimpse(words_acc)
+glimpse(words_acc_endings)
 
-words_acc <- words_acc %>% 
-  mutate(id = row_number())
+# words_acc <- words_acc %>% 
+#   mutate(id = row_number()) 
+
+words_acc_endings %>% 
+  count(word, sort = T) %>% head(10)
 ```
+
+### 
 
 ### save
 
 ```{r}
-write.csv(words_acc, "../../data/corpus1835/sql_db/rhyme_words.csv")
+write.csv(words_acc_endings, 
+          "../../data/corpus1835/sql_db/rhyme_words.csv", 
+          row.names = FALSE)
 ```

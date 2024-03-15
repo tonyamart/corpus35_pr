@@ -286,9 +286,11 @@ authors_cln <- authors %>%
   add_row(
     A_ID = "",
     author_name = "Unknown author"
-  )
+  ) 
 
-authors_cln[is.na(authors_cln)] <- ""
+authors_cln[authors_cln == ""] <- NA
+
+authors_cln$aristocracy %>% table()
 
 glimpse(authors_cln)
 ```
@@ -460,4 +462,8 @@ unique(texts_metadata$A_ID)
 
 texts_metadata %>% 
   filter(str_detect(A_ID, "А"))
+```
+
+```{r}
+glimpse(corpus_texts)
 ```

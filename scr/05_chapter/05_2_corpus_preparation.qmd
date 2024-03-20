@@ -828,3 +828,212 @@ write.csv(words_acc_endings,
           "../../data/corpus1835/sql_db/rhyme_words.csv", 
           row.names = FALSE)
 ```
+
+### errors
+
+```{r}
+rhyme_words <- read.csv("../../data/corpus1835/sql_db/rhyme_words.csv", 
+                        
+                        colClasses = c("stress_pattern" = "character",
+                                       "closure_pattern" = "character")) 
+```
+
+Fix wrong stresses
+
+```{r}
+
+glimpse(rhyme_words)
+
+rhyme_words_upd <- rhyme_words %>% 
+  # звёздами -> звезда'ми
+  # mutate(closure_pattern = ifelse(ending_st == "ё'здами", "10", closure_pattern),
+  #        closure = ifelse(ending_st == "ё'здами", "fem", closure),
+  #        
+  #        stress_pattern = ifelse(ending_st == "ё'здами", "010", stress_pattern),
+  #        ending_st = ifelse(ending_st == "ё'здами",
+  #                           "а'ми", ending_st)) %>% 
+  
+  
+  # енья
+  mutate(closure_pattern = ifelse(str_detect(ending_st, "енья"), 
+                                   "10", 
+                                   closure_pattern),
+         ending_st = ifelse(str_detect(ending_st, "енья"),
+                            "е'нья", 
+                            ending_st)) %>% 
+  # енье
+  mutate(closure_pattern = ifelse(str_detect(ending_st, "енье"), 
+                                   "10", 
+                                   closure_pattern),
+         ending_st = ifelse(str_detect(ending_st, "енье"), 
+                            str_replace(ending_st, ".*?(енье)(.*)$", "е'нье\\2"), 
+                            ending_st)) %>%  
+  
+  # енью
+  mutate(closure_pattern = ifelse(str_detect(ending_st, "енью"), 
+                                   "10", 
+                                   closure_pattern),
+         ending_st = ifelse(str_detect(ending_st, "енью"), 
+                            "е'нью", 
+                            ending_st)) %>% 
+  
+  # ами
+  mutate(closure_pattern = ifelse(str_detect(ending_st, "ами"), 
+                                   "10", 
+                                   closure_pattern),
+         ending_st = ifelse(str_detect(ending_st, "ами"), 
+                            "а'ми", 
+                            ending_st)) %>% 
+  
+  # анья
+  mutate(closure_pattern = ifelse(str_detect(ending_st, "анья"), 
+                                   "10", 
+                                   closure_pattern),
+         ending_st = ifelse(str_detect(ending_st, "анья"), 
+                            str_replace(ending_st, ".*?(анья)(.*)$", "а'нья\\2"), 
+                            ending_st)) %>% 
+  
+  # фимиам
+  mutate(closure_pattern = ifelse(ending_st == "и'миам", "1", closure_pattern),
+         stress_pattern = ifelse(ending_st == "и'миам", "001", stress_pattern),
+         ending_st = ifelse(ending_st == "и'миам",
+                            "а'м", 
+                            ending_st),
+         word_acc = ifelse(word_acc == "фи'миам", 
+                           "фимиа'м",
+                           word_acc)) %>% 
+  
+  # струями
+  mutate(closure_pattern = ifelse(word_acc == "стру'ями", "10", closure_pattern),
+         stress_pattern = ifelse(word_acc == "стру'ями", "010", stress_pattern),
+         ending_st = ifelse(word_acc == "стру'ями",
+                            "я'ми", 
+                            ending_st),
+         word_acc = ifelse(word_acc == "стру'ями", 
+                           "струя'ми",
+                           word_acc)) %>% 
+  
+  # стороны
+  mutate(closure_pattern = ifelse(word_acc == "сто'роны", "1", closure_pattern),
+         stress_pattern = ifelse(word_acc == "сто'роны", "001", stress_pattern),
+         ending_st = ifelse(word_acc == "сто'роны",
+                            "ны'", 
+                            ending_st),
+         word_acc = ifelse(word_acc == "сто'роны", 
+                           "стороны'",
+                           word_acc)) %>% 
+  
+  # у'частье
+  mutate(closure_pattern = ifelse(word_acc == "у'частье", "10", closure_pattern),
+         stress_pattern = ifelse(word_acc == "у'частье", "010", stress_pattern),
+         ending_st = ifelse(word_acc == "у'частье",
+                            "а'стье", 
+                            ending_st),
+         word_acc = ifelse(word_acc == "у'частье", 
+                           "уча'стье",
+                           word_acc)) %>% 
+  
+  # кла'дбище
+  mutate(closure_pattern = ifelse(word_acc == "кла'дбище", "10", closure_pattern),
+         stress_pattern = ifelse(word_acc == "кла'дбище", "010", stress_pattern),
+         ending_st = ifelse(word_acc == "кла'дбище",
+                            "и'ще", 
+                            ending_st),
+         word_acc = ifelse(word_acc == "кла'дбище", 
+                           "кладби'ще",
+                           word_acc)) %>% 
+  
+  # волною
+  mutate(closure_pattern = ifelse(word_acc == "во'лною", "10", closure_pattern),
+         stress_pattern = ifelse(word_acc == "во'лною", "010", stress_pattern),
+         ending_st = ifelse(word_acc == "во'лною",
+                            "о'ю", ending_st),
+         word_acc = ifelse(word_acc == "во'лною", 
+                           "волно'ю",
+                           word_acc)) %>% 
+  
+  # полночи, полуночи
+  mutate(closure_pattern = ifelse(str_detect(ending_st, "ночи"), 
+                                   "10", 
+                                   closure_pattern),
+         ending_st = ifelse(str_detect(ending_st, "ночи"), 
+                            str_replace(ending_st, "(.*?)(ночи)$", "\\1но'чи"), 
+                            ending_st)) %>% 
+  
+  # udal- + vowel '
+  mutate(closure_pattern = ifelse(str_detect(word_acc, "уда'л\\w+"),
+                                  "1",
+                                  closure_pattern),
+         ending_st = ifelse(str_detect(word_acc, "уда'л\\w+"),
+                            str_replace(ending_st, 
+                                        "(^.*?)(а'л)(.)(.*?)$",
+                                        "\\3'\\4"),
+                            ending_st),
+         word_acc = ifelse(str_detect(word_acc, "уда'л\\w+"),
+                            str_replace(word_acc, 
+                                        "(^.*?)(а'л)(.)(.*?)$",
+                                        "\\1ал\\3'\\4"),
+                           word_acc)) %>% 
+  
+  
+  # счастливы
+    mutate(closure_pattern = ifelse(word_acc == "сча'стливы", "10", closure_pattern),
+         stress_pattern = ifelse(word_acc == "сча'стливы", "010", stress_pattern),
+         ending_st = ifelse(word_acc == "сча'стливы",
+                            "и'вы", 
+                            ending_st),
+         word_acc = ifelse(word_acc == "сча'стливы", 
+                           "счастли'вы",
+                           word_acc)) %>% 
+    
+    # предана
+    mutate(closure_pattern = ifelse(word_acc == "пре'дана", "1", closure_pattern),
+         stress_pattern = ifelse(word_acc == "пре'дана", "001", stress_pattern),
+         ending_st = ifelse(word_acc == "пре'дана",
+                            "на'", 
+                            ending_st),
+         word_acc = ifelse(word_acc == "пре'дана", 
+                           "предана'",
+                           word_acc)) %>% 
+    
+    # и'згнанье
+    mutate(closure_pattern = ifelse(word_acc == "и'згнанье", "10", closure_pattern),
+         stress_pattern = ifelse(word_acc == "и'згнанье", "010", stress_pattern),
+         ending_st = ifelse(word_acc == "и'згнанье",
+                            "а'нье", 
+                            ending_st),
+         word_acc = ifelse(word_acc == "и'згнанье", 
+                           "изгна'нье",
+                           word_acc)) %>% 
+    
+    # дуная
+    mutate(closure_pattern = ifelse(word_acc == "ду'ная", "10", closure_pattern),
+         stress_pattern = ifelse(word_acc == "ду'ная", "010", stress_pattern),
+         ending_st = ifelse(word_acc == "ду'ная",
+                            "а'я", 
+                            ending_st),
+         word_acc = ifelse(word_acc == "ду'ная", 
+                           "дуна'я",
+                           word_acc)) %>% 
+    
+  
+  # upd closure pattern
+  mutate(closure = ifelse(closure_pattern == "10", "fem", ""),
+         closure = ifelse(closure_pattern == "1", "masc", closure),
+         closure = ifelse(closure_pattern == "100", "dactylic", closure),
+         closure = ifelse(closure == "", "other", closure)) 
+  
+```
+
+```{r}
+rhyme_words_upd %>% 
+  filter(closure == "dactylic") 
+```
+
+### upd save
+
+```{r}
+write.csv(rhyme_words_upd, 
+          "../../data/corpus1835/sql_db/rhyme_words_upd.csv", 
+          row.names = FALSE)
+```

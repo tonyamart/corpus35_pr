@@ -1,10 +1,10 @@
 ---
-title: "05.2. Code"
+title: "05.2. Code - rhyme words POS"
 format: md
 editor: visual
 ---
 
-## 5.2. Rhyme morphology & endings analysis
+## 5.2.1. POS in rhymes - word level
 
 ## load data & pckg
 
@@ -12,9 +12,8 @@ editor: visual
 library(tidyverse)
 library(tidytext)
 
-# library(igraph)
-# library(tidygraph)
-# library(ggraph)
+#library(kableExtra)
+# library(umap)
 
 library(MetBrewer)
 library(patchwork)
@@ -118,7 +117,7 @@ rhyme_words %>%
   filter(pos == "VERB") %>% 
   select(feats) %>% 
   filter(str_detect(feats, "пов")) %>% 
-  count(feats, sort = T)
+  count(feats, sort = T) %>% head()
 
 
 # VERB - пов
@@ -222,8 +221,6 @@ word_2 <- word_2 %>%
 nrow(word_2)
 ```
 
-#### w1_w2 merge
-
 Merge all from-to words in one table
 
 ```{r}
@@ -233,7 +230,7 @@ all_words <- rbind(word_1, word_2)
 Remove obsolete data
 
 ```{r}
-rm(meter_lables, pos_transl, rhyme_words, word_1, word_2)
+rm(meter_lables, rhyme_words, word_1, word_2)
 ```
 
 ### Basic stats
@@ -273,7 +270,7 @@ MFW 3-syll meters
 all_words %>% 
   filter(meter %in% c("Dactyl", "Amphibrach", "Anapest") & closure %in% closures) %>% 
   group_by(meter, closure) %>% 
-  count(word, sort = T) %>% 
+  count(word_acc, sort = T) %>% 
   slice_max(order_by = n, n = 5)
 ```
 
@@ -340,7 +337,7 @@ all_words %>%
   select(-total, -total_closure)
 ```
 
-```{r}
+```{r, eval=FALSE}
 all_words %>% 
   filter(closure == "dactylic") %>% count(word_acc, sort = T)
 ```
@@ -415,7 +412,7 @@ all_words %>%
   # 
   # # percentage of word of particular clausula type
   mutate(perc_iamb_clos = round((n / total_closure) * 100, 2 )) %>% 
-  select(-total_closure, -meter)
+  select(-total_closure, -meter) %>% head(38)
 ```
 
 #### trochee
@@ -450,7 +447,9 @@ all_words %>%
   # 
   # # percentage of word of particular clausula type
   mutate(perc_tr_clos = round((n / total_closure) * 100, 2 )) %>% 
-  select(-total_closure, -meter)
+  select(-total_closure, -meter, -n) %>% 
+  arrange(desc(perc_tr_clos)) %>% 
+  pivot_wider(names_from = closure, values_from = perc_tr_clos)
 ```
 
 ### POS groups
@@ -552,6 +551,10 @@ all_words %>%
   select(-total_closure, -meter)
 ```
 
+```{r}
+rm(x, iamb_closures, trochee_closures)
+```
+
 ## periodicals / books
 
 Separate periodicals & books sources of texts
@@ -606,7 +609,8 @@ all_words %>%
   filter(closure %in% c("masc", "fem")) %>% 
   select(-corpus, -closure, -total_closure, -n) %>% 
   arrange(desc(perc_closure)) %>% 
-  pivot_wider(names_from = corpus_closure, values_from = perc_closure) 
+  pivot_wider(names_from = corpus_closure, values_from = perc_closure) %>% 
+  select(pos, P__fem, C__fem, P__masc, C__masc)
 ```
 
 ```{r}
@@ -624,7 +628,7 @@ NB the data includes MUCH smaller samples for each author than in Shaw's analysi
 authors_meta <- read_csv("../../data/corpus1835/sql_db/authors.csv") %>% 
   select(A_ID, author_name)
 
-glimpse(authors_meta)
+# glimpse(authors_meta)
 
 # attach authors to texts
 authors <- meta %>% 
@@ -723,7 +727,7 @@ words_authors %>%
   
   select(-n, -total_closure, -author_closure) %>% 
   arrange(desc(perc_closure)) %>% 
-  pivot_wider(names_from = author_name, values_from = perc_closure)
+  pivot_wider(names_from = author_name, values_from = perc_closure) %>% head(27)
 ```
 
 ```{r}
@@ -824,10 +828,10 @@ words_authors %>%
   
   select(-n, -total_closure, -author_closure) %>% 
   arrange(desc(perc_closure)) %>% 
-  pivot_wider(names_from = author_name, values_from = perc_closure)
+  pivot_wider(names_from = author_name, values_from = perc_closure) %>% head(25)
 ```
 
-### other authors
+#### other authors
 
 ```{r}
 # authors <- c("Жуковский В.А.", "Крылов И.А.", 
@@ -866,7 +870,7 @@ words_authors %>%
   mutate(perc = round( (n/total)*100, 2 )) %>% 
   select(-n, -total) %>% 
   arrange(desc(perc)) %>% 
-  pivot_wider(names_from = author_name, values_from = perc)
+  pivot_wider(names_from = author_name, values_from = perc) 
 
 # pos groups
 words_authors %>% 
@@ -877,12 +881,12 @@ words_authors %>%
   mutate(perc = round( (n/total)*100, 2 )) %>% 
   select(-n, -total) %>% 
   arrange(desc(perc)) %>% 
-  pivot_wider(names_from = author_name, values_from = perc)
+  pivot_wider(names_from = author_name, values_from = perc) 
 ```
 
 Clausulas
 
-```{r}
+```{r, cols.print=10}
 # total clausulas
 authors_closures <- words_authors %>% 
   filter(author_name %in% authors) %>% 
@@ -906,7 +910,7 @@ words_authors %>%
   
   select(-n, -total_closure, -author_closure) %>% 
   arrange(desc(perc_closure)) %>% 
-  pivot_wider(names_from = author_name, values_from = perc_closure)
+  pivot_wider(names_from = author_name, values_from = perc_closure) 
 
 # pos groups
 words_authors %>% 
@@ -923,14 +927,157 @@ words_authors %>%
   
   select(-n, -total_closure, -author_closure) %>% 
   arrange(desc(perc_closure)) %>% 
-  pivot_wider(names_from = author_name, values_from = perc_closure)
+  pivot_wider(names_from = author_name, values_from = perc_closure) 
 ```
 
 ```{r}
-rm(authors_closures, authors_total, authors, words_authors)
+rm(authors_closures, authors_total, authors)
+```
+
+### all authors scaled
+
+```{r}
+authors <- c("Крылов И.А.",
+             "Баратынский Е.А.", "Тепляков В.Г.",
+             "Пушкин А.С.",
+             "Лермонтов М.Ю.",
+
+             "Бенедиктов В.Г.", "Тимофеев А.В.", "Бернет Е.",
+
+             "Зилов А.М.",
+             "Суханов М.Д.", "Слепушкин Ф.Н.",
+             "Шахова Е.Н."
+             )
+
+authors_total <- words_authors %>% 
+  filter(author_name %in% authors) %>% 
+  count(author_name) %>% 
+  rename(total = n)
+
+authors_total
+
+top_authors <- words_authors %>% count(author_name, sort = T) %>% filter(n > 1000) %>% pull(author_name)
+```
+
+All POS
+
+```{r}
+v <- words_authors %>% 
+  filter(author_name %in% top_authors) %>% 
+  group_by(author_name) %>% 
+  sample_n(1000) %>% 
+  count(pos) %>% 
+  ungroup() %>% 
+  pivot_wider(names_from = pos, values_from = n) %>% 
+  select(ADJ, ADV, NOUN, PRON, VERB, VERB_inf, VERB_imp, VERB_prich, VERB_deeprich)
+
+a <- words_authors %>% 
+  filter(author_name %in% top_authors) %>% 
+  group_by(author_name) %>% 
+  count(pos) %>% 
+  pivot_wider(names_from = pos, values_from = n) %>% select(author_name)
+
+cbind(a, as.tibble(scale(v))) %>% filter(author_name %in% authors) 
+
+cbind(a, as.tibble(scale(v))) %>% filter(author_name %in% authors) %>% 
+  pivot_longer(!author_name, names_to = "pos", values_to = "z_score") %>% 
+  ggplot(aes(x = author_name, y = z_score, fill = pos)) + 
+  geom_col(position = "dodge", width = 0.5) + 
+  theme(axis.text.x = element_text(angle = 90))
+```
+
+Masc clausula
+
+```{r}
+# select authors with more than 500 masc words (45)
+top_authors <- words_authors %>% 
+  filter(closure == "masc") %>% 
+  count(author_name, sort = T) %>% 
+  filter(n > 500) %>% 
+  pull(author_name)
+
+v <- words_authors %>% 
+  filter(author_name %in% top_authors & closure == "masc") %>% 
+  group_by(author_name) %>% 
+  sample_n(500) %>% 
+  count(pos) %>% 
+  ungroup() %>% 
+  pivot_wider(names_from = pos, values_from = n) %>% 
+  select(ADJ, ADV, NOUN, PRON, VERB, VERB_inf, VERB_imp, VERB_prich, VERB_deeprich)
+
+a <- words_authors %>% 
+  filter(author_name %in% top_authors & closure == "masc") %>% 
+  group_by(author_name) %>% 
+  count(pos) %>% 
+  pivot_wider(names_from = pos, values_from = n) %>% select(author_name)
+
+cbind(a, as.tibble(scale(v))) %>% filter(author_name %in% authors) 
+
+cbind(a, as.tibble(scale(v))) %>% filter(author_name %in% authors) %>% 
+  pivot_longer(!author_name, names_to = "pos", values_to = "z_score") %>% 
+  ggplot(aes(x = author_name, y = z_score, fill = pos)) + 
+  geom_col(position = "dodge", width = 0.5) + 
+  theme(axis.text.x = element_text(angle = 90)) + 
+  labs(title = "Masculine rhymes")
+```
+
+Feminine rhymes
+
+```{r}
+# select authors with more than 500 fem rhymes (40)
+top_authors <- words_authors %>% 
+  filter(closure == "fem") %>% 
+  count(author_name, sort = T) %>% 
+  filter(n > 500) %>% 
+  pull(author_name)
+
+v <- words_authors %>% 
+  filter(author_name %in% top_authors & closure == "fem") %>% 
+  group_by(author_name) %>% 
+  sample_n(500) %>% 
+  count(pos) %>% 
+  ungroup() %>% 
+  pivot_wider(names_from = pos, values_from = n) %>% 
+  select(ADJ, ADV, NOUN, PRON, VERB, VERB_inf, VERB_imp, VERB_prich, VERB_deeprich)
+
+a <- words_authors %>% 
+  filter(author_name %in% top_authors & closure == "fem") %>% 
+  group_by(author_name) %>% 
+  count(pos) %>% 
+  pivot_wider(names_from = pos, values_from = n) %>% select(author_name)
+
+cbind(a, as.tibble(scale(v))) %>% filter(author_name %in% authors) 
+
+cbind(a, as.tibble(scale(v))) %>% filter(author_name %in% authors) %>% 
+  pivot_longer(!author_name, names_to = "pos", values_to = "z_score") %>% 
+  ggplot(aes(x = author_name, y = z_score, fill = pos)) + 
+  geom_col(position = "dodge", width = 0.5) + 
+  theme(axis.text.x = element_text(angle = 90)) + 
+  labs(title = "Feminine rhymes")
+```
+
+```{r, eval=FALSE}
+glimpse(v)
+glimpse(a)
+
+d <- cbind(a, v) %>% 
+  ungroup() %>% 
+  filter(author_name %in% authors[1:3]) %>% 
+  select(-author_name)
+
+d[,1:5]
+
+proj <- umap(d[1:5], data = "dist")
+
+```
+
+```{r}
+rm(a, authors_closures, authors_total,words_authors, authors, closures, top_authors, total_meter)
 ```
 
 ## blanc verse
+
+### prep Kulmann data
 
 -   extract Kulmann's endwords from texts
 
@@ -970,8 +1117,195 @@ k_endwords <- kulmann_texts %>%
          endword = str_extract(text_cln, "\\w+$")) 
 
 head(k_endwords)
+
+# writeLines(k_endwords %>% pull(endword), 
+#           "k_endwords.txt")
 ```
 
 -   get POS tags
 
--   count & compare with Iamb-3 avg / Pushkin (Shaw)
+```{r}
+endw_pos <- read_csv("k_endwords.csv") %>% select(-`...1`)
+nrow(k_endwords) == nrow(endw_pos)
+
+k_ew_pos <- cbind(k_endwords, endw_pos)
+
+glimpse(k_ew_pos)
+```
+
+Extract & rewrite POS tags
+
+```{r}
+k_ew_pos <- k_ew_pos %>% 
+  select(-text_cln, -lemma) %>% 
+  
+  # extract pos
+  mutate(feats = pos,
+         pos = str_extract(feats, "^\\w+(,|=)"),
+         pos = str_remove(pos, ',|='),
+         rhyme_words = tolower(endword)
+         ) %>% 
+  
+  # rewrite pos with UPOS tags
+  rename(old_tag = pos) %>% 
+  left_join(pos_transl, by = "old_tag") %>% 
+  
+  # separate verb forms
+  mutate(pos = ifelse(str_detect(feats, "инф"),
+                      "VERB_inf",
+                      pos),
+         pos = ifelse(str_detect(feats, "пов"),
+                      "VERB_imp",
+                      pos),
+         pos = ifelse(str_detect(feats, "деепр"),
+                      "VERB_deeprich",
+                      pos),
+         pos = ifelse(str_detect(feats, "прич"),
+                      "VERB_prich",
+                      pos)
+         )
+```
+
+```{r}
+head(k_ew_pos)
+```
+
+### count i3 pos
+
+Attach meters & count other poems in Iamb / Iamb-3
+
+```{r}
+# glimpse(meta)
+# glimpse(all_words)
+
+# all 32 Kulmann's texts are Iamb_3
+meta %>% 
+  filter(A_ID == "A_96") %>% 
+  mutate(formula = paste0(meter, "_", feet)) %>% 
+  count(formula)
+
+# select other Iamb-3 texts
+iamb3_texts <- meta %>% 
+  filter(A_ID != "A_96") %>% 
+  mutate(formula = paste0(meter, "_", feet)) %>% 
+  filter(formula == "Iamb_3") %>% 
+  pull(text_id)
+
+length(iamb3_texts) # 53 other Iamb_3 poems
+
+iamb_texts <- meta %>% 
+  filter(A_ID != "A_96" & meter == "Iamb") %>% 
+  pull(text_id)
+
+length(iamb_texts) # 3023 iamb texts
+```
+
+```{r}
+total <- all_words %>% 
+  filter(text_id %in% iamb3_texts) %>% 
+  #filter only fem clausula
+  filter(closure == "fem") %>% 
+  nrow()
+
+total # 1098 rhyme words in iamb-3
+
+i3_rhymed <- all_words %>% 
+  filter(text_id %in% iamb3_texts & closure == "fem") %>% 
+  count(pos) %>% 
+  rename(n_rhyme_i3 = n) %>% 
+  mutate(perc_rhyme_i3 = round( (n_rhyme_i3/total)*100, 2 ))
+
+i3_rhymed
+```
+
+all Iambs
+
+```{r}
+total_iambs <- all_words %>% 
+  filter(text_id %in% iamb_texts & closure == "fem") %>% 
+  nrow()
+
+total_iambs # 53 075 words in all iambs
+
+iambs_rhymed <- all_words %>% 
+  filter(text_id %in% iamb_texts & closure == "fem") %>% 
+  count(pos) %>% 
+  rename(n_rhyme_iambs = n) %>% 
+  mutate(perc_rhyme_iambs = round( (n_rhyme_iambs/total_iambs)*100, 2 ))
+
+iambs_rhymed
+```
+
+rnc i3 data load
+
+```{r, eval=FALSE}
+rnc_rhymes <- read_csv("../../data/ch5/rnc_rhymes.csv")
+
+rnc1 <- rnc_rhymes %>% select(poem_id, from, from_upos, from_feats) %>% 
+  rename(text_id = poem_id,
+         word = from,
+         pos = from_upos,
+         feats = from_feats)
+
+rnc2 <- rnc_rhymes %>% select(poem_id, to, to_upos, to_feats) %>% 
+  rename(text_id = poem_id, 
+         word = to,
+         pos = to_upos,
+         feats = to_feats)
+
+all_rnc <- rbind(rnc1, rnc2) 
+
+all_rnc <- all_rnc %>% 
+  mutate(pos = ifelse(str_detect(feats, "VerbForm=Inf"), 
+                      "VERB_inf", pos),
+         pos = ifelse(str_detect(feats, "Mood=Imp"), 
+                      "VERB_imp", pos))
+
+# load meters
+load("../../data/nkrja_19th_lem.Rda")
+glimpse(c19)
+glimpse(rnc_rhymes)
+
+rnc_i3_ids <- c19 %>% 
+  mutate(text_id = paste0("RNC_", Unnamed..0, "_", year)) %>% 
+  filter(meter == "Я" & feet == "3") %>% 
+  pull(text_id) 
+
+rm(c19)
+
+head(rnc_i3_ids)
+
+rnc_i3 <- all_rnc %>% filter(text_id %in% rnc_i3_ids) 
+
+head(rnc_i3)
+length(unique(rnc_i3$text_id)) # number of Iamb-3 texts with rhymes detected in rnc
+```
+
+Cound POS in rnc i3 -- NB these are not only fem endings
+
+```{r, eval=FALSE}
+rnc_i3_total <- nrow(rnc_i3)
+
+rnc_i3_pos <- rnc_i3 %>% 
+  count(pos) %>% 
+  rename(rnc_i3 = n) %>% 
+  mutate(perc_rnc_i3 = round( (rnc_i3/rnc_i3_total)*100, 2 ))
+```
+
+i3 kulmann POS
+
+```{r}
+total_k <- nrow(k_ew_pos)
+
+k_ew_pos %>% 
+  count(pos) %>% 
+  rename(n_kulmann = n) %>% 
+  mutate(perc_kulmann = round( (n_kulmann/total_k)*100 , 2)) %>% 
+  left_join(i3_rhymed, by = "pos") %>% 
+  left_join(iambs_rhymed, by = "pos") %>% 
+  #left_join(rnc_i3_pos, by = "pos") %>% 
+  select(pos, perc_kulmann, perc_rhyme_i3, perc_rhyme_iambs
+         #, perc_rnc_i3
+         ) %>% 
+  arrange(desc(perc_rhyme_i3))
+```

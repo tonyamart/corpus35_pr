@@ -1,0 +1,597 @@
+---
+title: "5.2. Rhymes: POS pairs & endings"
+format: md
+editor: visual
+---
+
+## 5.2.2. Rhyme grammatical contrast & endings variability
+
+Load pckg
+
+```{r, warning=FALSE, message=FALSE}
+library(tidyverse)
+library(tidytext)
+
+
+# library(umap)
+
+library(MetBrewer)
+library(patchwork)
+theme_set(theme_minimal())
+```
+
+Load data
+
+Metadata
+
+```{r}
+meta <- read.csv("../../data/corpus1835/sql_db/texts_metadata.csv")
+# glimpse(meta)
+```
+
+Meter lables
+
+```{r}
+table(meta$meter)
+
+meter_lables <- meta %>% 
+  select(text_id, meter) %>% distinct()
+
+head(meter_lables)
+```
+
+Rhyme pairs
+
+```{r}
+rhyme_pairs <- read.csv("../../data/corpus1835/sql_db/rhyme_pairs.csv") %>% 
+  rename(text_id = poem_id) %>% 
+  # remove Kulman texts
+  filter(!str_detect(text_id, "C_264"))
+
+glimpse(rhyme_pairs)
+```
+
+Attach meter data
+
+```{r}
+nrow(rhyme_pairs)
+
+rhyme_pairs <- rhyme_pairs %>% 
+  left_join(meter_lables, by = "text_id") 
+
+glimpse(rhyme_pairs)
+```
+
+Rhyme words
+
+```{r}
+rhyme_words <- read.csv("../../data/corpus1835/sql_db/rhyme_words_upd.csv", 
+                        
+                        # DON'T LET R EAT IAMBS AND DO INTEGER 01 => 1
+                        colClasses = c("stress_pattern" = "character",
+                                       "closure_pattern" = "character")) 
+
+# check if all words are unique
+length(unique(rhyme_words$word)) == nrow(rhyme_words)
+
+# rewrite POS tags
+pos_transl <- tibble(old_tag = c("S", "V", "APRO", "SPRO", 
+                   "A", "ADV", "NUM", "ADVPRO",
+                   "INTJ", "PART", "PR", "ANUM", "CONJ"),
+       # pos = c("NOUN", "VERB", "aPRON", "nPRON", 
+       #         "ADJ", "ADV", "NUM", "advPRON",
+       #         "INTJ", "PART", "ADP", "adjNUM", "CONJ"),
+       pos = c("NOUN", "VERB", "PRON", "PRON", 
+               "ADJ", "ADV", "NUM", "PRON",
+               "INTJ", "PART", "ADP", "NUM", "CONJ")) # upos
+
+# attach to the table with all words
+rhyme_words <- rhyme_words %>% 
+  rename(old_tag = pos) %>% 
+  left_join(pos_transl, by = "old_tag")
+
+# extract inf, imp, etc.
+rhyme_words <- rhyme_words %>% 
+  mutate(pos = ifelse(str_detect(feats, "инф"),
+                      "VERB_inf",
+                      pos),
+         pos = ifelse(str_detect(feats, "пов"),
+                      "VERB_imp",
+                      pos),
+         pos = ifelse(str_detect(feats, "деепр"),
+                      "VERB_deeprich",
+                      pos),
+         pos = ifelse(str_detect(feats, "прич"),
+                      "VERB_prich",
+                      pos))
+
+glimpse(rhyme_words)
+```
+
+Attach word's features to rhyme pairs data
+
+```{r}
+rhyme_pairs <- rhyme_pairs %>% 
+  left_join(rhyme_words %>% 
+              select(word, closure, pos, ending_st, feats) %>% 
+              rename(from = word,
+                     from_closure = closure,
+                     from_pos = pos,
+                     from_ending = ending_st, 
+                     from_feats = feats),
+            by = "from") %>% 
+  left_join(rhyme_words %>% 
+              select(word, closure, pos, ending_st, feats) %>% 
+              rename(to = word,
+                     to_closure = closure,
+                     to_pos = pos,
+                     to_ending = ending_st, 
+                     to_feats = feats),
+            by = "to") 
+
+nrow(rhyme_pairs)
+glimpse(rhyme_pairs)
+```
+
+## POS pairs
+
+### masc
+
+Extract only pairs where both words were detected as masculine endings
+
+```{r}
+masc_pairs <- rhyme_pairs %>% 
+  filter(from_closure == "masc" & to_closure == "masc")
+
+print(paste( "Number of (true) masc pairs:", nrow(masc_pairs), 
+             "out of total", nrow(rhyme_pairs) ))
+
+# check number of one masc and one other clausula type ending (most probably annotation mistakes)
+rhyme_pairs %>% 
+  filter(from_closure == "masc" & to_closure != "masc") %>% nrow() 
+rhyme_pairs %>% 
+  filter(from_closure != "masc" & to_closure == "masc") %>% nrow() 
+```
+
+Iamb
+
+```{r}
+iamb_masc <- masc_pairs %>% 
+  filter(meter == "Iamb")
+
+t <- nrow(iamb_masc)
+t
+```
+
+```{r}
+iamb_count <- iamb_masc %>% 
+  mutate(pos_pair = paste0(from_pos, " -- ", to_pos)) %>% 
+  count(pos_pair, sort = T) %>% 
+  mutate(perc = round( (n/t)*100, 2 )) %>% 
+  rename(n_iamb = n,
+         perc_iamb = perc)
+
+head(iamb_count, 20)
+```
+
+Trochee
+
+```{r}
+tr_masc <- masc_pairs %>% 
+  filter(meter == "Trochee")
+
+t <- nrow(tr_masc)
+t
+```
+
+```{r}
+tr_masc %>% 
+  mutate(pos_pair = paste0(from_pos, " -- ", to_pos)) %>% 
+  count(pos_pair, sort = T) %>% 
+  mutate(perc = round( (n/t)*100, 2 )) %>% 
+  rename(n_tr = n,
+         perc_tr = perc) %>% 
+  left_join(iamb_count, by = "pos_pair") %>% 
+  head(20)
+```
+
+### fem
+
+```{r}
+fem_pairs <- rhyme_pairs %>% 
+  filter(from_closure == "fem" & to_closure == "fem")
+
+print(paste( "Number of (true) fem pairs:", nrow(fem_pairs), 
+             "out of total", nrow(rhyme_pairs) ))
+
+# check number of one masc and one other clausula type ending (most probably annotation mistakes)
+rhyme_pairs %>% 
+  filter(from_closure == "fem" & to_closure != "fem") %>% nrow() 
+rhyme_pairs %>% 
+  filter(from_closure != "fem" & to_closure == "fem") %>% nrow() 
+```
+
+Separate iambs & trochees
+
+```{r}
+iamb_fem <- fem_pairs %>% 
+  filter(meter == "Iamb")
+
+tr_fem <- fem_pairs %>% 
+  filter(meter == "Trochee")
+```
+
+```{r}
+t <- nrow(iamb_fem)
+
+iamb_count <- iamb_fem %>% 
+  mutate(pos_pair = paste0(from_pos, " -- ", to_pos)) %>% 
+  count(pos_pair, sort = T) %>% 
+  mutate(perc = round( (n/t)*100, 2 )) %>% 
+  rename(n_iamb = n,
+         perc_iamb = perc)
+
+head(iamb_count, 20)
+```
+
+```{r}
+t <- nrow(tr_fem)
+
+tr_fem %>% 
+  mutate(pos_pair = paste0(from_pos, " -- ", to_pos)) %>% 
+  count(pos_pair, sort = T) %>% 
+  mutate(perc = round( (n/t)*100, 2 )) %>% 
+  rename(n_tr = n,
+         perc_tr = perc) %>% 
+  left_join(iamb_count, by = "pos_pair") %>% 
+  head(20)
+```
+
+```{r}
+rm(iamb_count, pos_transl, t, iamb_fem, iamb_masc, tr_fem, tr_masc)
+```
+
+## endings
+
+Masculine (all meters)
+
+```{r}
+glimpse(masc_pairs)
+
+# total number of masc pairs
+t <- nrow(masc_pairs)
+
+# view 30 mf ending pairs
+masc_pairs %>% 
+  mutate(ending_pair = paste0("-", from_ending, " -- -", to_ending)) %>% 
+  count(ending_pair, sort = T) %>% 
+  head(30) %>% 
+  mutate(perc = round((n/t)*100, 2))
+
+# pull top ending pairs 
+m_ranks <- masc_pairs %>% 
+  mutate(ending_pair = paste0("-", from_ending, " -- -", to_ending)) %>% 
+  count(ending_pair, sort = T) %>% 
+  #head(1000) %>% 
+  mutate(rank = row_number()) %>% select(-n)
+
+# count POS variants inside every ending
+m_ranked <- masc_pairs %>% 
+  mutate(ending_pair = paste0("-", from_ending, " -- -", to_ending), 
+         pos_pair = paste0(from_pos, " -- ", to_pos)) %>% 
+  #filter(ending_pair %in% rankss$ending_pair) %>% 
+  group_by(ending_pair) %>% 
+  count(pos_pair, sort = F) %>% 
+  count(ending_pair, sort = T) %>% 
+  left_join(m_ranks, by = "ending_pair") %>% 
+  filter(rank < 101) %>% 
+  mutate(label = paste0(rank, " ", ending_pair),
+         group = ifelse(n < 9, "less variation", "more variation")) 
+
+head(m_ranked, 15)
+summary(m_ranked$n) # 9.25 is 3rd Qu.
+
+# plot
+m_ranked %>% 
+  filter(rank < 51) %>% 
+  ggplot(aes(x = rank, y = n, fill = group)) + geom_col(alpha = 0.7) + 
+  #scale_x_continuous(breaks = im_rank_feat$rank, labels = im_rank_feat$label) + 
+  #theme(axis.text.x = element_text(angle = 270)) + 
+  coord_flip() + 
+  scale_x_reverse(breaks = m_ranked$rank, 
+                     labels = m_ranked$label) + 
+  scale_fill_manual(values = c(met.brewer("Veronese")[6],
+                               met.brewer("Veronese")[3]))
+```
+
+```{r}
+glimpse(fem_pairs)
+
+# total number of masc pairs
+t <- nrow(fem_pairs)
+
+# view 30 mf ending pairs
+fem_pairs %>% 
+  mutate(ending_pair = paste0("-", from_ending, " -- -", to_ending)) %>% 
+  count(ending_pair, sort = T) %>% 
+  head(30) %>% 
+  mutate(perc = round((n/t)*100, 2))
+
+# pull top ending pairs 
+f_ranks <- fem_pairs %>% 
+  mutate(ending_pair = paste0("-", from_ending, " -- -", to_ending)) %>% 
+  count(ending_pair, sort = T) %>% 
+  #head(1000) %>% 
+  mutate(rank = row_number()) %>% select(-n)
+
+# count POS variants inside every ending
+f_ranked <- fem_pairs %>% 
+  mutate(ending_pair = paste0("-", from_ending, " -- -", to_ending), 
+         pos_pair = paste0(from_pos, " -- ", to_pos)) %>% 
+  #filter(ending_pair %in% rankss$ending_pair) %>% 
+  group_by(ending_pair) %>% 
+  count(pos_pair, sort = F) %>% 
+  count(ending_pair, sort = T) %>% 
+  left_join(f_ranks, by = "ending_pair") %>% 
+  filter(rank < 101) %>% 
+  mutate(label = paste0(rank, " ", ending_pair),
+         group = ifelse(n < 4, "less variation", "more variation"))
+
+head(f_ranked, 15)
+summary(f_ranked$n) # 4 is 3rd qu.
+
+# plot
+f_ranked  %>% 
+  filter(rank < 51) %>% 
+  ggplot(aes(x = rank, y = n, fill = group)) + geom_col(alpha = 0.7) + 
+  coord_flip() + 
+  scale_x_reverse(breaks = f_ranked$rank, labels = f_ranked$label) + 
+  scale_fill_manual(values = c(met.brewer("Veronese")[6],
+                               met.brewer("Veronese")[3]))
+```
+
+### kendall cor
+
+```{r}
+glimpse(m_ranked)
+
+
+rank_list <- m_ranked %>% 
+  ungroup() %>% 
+  rename(rank_ending = rank) %>% 
+  mutate(rank_variation = row_number()) %>% 
+  select(-n, -label, -group)
+
+# masculine ranks lists correlation
+cor.test(rank_list$rank_ending, rank_list$rank_variation, 
+         method = "kendall")
+
+
+# fem
+rank_list <- f_ranked %>% 
+  ungroup() %>% 
+  rename(rank_ending = rank) %>% 
+  mutate(rank_variation = row_number()) %>% 
+  select(-n, -label, -group)
+
+# masculine ranks lists correlation
+cor.test(rank_list$rank_ending, rank_list$rank_variation, 
+         method = "kendall")
+```
+
+### lineplot
+
+Curves: Correlation btw ending frequency & grammatical variation
+
+```{r}
+
+m_ranked <- masc_pairs %>% 
+  mutate(ending_pair = paste0("-", from_ending, " -- -", to_ending), 
+         pos_pair = paste0(from_pos, " -- ", to_pos)) %>% 
+  #filter(ending_pair %in% rankss$ending_pair) %>% 
+  group_by(ending_pair) %>% 
+  count(pos_pair, sort = F) %>% 
+  count(ending_pair, sort = T) %>% 
+  left_join(m_ranks, by = "ending_pair") %>% 
+  filter(rank < 1001)
+
+f_ranked <- fem_pairs %>% 
+  mutate(ending_pair = paste0("-", from_ending, " -- -", to_ending), 
+         pos_pair = paste0(from_pos, " -- ", to_pos)) %>% 
+  #filter(ending_pair %in% rankss$ending_pair) %>% 
+  group_by(ending_pair) %>% 
+  count(pos_pair, sort = F) %>% 
+  count(ending_pair, sort = T) %>% 
+  left_join(f_ranks, by = "ending_pair") %>% 
+  filter(rank < 1001)
+
+glimpse(m_ranked)
+
+m_ranked %>% 
+  ungroup() %>% 
+  select(rank, n) %>% 
+  mutate(group = "masc") %>% 
+  rbind(f_ranked %>%
+          ungroup() %>%
+          select(rank, n) %>%
+          mutate(group = "fem")
+        ) %>%
+  filter(rank < 1001) %>% 
+  ggplot(aes(x = rank, y = n, color = group)) + 
+  geom_point(alpha = 0.5, size = 0.9) + 
+  geom_line(alpha = 0.6, linewidth = 0.5) + 
+  geom_smooth(alpha = 0.7) + 
+  facet_wrap(~group) + 
+  scale_color_manual(values = c(met.brewer("Veronese")[3],
+                                met.brewer("Veronese")[5]))
+```
+
+### feats variability
+
+```{r}
+# count POS variants inside every ending
+m_ranked <- masc_pairs %>% 
+  mutate(ending_pair = paste0("-", from_ending, " -- -", to_ending), 
+         feats_pair = paste0(from_feats, " -- ", to_feats)) %>% 
+  #filter(ending_pair %in% rankss$ending_pair) %>% 
+  group_by(ending_pair) %>% 
+  count(feats_pair, sort = F) %>% 
+  count(ending_pair, sort = T) %>% 
+  left_join(m_ranks, by = "ending_pair") %>% 
+  filter(rank < 1001)
+
+f_ranked <- fem_pairs %>% 
+  mutate(ending_pair = paste0("-", from_ending, " -- -", to_ending), 
+         feats_pair = paste0(from_feats, " -- ", to_feats)) %>% 
+  #filter(ending_pair %in% rankss$ending_pair) %>% 
+  group_by(ending_pair) %>% 
+  count(feats_pair, sort = F) %>% 
+  count(ending_pair, sort = T) %>% 
+  left_join(f_ranks, by = "ending_pair") %>% 
+  filter(rank < 1001)
+
+
+m_ranked %>% 
+  ungroup() %>% 
+  select(rank, n) %>% 
+  mutate(group = "masc") %>% 
+  rbind(f_ranked %>%
+          ungroup() %>%
+          select(rank, n) %>%
+          mutate(group = "fem")
+        ) %>%
+  filter(rank < 1001) %>% 
+  ggplot(aes(x = rank, y = n, color = group)) + 
+  geom_point(alpha = 0.5, size = 0.9) + 
+  geom_line(alpha = 0.6, linewidth = 0.5) + 
+  geom_smooth(alpha = 0.7) + 
+  facet_wrap(~group) + 
+  scale_color_manual(values = c(met.brewer("Veronese")[3],
+                                met.brewer("Veronese")[5]))
+```
+
+#### kendall
+
+```{r}
+glimpse(m_ranked)
+
+rank_list <- m_ranked %>% 
+  ungroup() %>% 
+  #filter(rank < 101) %>% 
+  rename(rank_ending = rank) %>% 
+  mutate(rank_variation = row_number()) %>% 
+  select(-n)
+
+# masculine ranks lists correlation
+cor.test(rank_list$rank_ending, rank_list$rank_variation, 
+         method = "kendall")
+
+
+# fem
+rank_list <- f_ranked %>% 
+  ungroup() %>% 
+  filter(rank < 101) %>%
+  rename(rank_ending = rank) %>% 
+  mutate(rank_variation = row_number()) %>% 
+  select(-n)
+
+# masculine ranks lists correlation
+cor.test(rank_list$rank_ending, rank_list$rank_variation, 
+         method = "kendall")
+```
+
+## words inside endings
+
+```{r}
+glimpse(m_ranks)
+glimpse(masc_pairs)
+```
+
+```{r}
+m_1 <- masc_pairs %>% 
+  mutate(ending_pair = paste0("-", from_ending, " -- -", to_ending)) %>% 
+  select(from, from_ending, ending_pair) %>% 
+  rename(word = from, 
+         ending = from_ending)
+
+m_2 <- masc_pairs %>% 
+  mutate(ending_pair = paste0("-", from_ending, " -- -", to_ending)) %>% 
+  select(to, to_ending, ending_pair) %>% 
+  rename(word = to, 
+         ending = to_ending)
+
+masc_words <- rbind(m_1, m_2)
+
+
+f_1 <- fem_pairs %>% 
+  mutate(ending_pair = paste0("-", from_ending, " -- -", to_ending)) %>% 
+  select(from, from_ending, ending_pair) %>% 
+  rename(word = from, 
+         ending = from_ending)
+
+f_2 <- fem_pairs %>% 
+  mutate(ending_pair = paste0("-", from_ending, " -- -", to_ending)) %>% 
+  select(to, to_ending, ending_pair) %>% 
+  rename(word = to, 
+         ending = to_ending)
+
+
+fem_words <- rbind(f_1, f_2)
+
+fem_words <- fem_words %>% 
+  group_by(ending_pair) %>% 
+  count(word, sort = T) %>% 
+  ungroup() %>% 
+  count(ending_pair, sort = T) %>% 
+  left_join(f_ranks, by = "ending_pair") %>% 
+  filter(rank < 1001) %>% 
+  mutate(group = "fem")
+
+
+glimpse(masc_words)
+
+masc_words %>% 
+  group_by(ending_pair) %>% 
+  count(word, sort = T) %>% 
+  ungroup() %>% 
+  count(ending_pair, sort = T) %>% 
+  left_join(m_ranks, by = "ending_pair") %>% 
+  filter(rank < 1001) %>% 
+  mutate(group = "masc") %>% 
+  rbind(fem_words) %>% 
+  
+  ggplot(aes( x = rank, y = n, color = group)) + 
+  geom_point(alpha = 0.5, size = 0.9) + 
+  geom_line(alpha = 0.6, linewidth = 0.5) + 
+ 
+  facet_wrap(~group) +
+    geom_smooth(alpha = 0.7) +
+  scale_color_manual(values = c(met.brewer("Veronese")[3],
+                                met.brewer("Veronese")[5]))
+```
+
+```{r}
+fem_words %>% 
+  #filter(rank > 1 & rank < 1000) %>% 
+  arrange(-desc(rank)) %>% 
+  ggplot(aes(x = rank, y = n)) + geom_point() + geom_line() + geom_smooth()
+
+
+masc_words %>% 
+  group_by(ending_pair) %>% 
+  count(word, sort = T) %>% 
+  ungroup() %>% 
+  count(ending_pair, sort = T) %>% 
+  left_join(m_ranks, by = "ending_pair") %>% 
+  filter(rank < 1001) %>% 
+  mutate(group = "masc") %>% 
+  #filter(rank > 1 & rank < 1000) %>% 
+  arrange(-desc(rank)) %>% 
+  ggplot(aes(x = rank, y = n)) + geom_point() + geom_line() + geom_smooth()
+```
+
+-   filter ranks \< 251
+
+-   check the lowest number of words / feats / pos combinations, which endings are these
+
+-   mb do abstractness thing

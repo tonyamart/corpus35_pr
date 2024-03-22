@@ -253,6 +253,10 @@ rm(iamb_count, pos_transl, t, iamb_fem, iamb_masc, tr_fem, tr_masc)
 
 ## endings
 
+### POS pairs variability
+
+#### masc
+
 Masculine (all meters)
 
 ```{r}
@@ -276,7 +280,7 @@ m_ranks <- masc_pairs %>%
   mutate(rank = row_number()) %>% select(-n)
 
 # count POS variants inside every ending
-m_ranked <- masc_pairs %>% 
+m_ranked_pos <- masc_pairs %>% 
   mutate(ending_pair = paste0("-", from_ending, " -- -", to_ending), 
          pos_pair = paste0(from_pos, " -- ", to_pos)) %>% 
   #filter(ending_pair %in% rankss$ending_pair) %>% 
@@ -288,21 +292,51 @@ m_ranked <- masc_pairs %>%
   mutate(label = paste0(rank, " ", ending_pair),
          group = ifelse(n < 9, "less variation", "more variation")) 
 
-head(m_ranked, 15)
-summary(m_ranked$n) # 9.25 is 3rd Qu.
+head(m_ranked_pos, 15)
+summary(m_ranked_pos$n) # 9.25 is 3rd Qu. if 100 first ranks taken
 
 # plot
-m_ranked %>% 
+m_ranked_pos %>% 
   filter(rank < 51) %>% 
   ggplot(aes(x = rank, y = n, fill = group)) + geom_col(alpha = 0.7) + 
   #scale_x_continuous(breaks = im_rank_feat$rank, labels = im_rank_feat$label) + 
   #theme(axis.text.x = element_text(angle = 270)) + 
   coord_flip() + 
-  scale_x_reverse(breaks = m_ranked$rank, 
-                     labels = m_ranked$label) + 
+  scale_x_reverse(breaks = m_ranked_pos$rank, 
+                     labels = m_ranked_pos$label) + 
   scale_fill_manual(values = c(met.brewer("Veronese")[6],
                                met.brewer("Veronese")[3]))
 ```
+
+Analysis of the less variate pairs
+
+```{r}
+m_ranked_pos %>% 
+  filter(rank < 51) %>% 
+  summary(n) # look into less than 1st quatrain, ie less than 4 pos pairs
+
+less_var_pos <- m_ranked_pos %>% 
+  filter(rank < 51 & n < 5
+           #group == "less variation"
+           ) %>% 
+  arrange(-desc(rank)) %>% pull(ending_pair)
+
+length(less_var_pos)
+
+masc_pairs %>% 
+  mutate(ending_pair = paste0("-", from_ending, " -- -", to_ending), 
+         pos_pair = paste0(from_pos, " -- ", to_pos)) %>% 
+  filter(ending_pair %in% less_var_pos) %>% 
+  group_by(ending_pair) %>% 
+  count(pos_pair, sort = F) %>% 
+  select(-n) %>% 
+  summarise(n_var = n(),
+    pos_list = paste0(pos_pair, collapse = ", ")) %>% 
+  arrange(-desc(n_var)) %>% 
+  head(length(less_var_pos))
+```
+
+#### fem
 
 ```{r}
 glimpse(fem_pairs)
@@ -325,7 +359,7 @@ f_ranks <- fem_pairs %>%
   mutate(rank = row_number()) %>% select(-n)
 
 # count POS variants inside every ending
-f_ranked <- fem_pairs %>% 
+f_ranked_pos <- fem_pairs %>% 
   mutate(ending_pair = paste0("-", from_ending, " -- -", to_ending), 
          pos_pair = paste0(from_pos, " -- ", to_pos)) %>% 
   #filter(ending_pair %in% rankss$ending_pair) %>% 
@@ -337,26 +371,56 @@ f_ranked <- fem_pairs %>%
   mutate(label = paste0(rank, " ", ending_pair),
          group = ifelse(n < 4, "less variation", "more variation"))
 
-head(f_ranked, 15)
-summary(f_ranked$n) # 4 is 3rd qu.
+head(f_ranked_pos, 15) 
+summary(f_ranked_pos$n) # 4 is 3rd qu.
 
 # plot
-f_ranked  %>% 
+f_ranked_pos  %>% 
   filter(rank < 51) %>% 
   ggplot(aes(x = rank, y = n, fill = group)) + geom_col(alpha = 0.7) + 
   coord_flip() + 
-  scale_x_reverse(breaks = f_ranked$rank, labels = f_ranked$label) + 
+  scale_x_reverse(breaks = f_ranked_pos$rank, labels = f_ranked_pos$label) + 
   scale_fill_manual(values = c(met.brewer("Veronese")[6],
                                met.brewer("Veronese")[3]))
 ```
 
-### kendall cor
+Analysis of the less variate pairs
 
 ```{r}
-glimpse(m_ranked)
+f_ranked_pos %>% 
+  filter(rank < 51) %>% 
+  summary(n) # look into less than 1st quatrain, ie less than 2 pos pairs (much lower than in masc rhymes)
+
+less_var_pos_f <- f_ranked_pos %>% 
+  filter(rank < 51 & n < 2
+           #group == "less variation"
+           ) %>% 
+  arrange(-desc(rank)) %>% pull(ending_pair)
+
+length(less_var_pos_f) # 25 endings with ONLY ONE POS combination
+
+fem_pairs %>% 
+  mutate(ending_pair = paste0("-", from_ending, " -- -", to_ending), 
+         pos_pair = paste0(from_pos, " -- ", to_pos)) %>% 
+  filter(ending_pair %in% less_var_pos_f) %>% 
+  group_by(ending_pair) %>% 
+  count(pos_pair, sort = F) %>% 
+  select(-n) %>% 
+  summarise(n_var = n(),
+    pos_list = paste0(pos_pair, collapse = ", ")) %>% 
+  arrange(-desc(n_var)) %>% 
+  head(length(less_var_pos_f))
+```
+
+noun-noun, verb-verb, inf-inf
+
+#### kendall cor
+
+```{r}
+glimpse(m_ranked_pos)
 
 
-rank_list <- m_ranked %>% 
+rank_list <- m_ranked_pos %>% 
   ungroup() %>% 
   rename(rank_ending = rank) %>% 
   mutate(rank_variation = row_number()) %>% 
@@ -368,7 +432,7 @@ cor.test(rank_list$rank_ending, rank_list$rank_variation,
 
 
 # fem
-rank_list <- f_ranked %>% 
+rank_list <- f_ranked_pos %>% 
   ungroup() %>% 
   rename(rank_ending = rank) %>% 
   mutate(rank_variation = row_number()) %>% 
@@ -379,13 +443,13 @@ cor.test(rank_list$rank_ending, rank_list$rank_variation,
          method = "kendall")
 ```
 
-### lineplot
+#### lineplot
 
 Curves: Correlation btw ending frequency & grammatical variation
 
 ```{r}
 
-m_ranked <- masc_pairs %>% 
+m_ranked_long <- masc_pairs %>% 
   mutate(ending_pair = paste0("-", from_ending, " -- -", to_ending), 
          pos_pair = paste0(from_pos, " -- ", to_pos)) %>% 
   #filter(ending_pair %in% rankss$ending_pair) %>% 
@@ -395,7 +459,7 @@ m_ranked <- masc_pairs %>%
   left_join(m_ranks, by = "ending_pair") %>% 
   filter(rank < 1001)
 
-f_ranked <- fem_pairs %>% 
+f_ranked_long <- fem_pairs %>% 
   mutate(ending_pair = paste0("-", from_ending, " -- -", to_ending), 
          pos_pair = paste0(from_pos, " -- ", to_pos)) %>% 
   #filter(ending_pair %in% rankss$ending_pair) %>% 
@@ -405,13 +469,13 @@ f_ranked <- fem_pairs %>%
   left_join(f_ranks, by = "ending_pair") %>% 
   filter(rank < 1001)
 
-glimpse(m_ranked)
+glimpse(m_ranked_long)
 
-m_ranked %>% 
+m_ranked_long %>% 
   ungroup() %>% 
   select(rank, n) %>% 
   mutate(group = "masc") %>% 
-  rbind(f_ranked %>%
+  rbind(f_ranked_long %>%
           ungroup() %>%
           select(rank, n) %>%
           mutate(group = "fem")
@@ -429,8 +493,8 @@ m_ranked %>%
 ### feats variability
 
 ```{r}
-# count POS variants inside every ending
-m_ranked <- masc_pairs %>% 
+# count feats variants inside every ending
+m_ranked_feats <- masc_pairs %>% 
   mutate(ending_pair = paste0("-", from_ending, " -- -", to_ending), 
          feats_pair = paste0(from_feats, " -- ", to_feats)) %>% 
   #filter(ending_pair %in% rankss$ending_pair) %>% 
@@ -440,7 +504,7 @@ m_ranked <- masc_pairs %>%
   left_join(m_ranks, by = "ending_pair") %>% 
   filter(rank < 1001)
 
-f_ranked <- fem_pairs %>% 
+f_ranked_feats <- fem_pairs %>% 
   mutate(ending_pair = paste0("-", from_ending, " -- -", to_ending), 
          feats_pair = paste0(from_feats, " -- ", to_feats)) %>% 
   #filter(ending_pair %in% rankss$ending_pair) %>% 
@@ -451,11 +515,11 @@ f_ranked <- fem_pairs %>%
   filter(rank < 1001)
 
 
-m_ranked %>% 
+m_ranked_feats %>% 
   ungroup() %>% 
   select(rank, n) %>% 
   mutate(group = "masc") %>% 
-  rbind(f_ranked %>%
+  rbind(f_ranked_feats %>%
           ungroup() %>%
           select(rank, n) %>%
           mutate(group = "fem")
@@ -473,9 +537,9 @@ m_ranked %>%
 #### kendall
 
 ```{r}
-glimpse(m_ranked)
+# glimpse(m_ranked_feats)
 
-rank_list <- m_ranked %>% 
+rank_list <- m_ranked_feats %>% 
   ungroup() %>% 
   #filter(rank < 101) %>% 
   rename(rank_ending = rank) %>% 
@@ -488,7 +552,7 @@ cor.test(rank_list$rank_ending, rank_list$rank_variation,
 
 
 # fem
-rank_list <- f_ranked %>% 
+rank_list <- f_ranked_feats %>% 
   ungroup() %>% 
   filter(rank < 101) %>%
   rename(rank_ending = rank) %>% 
@@ -498,6 +562,82 @@ rank_list <- f_ranked %>%
 # masculine ranks lists correlation
 cor.test(rank_list$rank_ending, rank_list$rank_variation, 
          method = "kendall")
+```
+
+Look into less variable endings
+
+```{r}
+m_ranked_feats %>% 
+  filter(rank < 51) %>% 
+  summary() # 25.25 1st Qu
+
+less_var_feats <- m_ranked_feats %>% 
+  filter(rank < 51 & n < 25.25) %>% 
+  pull(ending_pair)
+
+length(less_var_feats)
+
+x <- masc_pairs %>% 
+  mutate(ending_pair = paste0("-", from_ending, " -- -", to_ending), 
+         feats_pair = paste0(from_feats, " -- ", to_feats)) %>% 
+  filter(ending_pair %in% less_var_feats) %>% 
+  group_by(ending_pair) %>% 
+  count(feats_pair, sort = F) %>% 
+  select(-n) %>% 
+  summarise(n_var = n(),
+            feats_list = paste0(feats_pair, collapse = " \n ")) %>% 
+  arrange(-desc(n_var)) %>% 
+  head(length(less_var_feats))
+
+# write.csv(x, "feats_masc.csv")
+```
+
+Examples
+
+```{r}
+# ending intersecation between less variative in terms of POS combitaion & grammar
+tibble(ending_pair = intersect(less_var_pos, less_var_feats)) %>% 
+  left_join(m_ranks, by = "ending_pair")
+
+masc_pairs %>% 
+  mutate(ending_pair = paste0("-", from_ending, " -- -", to_ending), 
+         feats_pair = paste0(from_feats, " -- ", to_feats)) %>% 
+  filter(ending_pair %in% intersect(less_var_pos, less_var_feats)) %>% 
+  group_by(ending_pair, feats_pair) %>% 
+  sample_n(1) %>% 
+  select(ending_pair, rhyme_alph, from, to, from_pos, to_pos, feats_pair) %>% 
+  ungroup() %>% 
+  distinct(rhyme_alph, .keep_all = TRUE)
+```
+
+FEM rhymes feats analysis
+
+```{r}
+f_ranked_feats %>% 
+  filter(rank < 51) %>% 
+  summary() # 8.25 1st qu. (vs masc 25.25 1st Qu)
+
+less_var_feats_f <- f_ranked_feats %>% 
+  filter(rank < 51 & n < 8.25) %>% 
+  pull(ending_pair)
+
+length(less_var_feats_f) # 13
+
+x <- fem_pairs %>% 
+  mutate(ending_pair = paste0("-", from_ending, " -- -", to_ending), 
+         feats_pair = paste0(from_feats, " -- ", to_feats)) %>% 
+  filter(ending_pair %in% less_var_feats_f) %>% 
+  group_by(ending_pair) %>% 
+  count(feats_pair, sort = F) %>% 
+  select(-n) %>% 
+  summarise(n_var = n(),
+            feats_list = paste0(feats_pair, collapse = " \n ")) %>% 
+  arrange(-desc(n_var)) %>% 
+  head(length(less_var_feats_f))
+
+x
+
+#write.csv(x, "feats_fem.csv")
 ```
 
 ## words inside endings
@@ -538,7 +678,7 @@ f_2 <- fem_pairs %>%
 
 fem_words <- rbind(f_1, f_2)
 
-fem_words <- fem_words %>% 
+fem_words_p <- fem_words %>% 
   group_by(ending_pair) %>% 
   count(word, sort = T) %>% 
   ungroup() %>% 
@@ -548,7 +688,7 @@ fem_words <- fem_words %>%
   mutate(group = "fem")
 
 
-glimpse(masc_words)
+# glimpse(masc_words)
 
 masc_words %>% 
   group_by(ending_pair) %>% 
@@ -558,7 +698,7 @@ masc_words %>%
   left_join(m_ranks, by = "ending_pair") %>% 
   filter(rank < 1001) %>% 
   mutate(group = "masc") %>% 
-  rbind(fem_words) %>% 
+  rbind(fem_words_p) %>% 
   
   ggplot(aes( x = rank, y = n, color = group)) + 
   geom_point(alpha = 0.5, size = 0.9) + 
@@ -571,27 +711,199 @@ masc_words %>%
 ```
 
 ```{r}
-fem_words %>% 
-  #filter(rank > 1 & rank < 1000) %>% 
-  arrange(-desc(rank)) %>% 
-  ggplot(aes(x = rank, y = n)) + geom_point() + geom_line() + geom_smooth()
-
-
 masc_words %>% 
   group_by(ending_pair) %>% 
   count(word, sort = T) %>% 
   ungroup() %>% 
   count(ending_pair, sort = T) %>% 
   left_join(m_ranks, by = "ending_pair") %>% 
-  filter(rank < 1001) %>% 
-  mutate(group = "masc") %>% 
-  #filter(rank > 1 & rank < 1000) %>% 
-  arrange(-desc(rank)) %>% 
-  ggplot(aes(x = rank, y = n)) + geom_point() + geom_line() + geom_smooth()
+  filter(rank < 51) %>% 
+  summary() # 1st qu.: 37.25
+
+less_var_words <- masc_words %>% 
+  group_by(ending_pair) %>% 
+  count(word, sort = T) %>% 
+  ungroup() %>% 
+  count(ending_pair, sort = T) %>% 
+  left_join(m_ranks, by = "ending_pair") %>% 
+  filter(rank < 51 & n < 37.25) %>% 
+  pull(ending_pair)
+
+length(less_var_words)
+
+intersect(less_var_pos, less_var_words)
+length(intersect(less_var_pos, less_var_words))
+
+intersect(less_var_feats, less_var_words)
+length(intersect(less_var_feats, less_var_words))
 ```
 
--   filter ranks \< 251
+Examples of unproductive endings & all less var endings
 
--   check the lowest number of words / feats / pos combinations, which endings are these
+```{r}
+masc_words %>% 
+  filter(ending_pair %in% less_var_words) %>% 
+  group_by(ending_pair) %>% 
+  count(word, sort = T) %>% 
+  select(-n) %>% 
+  summarise(n_var = n(),
+            word_list = paste0(word, collapse = ", ")) %>% 
+  arrange(-desc(n_var))
+```
 
--   mb do abstractness thing
+Most monotonous POS-wise:
+
+NB some "monotonous" endings are easily generating a lot of words (-ить)
+
+```{r}
+masc_words %>% 
+  filter(ending_pair %in% less_var_pos) %>% 
+  group_by(ending_pair) %>% 
+  count(word, sort = T) %>% 
+  select(-n) %>% 
+  summarise(n_var = n(),
+            word_list = paste0(word, collapse = ", ")) %>% 
+  arrange(-desc(n_var)) 
+```
+
+Most monotonous feats-wise
+
+```{r}
+masc_words %>% 
+  filter(ending_pair %in% less_var_feats) %>% 
+  group_by(ending_pair) %>% 
+  count(word, sort = T) %>% 
+  select(-n) %>% 
+  summarise(n_var = n(),
+            word_list = paste0(word, collapse = ", ")) %>% 
+  arrange(-desc(n_var))
+```
+
+Intersections
+
+```{r}
+length(intersect(less_var_pos, less_var_feats))
+length(intersect(less_var_pos, less_var_words))
+length(intersect(less_var_feats, less_var_words))
+
+
+length(intersect(intersect(less_var_pos, less_var_feats), less_var_words))
+
+# the most monotonous masc rhyme endings
+intersect(intersect(less_var_pos, less_var_feats), less_var_words)
+
+masc_words %>% 
+  filter(ending_pair %in% intersect(
+    intersect(
+      less_var_pos, less_var_feats), 
+    less_var_words)
+    ) %>% 
+  group_by(ending_pair) %>% 
+  count(word, sort = T) %>% 
+  select(-n) %>% 
+  summarise(n_var = n(),
+            word_list = paste0(word, collapse = ", ")) %>% 
+  arrange(-desc(n_var))
+```
+
+Fem words
+
+```{r}
+fem_words %>% 
+  group_by(ending_pair) %>% 
+  count(word, sort = T) %>% 
+  ungroup() %>% 
+  count(ending_pair, sort = T) %>% 
+  left_join(f_ranks, by = "ending_pair") %>% 
+  filter(rank < 51) %>% 
+  summary() # 1st qu.: 44 (vs masc:  37.25)
+
+less_var_words_f <- fem_words %>% 
+  group_by(ending_pair) %>% 
+  count(word, sort = T) %>% 
+  ungroup() %>% 
+  count(ending_pair, sort = T) %>% 
+  left_join(f_ranks, by = "ending_pair") %>% 
+  filter(rank < 51 & n < 44) %>% 
+  pull(ending_pair)
+
+length(less_var_words_f)
+
+# intersect(less_var_pos_f, less_var_words_f)
+# length(intersect(less_var_pos_f, less_var_words_f))
+# 
+# intersect(less_var_feats_f, less_var_words_f)
+# length(intersect(less_var_feats_f, less_var_words_f))
+```
+
+Smallest n of words inside freq ending
+
+```{r}
+fem_words %>% 
+  filter(ending_pair %in% less_var_words_f) %>% 
+  group_by(ending_pair) %>% 
+  count(word, sort = T) %>% 
+  select(-n) %>% 
+  summarise(n_var = n(),
+            word_list = paste0(word, collapse = ", ")) %>% 
+  arrange(-desc(n_var))
+```
+
+Smallest POS pair variation -- NB -енья / -енье гнезда (вдохновенье / вдохновенья...)
+
+```{r}
+fem_words %>% 
+  filter(ending_pair %in% less_var_pos_f) %>% 
+  group_by(ending_pair) %>% 
+  count(word, sort = T) %>% 
+  select(-n) %>% 
+  summarise(n_var = n(),
+            word_list = paste0(word, collapse = ", ")) %>% 
+  arrange(-desc(n_var))
+```
+
+Less grammatical variation
+
+```{r}
+fem_words %>% 
+  filter(ending_pair %in% less_var_feats_f) %>% 
+  group_by(ending_pair) %>% 
+  count(word, sort = T) %>% 
+  select(-n) %>% 
+  summarise(n_var = n(),
+            word_list = paste0(word, collapse = ", ")) %>% 
+  arrange(-desc(n_var))
+```
+
+Intersections of all
+
+```{r}
+length(intersect(less_var_pos_f, less_var_feats_f))
+length(intersect(less_var_pos_f, less_var_words_f))
+length(intersect(less_var_feats_f, less_var_words_f))
+
+
+length(intersect(intersect(less_var_pos_f, less_var_feats_f), less_var_words_f))
+
+# the most monotonous masc rhyme endings
+intersect(intersect(less_var_pos_f, less_var_feats_f), less_var_words_f)
+
+fem_words %>% 
+  filter(ending_pair %in% intersect(
+    intersect(
+      less_var_pos_f, less_var_feats_f), 
+    less_var_words_f)
+    ) %>% 
+  group_by(ending_pair) %>% 
+  count(word, sort = T) %>% 
+  select(-n) %>% 
+  summarise(n_var = n(),
+            word_list = paste0(word, collapse = ", ")) %>% 
+  arrange(-desc(n_var))
+```
+
+NB both for masc & fem rhymes it seems that THE most freq ending is also the most variative (-oi, -oju),
+
+however, some of the endings have very low N of pos/feats combinations (-ить) but can generate very large number of words, these are mostly verbal endings =\> seeming refusal to use this kind of rhymes
+
+the most redundant / monotonous are though NOUN endings and rhyme pairs, which are less plausible to include many words for non-freq endings (such as -ец / -ца) though they include a small number of very symbolic poetic words (венец, певец... любовь кровь... пир мир...)

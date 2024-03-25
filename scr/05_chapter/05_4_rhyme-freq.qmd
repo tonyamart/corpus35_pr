@@ -22,6 +22,13 @@ theme_set(theme_minimal())
 ### load data
 
 ```{r}
+rhymes <- read_csv("../../data/corpus1835/sql_db/rhyme_pairs.csv") %>% 
+  # remove Kulman texts
+  filter(!str_detect(poem_id, "C_264"))
+glimpse(rhymes)
+```
+
+```{r}
 rhymes <- read.csv("../../data/ch5/rhymes_parsed_closure.csv") %>% 
   select(-X) %>% 
   distinct() %>%  # if redubplicated for some reason
@@ -47,7 +54,7 @@ Check rhyme detection
 
 ```{r}
 rhymes %>% 
-  filter(id == "M__P_1938")
+  filter(poem_id == "P_1938")
 ```
 
 Translate POS tags

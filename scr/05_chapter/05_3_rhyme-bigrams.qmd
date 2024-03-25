@@ -27,23 +27,6 @@ rhymes_1835 <- read_csv("../../data/corpus1835/sql_db/rhyme_pairs.csv") %>%
 glimpse(rhymes_1835)
 ```
 
-```{r}
-# rhymes_1835 <- read.csv("../../data/ch5/rhymes_parsed.csv") %>% 
-#   select(-X) %>% distinct() %>% # fix bag 
-#   mutate(corpus = "M",
-#          id = str_remove(id, "M__")) %>% 
-#   # fix lowering everything
-#   mutate(rhyme_alph = tolower(rhyme_alph),
-#          rhyme_pair = tolower(rhyme_pair),
-#          from = tolower(from),
-#          to = tolower(to)) %>% 
-#   # fix typo
-#   mutate(from = ifelse(from == "искуства", "искусства", from),
-#          to = ifelse(to == "искуства", "искусства", to))
-# 
-# glimpse(rhymes_1835)
-```
-
 #### C-35 metadata
 
 ```{r}
@@ -54,10 +37,6 @@ rhymes_1835 <- rhymes_1835 %>%
   left_join(corpus_1835 %>% 
               select(text_id, year), by = "text_id") %>% 
   mutate(corpus = "M")
-
-# select & reorder columns for merge
-# rhymes_1835 <- rhymes_1835 %>% 
-#   select(corpus, id, year, rhyme_pair, rhyme_alph, from, to)
 ```
 
 Number of lines to the number of rhymes (% of rhymed lines detected)
@@ -160,6 +139,26 @@ rhymes_1835 %>%
   group_by(year) %>%
   summarise(
     sum_perc = sum(perc))
+```
+
+## 5.1. stats
+
+Number of hapax legomena in C-35
+
+```{r}
+rhymes_1835 %>% 
+  count(rhyme_alph, sort = T) %>% 
+  filter(n == 1) %>% 
+  count() %>% 
+  mutate(perc_total = n/nrow(rhymes_1835)*100)
+```
+
+Number of rhyme pairs repeated \>=10 times
+
+```{r}
+rhymes_1835 %>% 
+  count(rhyme_alph, sort = T) %>% 
+  filter(n >= 10) %>% nrow()
 ```
 
 ## Fig. 5-1-1. Bigram freq

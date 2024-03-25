@@ -96,7 +96,8 @@ load RNC & Corpus-1835 rhymes
 ``` r
 rnc_rhymes <- read.csv("../../data/ch5/rnc_rhymes.csv") %>% select(-X)
 
-c1835_rhymes <- read.csv("../../data/ch5/rhymes_parsed.csv") %>% select(-X)
+c1835_rhymes <- read.csv("../../data/corpus1835/sql_db/rhyme_pairs.csv") %>% 
+  rename(id = poem_id)
 ```
 
 ### RNC comparison
@@ -111,23 +112,10 @@ rnc_rhymes %>%
   count(word, sort = T) %>% 
   mutate(ending = ifelse(nchar(word) < 2, paste0("_", word), word),
          ending = str_extract(ending, "\\w{2}$")) %>% 
-  filter(ending %in% c("ба", "ва", "га")) # 545 rows / words on ba-va-ga
+  filter(ending %in% c("ба", "ва", "га")) %>% nrow() # 545 rows / words on ba-va-ga
 ```
 
-    # A tibble: 515 × 3
-       word          n ending
-       <chr>     <int> <chr> 
-     1 слова       195 ва    
-     2 друга       132 га    
-     3 бога        129 га    
-     4 снова       115 ва    
-     5 слава        84 ва    
-     6 чувства      75 ва    
-     7 искусства    73 ва    
-     8 голова       70 ва    
-     9 неба         69 ба    
-    10 гроба        63 ба    
-    # ℹ 505 more rows
+    [1] 515
 
 ``` r
 # join rhymer & rnc data
@@ -146,10 +134,11 @@ rnc_rhymer <- rnc_rhymes %>%
              by = "word") %>% 
   distinct() 
 
-head(rnc_rhymer, 15)
+# display most freq rhymes and their availability in rhymer
+head(rnc_rhymer, 20)
 ```
 
-    # A tibble: 15 × 5
+    # A tibble: 20 × 5
        word          n ending  rank group 
        <chr>     <int> <chr>  <int> <chr> 
      1 слова       195 ва         1 rhymer
@@ -167,6 +156,11 @@ head(rnc_rhymer, 15)
     13 луга         54 га        13 rhymer
     14 супруга      48 га        14 rhymer
     15 подруга      45 га        15 rhymer
+    16 феба         43 ба        16 rhymer
+    17 готова       42 ва        17 rhymer
+    18 судьба       42 ба        18 rhymer
+    19 дева         41 ва        19 rhymer
+    20 брега        40 га        20 rhymer
 
 ``` r
 rnc_rhymer[is.na(rnc_rhymer)] <- "not_found"
@@ -236,23 +230,10 @@ c1835_rhymes %>%
   count(word, sort = T) %>% 
   mutate(ending = ifelse(nchar(word) < 2, paste0("_", word), word),
          ending = str_extract(word, "\\w{2}$")) %>% 
-  filter(ending %in% c("ба", "ва", "га")) # 309 
+  filter(ending %in% c("ба", "ва", "га")) %>% nrow() # 309 
 ```
 
-    # A tibble: 294 × 3
-       word          n ending
-       <chr>     <int> <chr> 
-     1 бога        104 га    
-     2 слова        89 ва    
-     3 друга        84 га    
-     4 слава        62 ва    
-     5 снова        56 ва    
-     6 чувства      50 ва    
-     7 дева         49 ва    
-     8 судьба       46 ба    
-     9 подруга      41 га    
-    10 искусства    40 ва    
-    # ℹ 284 more rows
+    [1] 294
 
 ``` r
 c1835_rhymer <- c1835_rhymes %>% 
@@ -270,10 +251,10 @@ c1835_rhymer <- c1835_rhymes %>%
              by = "word") %>% 
   distinct()
 
-head(c1835_rhymer, 15)
+head(c1835_rhymer, 20)
 ```
 
-    # A tibble: 15 × 5
+    # A tibble: 20 × 5
        word          n ending  rank group 
        <chr>     <int> <chr>  <int> <chr> 
      1 бога        104 га         1 rhymer
@@ -291,6 +272,11 @@ head(c1835_rhymer, 15)
     13 дорога       36 га        13 rhymer
     14 недуга       35 га        14 rhymer
     15 неба         34 ба        15 rhymer
+    16 готова       33 ва        16 rhymer
+    17 гнева        32 ва        17 rhymer
+    18 тревога      30 га        18 rhymer
+    19 держава      29 ва        19 rhymer
+    20 божества     26 ва        20 rhymer
 
 ``` r
 c1835_rhymer[is.na(c1835_rhymer)] <- "not found"

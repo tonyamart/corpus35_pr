@@ -49,7 +49,8 @@ load RNC & Corpus-1835 rhymes
 ```{r}
 rnc_rhymes <- read.csv("../../data/ch5/rnc_rhymes.csv") %>% select(-X)
 
-c1835_rhymes <- read.csv("../../data/ch5/rhymes_parsed.csv") %>% select(-X)
+c1835_rhymes <- read.csv("../../data/corpus1835/sql_db/rhyme_pairs.csv") %>% 
+  rename(id = poem_id)
 ```
 
 ### RNC comparison
@@ -64,7 +65,7 @@ rnc_rhymes %>%
   count(word, sort = T) %>% 
   mutate(ending = ifelse(nchar(word) < 2, paste0("_", word), word),
          ending = str_extract(ending, "\\w{2}$")) %>% 
-  filter(ending %in% c("ба", "ва", "га")) # 545 rows / words on ba-va-ga
+  filter(ending %in% c("ба", "ва", "га")) %>% nrow() # 545 rows / words on ba-va-ga
 
 # join rhymer & rnc data
 rnc_rhymer <- rnc_rhymes %>% 
@@ -82,7 +83,8 @@ rnc_rhymer <- rnc_rhymes %>%
              by = "word") %>% 
   distinct() 
 
-head(rnc_rhymer, 15)
+# display most freq rhymes and their availability in rhymer
+head(rnc_rhymer, 20)
 rnc_rhymer[is.na(rnc_rhymer)] <- "not_found"
 
 # distribution of intersections on a rank-based axis
@@ -128,7 +130,7 @@ c1835_rhymes %>%
   count(word, sort = T) %>% 
   mutate(ending = ifelse(nchar(word) < 2, paste0("_", word), word),
          ending = str_extract(word, "\\w{2}$")) %>% 
-  filter(ending %in% c("ба", "ва", "га")) # 309 
+  filter(ending %in% c("ба", "ва", "га")) %>% nrow() # 309 
 
 c1835_rhymer <- c1835_rhymes %>% 
   select(id, from, to) %>% 
@@ -145,7 +147,7 @@ c1835_rhymer <- c1835_rhymes %>%
              by = "word") %>% 
   distinct()
 
-head(c1835_rhymer, 15)
+head(c1835_rhymer, 20)
 c1835_rhymer[is.na(c1835_rhymer)] <- "not found"
 
 c1835_rhymer %>% 

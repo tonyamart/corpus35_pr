@@ -380,6 +380,69 @@ all_words %>%
 
 -   Worth has some very detailed rhyme stats, might be interesting to add somewhere (but not really important)
 
+#### tab. 5.2.1 - all meters together
+
+```{r}
+all_words %>% 
+  filter(closure != "other") %>% 
+  count(pos) %>% 
+  mutate(perc_total = round(
+    n / nrow(all_words %>% filter(closure != "other")) * 100, 
+    2))
+```
+
+Periodicals vs Books
+
+```{r}
+# periodicals
+
+all_words %>% 
+  mutate(corpus = str_extract(text_id, "^\\w")) %>% 
+  filter(corpus == "P" & closure != "other") %>% 
+  count(pos) %>% 
+  mutate(perc_total = round(
+    n / nrow(
+      all_words %>% mutate(corpus = str_extract(text_id, "^\\w")) %>% 
+          filter(corpus == "P" & closure != "other")
+  ) * 100, 
+    2))
+
+
+# books
+all_words %>% 
+  mutate(corpus = str_extract(text_id, "^\\w")) %>% 
+  filter(corpus == "C" & closure != "other") %>% 
+  count(pos) %>% 
+  mutate(perc_total = round(
+    n / nrow(
+      all_words %>% mutate(corpus = str_extract(text_id, "^\\w")) %>% 
+          filter(corpus == "C" & closure != "other")
+  ) * 100, 
+    2))
+```
+
+Masc
+
+```{r}
+all_words %>% 
+  filter(closure == "masc") %>% 
+  count(pos) %>% 
+  mutate(perc_total = round(
+    n / nrow(all_words %>% filter(closure == "masc")) * 100, 
+    2))
+```
+
+Fem
+
+```{r}
+all_words %>% 
+  filter(closure == "fem") %>% 
+  count(pos) %>% 
+  mutate(perc_total = round(
+    n / nrow(all_words %>% filter(closure == "fem")) * 100, 
+    2))
+```
+
 #### iamb
 
 Total distribution of POS (all words)
@@ -412,7 +475,83 @@ all_words %>%
   # 
   # # percentage of word of particular clausula type
   mutate(perc_iamb_clos = round((n / total_closure) * 100, 2 )) %>% 
-  select(-total_closure, -meter) %>% head(38)
+  select(-total_closure, -meter) %>% 
+  filter(closure == "masc")
+
+all_words %>% 
+  filter(meter == "Iamb" & closure != "other") %>% 
+  group_by(meter, closure) %>% 
+  count(meter, pos) %>% 
+  ungroup() %>% 
+  #left_join(total_meter, by = "meter") %>% 
+  
+  # percentage of all words in iamb
+  #mutate(perc_all_iambic = round((n / total) * 100, 2 )) # %>% 
+  left_join(iamb_closures, by = "closure") %>% 
+  # 
+  # # percentage of word of particular clausula type
+  mutate(perc_iamb_clos = round((n / total_closure) * 100, 2 )) %>% 
+  select(-total_closure, -meter) %>% 
+  filter(closure == "fem")
+```
+
+Periodicals vs Books
+
+```{r}
+total_corpus <- all_words %>% 
+  filter(meter == "Iamb" & closure %in% c("masc", "fem")) %>% 
+  mutate(corpus = str_extract(text_id, "^\\w")) %>%
+  count(corpus, closure) %>% 
+  rename(total_closure = n) %>% 
+  mutate(corpus_closure = paste0(corpus, "_", closure))
+
+total_corpus
+```
+
+Masc
+
+```{r}
+all_words %>% 
+  mutate(corpus = str_extract(text_id, "^\\w"),
+         corpus_closure = paste0(corpus, "_", closure)) %>%
+  #filter(corpus == "P") %>% 
+  filter(meter == "Iamb" & closure %in% c("masc", "fem")) %>% 
+  group_by(corpus_closure) %>% 
+  count(pos) %>% 
+  ungroup() %>% 
+  #left_join(total_meter, by = "meter") %>% 
+  
+  # percentage of all words in iamb
+  #mutate(perc_all_iambic = round((n / total) * 100, 2 )) # %>% 
+  left_join(total_corpus, by = "corpus_closure") %>% 
+  # 
+  # # percentage of word of particular clausula type
+  mutate(perc_iamb_clos = round((n / total_closure) * 100, 2 )) %>% 
+  select(-corpus_closure, -total_closure) %>% 
+  filter(closure == "masc")
+```
+
+Fem
+
+```{r}
+all_words %>% 
+  mutate(corpus = str_extract(text_id, "^\\w"),
+         corpus_closure = paste0(corpus, "_", closure)) %>%
+  #filter(corpus == "P") %>% 
+  filter(meter == "Iamb" & closure %in% c("masc", "fem")) %>% 
+  group_by(corpus_closure) %>% 
+  count(pos) %>% 
+  ungroup() %>% 
+  #left_join(total_meter, by = "meter") %>% 
+  
+  # percentage of all words in iamb
+  #mutate(perc_all_iambic = round((n / total) * 100, 2 )) # %>% 
+  left_join(total_corpus, by = "corpus_closure") %>% 
+  # 
+  # # percentage of word of particular clausula type
+  mutate(perc_iamb_clos = round((n / total_closure) * 100, 2 )) %>% 
+  select(-corpus_closure, -total_closure) %>% 
+  filter(closure == "fem")
 ```
 
 #### trochee
@@ -514,6 +653,27 @@ all_words %>%
   # # percentage of word of particular clausula type
   mutate(perc_iamb_clos = round((n / total_closure) * 100, 2 )) %>% 
   select(-total_closure, -meter)
+```
+
+```{r}
+total_corpus
+
+all_words %>% 
+  mutate(corpus = str_extract(text_id, "^\\w"),
+         corpus_closure = paste0(corpus, "_", closure)) %>% 
+  filter(meter == "Iamb" & closure %in% c("fem", "masc")) %>% 
+  group_by(corpus_closure) %>% 
+  count(pos_group) %>% 
+  ungroup() %>% 
+  #left_join(total_meter, by = "meter") %>% 
+  
+  # percentage of all words in iamb
+  #mutate(perc_all_iambic = round((n / total) * 100, 2 )) # %>% 
+  left_join(total_corpus, by = "corpus_closure") %>% 
+  # 
+  # # percentage of word of particular clausula type
+  mutate(perc_iamb_clos = round((n / total_closure) * 100, 2 )) %>% 
+  select(-total_closure)
 ```
 
 #### trochee

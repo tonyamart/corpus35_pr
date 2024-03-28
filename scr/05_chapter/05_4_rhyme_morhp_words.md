@@ -8,8 +8,7 @@
 library(tidyverse)
 library(tidytext)
 
-library(kableExtra)
-
+#library(kableExtra)
 # library(umap)
 
 library(MetBrewer)
@@ -327,111 +326,43 @@ head(word_1, 10)
 ``` r
 # check errors
 word_1 %>% 
-  filter(is.na(word_acc))
+  filter(is.na(word_acc)) %>% head()
 ```
 
-         text_id      meter rhyme_alph word word_acc stress_pattern closure_pattern
-    1      P_530 Amphibrach   __ дочки   __     <NA>           <NA>            <NA>
-    2     P_1468    Anapest    _ зарей    _     <NA>           <NA>            <NA>
-    3     P_1722       Iamb      ж нее    ж     <NA>           <NA>            <NA>
-    4   C_84__21       Iamb _ предмете    _     <NA>           <NA>            <NA>
-    5  C_315__19       Iamb  ль печаль   ль     <NA>           <NA>            <NA>
-    6      P_409       Iamb     __ гор   __     <NA>           <NA>            <NA>
-    7   C_234__9    Trochee   _ бразды    _     <NA>           <NA>            <NA>
-    8  C_144__29       Iamb    б житье    б     <NA>           <NA>            <NA>
-    9  C_633__55       Iamb  огурцов ф    ф     <NA>           <NA>            <NA>
-    10 C_312__30       Iamb  ль печаль   ль     <NA>           <NA>            <NA>
-    11  C_299__4    Trochee __ победил   __     <NA>           <NA>            <NA>
-    12    P_1215       Iamb  ль печаль   ль     <NA>           <NA>            <NA>
-    13  C_269__9      Other  ль печаль   ль     <NA>           <NA>            <NA>
-    14     P_924       Iamb   вдаль ль   ль     <NA>           <NA>            <NA>
-    15 C_241__65       Iamb   _ готовы    _     <NA>           <NA>            <NA>
-    16      P_61    Trochee     б нивы    б     <NA>           <NA>            <NA>
-    17 C_269__24       Iamb  ль печаль   ль     <NA>           <NA>            <NA>
-       closure old_tag feats ending_st  pos
-    1     <NA>    <NA>  <NA>      <NA> <NA>
-    2     <NA>    <NA>  <NA>      <NA> <NA>
-    3     <NA>    <NA>  <NA>      <NA> <NA>
-    4     <NA>    <NA>  <NA>      <NA> <NA>
-    5     <NA>    <NA>  <NA>      <NA> <NA>
-    6     <NA>    <NA>  <NA>      <NA> <NA>
-    7     <NA>    <NA>  <NA>      <NA> <NA>
-    8     <NA>    <NA>  <NA>      <NA> <NA>
-    9     <NA>    <NA>  <NA>      <NA> <NA>
-    10    <NA>    <NA>  <NA>      <NA> <NA>
-    11    <NA>    <NA>  <NA>      <NA> <NA>
-    12    <NA>    <NA>  <NA>      <NA> <NA>
-    13    <NA>    <NA>  <NA>      <NA> <NA>
-    14    <NA>    <NA>  <NA>      <NA> <NA>
-    15    <NA>    <NA>  <NA>      <NA> <NA>
-    16    <NA>    <NA>  <NA>      <NA> <NA>
-    17    <NA>    <NA>  <NA>      <NA> <NA>
+        text_id      meter rhyme_alph word word_acc stress_pattern closure_pattern
+    1     P_530 Amphibrach   __ дочки   __     <NA>           <NA>            <NA>
+    2    P_1468    Anapest    _ зарей    _     <NA>           <NA>            <NA>
+    3    P_1722       Iamb      ж нее    ж     <NA>           <NA>            <NA>
+    4  C_84__21       Iamb _ предмете    _     <NA>           <NA>            <NA>
+    5 C_315__19       Iamb  ль печаль   ль     <NA>           <NA>            <NA>
+    6     P_409       Iamb     __ гор   __     <NA>           <NA>            <NA>
+      closure old_tag feats ending_st  pos
+    1    <NA>    <NA>  <NA>      <NA> <NA>
+    2    <NA>    <NA>  <NA>      <NA> <NA>
+    3    <NA>    <NA>  <NA>      <NA> <NA>
+    4    <NA>    <NA>  <NA>      <NA> <NA>
+    5    <NA>    <NA>  <NA>      <NA> <NA>
+    6    <NA>    <NA>  <NA>      <NA> <NA>
 
 ``` r
 word_1 %>% 
-  filter(is.na(pos))
+  filter(is.na(pos)) %>% head()
 ```
 
-          text_id      meter            rhyme_alph         word      word_acc
-    1       P_530 Amphibrach              __ дочки           __          <NA>
-    2    C_95__21       Iamb        конец мертвець     мертвець     мертве'ць
-    3      P_1468    Anapest               _ зарей            _          <NA>
-    4      P_1722       Iamb                 ж нее            ж          <NA>
-    5      P_1905    Trochee         оплечью речъю        речъю        речъю'
-    6    C_117__5       Iamb                мы тмы          тмы          тмы'
-    7  C_633__120       Iamb          ла подшутила           ла           ла'
-    8       P_457       Iamb      оставляя устрояя      устрояя      устро'яя
-    9    C_84__21       Iamb            _ предмете            _          <NA>
-    10  C_315__19       Iamb             ль печаль           ль          <NA>
-    11      P_750       Iamb своевольныхь юдольных своевольныхь своево'льныхь
-    12      P_409       Iamb                __ гор           __          <NA>
-    13   C_156__3    Trochee       покорныи черныи     покорныи     поко'рныи
-    14   C_234__9    Trochee              _ бразды            _          <NA>
-    15   C_319__5       Iamb              думы юмы          юмы          ю'мы
-    16  C_144__29       Iamb               б житье            б          <NA>
-    17  C_633__55       Iamb             огурцов ф            ф          <NA>
-    18  C_312__30       Iamb             ль печаль           ль          <NA>
-    19   C_299__4    Trochee            __ победил           __          <NA>
-    20     P_1215       Iamb             ль печаль           ль          <NA>
-    21  C_141__41       Iamb         сый трисвятый          сый          сы'й
-    22  C_241__63       Iamb               душе ше           ше           ше'
-    23   C_269__9      Other             ль печаль           ль          <NA>
-    24      P_924       Iamb              вдаль ль           ль          <NA>
-    25  C_241__65       Iamb              _ готовы            _          <NA>
-    26  C_154__40    Trochee           скверны сый          сый          сы'й
-    27       P_61    Trochee                б нивы            б          <NA>
-    28  C_269__24       Iamb             ль печаль           ль          <NA>
-    29  C_154__48       Iamb просвещенъе сравненье  просвещенъе  просвеще'нъе
-       stress_pattern closure_pattern  closure old_tag feats ending_st  pos
-    1            <NA>            <NA>     <NA>    <NA>  <NA>      <NA> <NA>
-    2              01               1     masc    <NA>  <NA>      е'ць <NA>
-    3            <NA>            <NA>     <NA>    <NA>  <NA>      <NA> <NA>
-    4            <NA>            <NA>     <NA>    <NA>  <NA>      <NA> <NA>
-    5              01               1     masc    <NA>  <NA>       ъю' <NA>
-    6               1               1     masc    <NA>  <NA>       мы' <NA>
-    7               1               1     masc    <NA>  <NA>       ла' <NA>
-    8            0100             100 dactylic    <NA>  <NA>      о'яя <NA>
-    9            <NA>            <NA>     <NA>    <NA>  <NA>      <NA> <NA>
-    10           <NA>            <NA>     <NA>    <NA>  <NA>      <NA> <NA>
-    11           0010              10      fem    <NA>  <NA>  о'льныхь <NA>
-    12           <NA>            <NA>     <NA>    <NA>  <NA>      <NA> <NA>
-    13           0100             100 dactylic    <NA>  <NA>    о'рныи <NA>
-    14           <NA>            <NA>     <NA>    <NA>  <NA>      <NA> <NA>
-    15             10              10      fem    <NA>  <NA>      ю'мы <NA>
-    16           <NA>            <NA>     <NA>    <NA>  <NA>      <NA> <NA>
-    17           <NA>            <NA>     <NA>    <NA>  <NA>      <NA> <NA>
-    18           <NA>            <NA>     <NA>    <NA>  <NA>      <NA> <NA>
-    19           <NA>            <NA>     <NA>    <NA>  <NA>      <NA> <NA>
-    20           <NA>            <NA>     <NA>    <NA>  <NA>      <NA> <NA>
-    21              1               1     masc    <NA>  <NA>       ы'й <NA>
-    22              1               1     masc    <NA>  <NA>       ше' <NA>
-    23           <NA>            <NA>     <NA>    <NA>  <NA>      <NA> <NA>
-    24           <NA>            <NA>     <NA>    <NA>  <NA>      <NA> <NA>
-    25           <NA>            <NA>     <NA>    <NA>  <NA>      <NA> <NA>
-    26              1               1     masc    <NA>  <NA>       ы'й <NA>
-    27           <NA>            <NA>     <NA>    <NA>  <NA>      <NA> <NA>
-    28           <NA>            <NA>     <NA>    <NA>  <NA>      <NA> <NA>
-    29           0010              10      fem    <NA>  <NA>     е'нъе <NA>
+       text_id      meter     rhyme_alph     word  word_acc stress_pattern
+    1    P_530 Amphibrach       __ дочки       __      <NA>           <NA>
+    2 C_95__21       Iamb конец мертвець мертвець мертве'ць             01
+    3   P_1468    Anapest        _ зарей        _      <NA>           <NA>
+    4   P_1722       Iamb          ж нее        ж      <NA>           <NA>
+    5   P_1905    Trochee  оплечью речъю    речъю    речъю'             01
+    6 C_117__5       Iamb         мы тмы      тмы      тмы'              1
+      closure_pattern closure old_tag feats ending_st  pos
+    1            <NA>    <NA>    <NA>  <NA>      <NA> <NA>
+    2               1    masc    <NA>  <NA>      е'ць <NA>
+    3            <NA>    <NA>    <NA>  <NA>      <NA> <NA>
+    4            <NA>    <NA>    <NA>  <NA>      <NA> <NA>
+    5               1    masc    <NA>  <NA>       ъю' <NA>
+    6               1    masc    <NA>  <NA>       мы' <NA>
 
 ``` r
 # remove errors
@@ -493,7 +424,7 @@ head(word_2, 10)
 ``` r
 # check errors
 word_2 %>% 
-  filter(is.na(word_acc))
+  filter(is.na(word_acc)) %>% head()
 ```
 
          text_id      meter rhyme_alph word word_acc stress_pattern closure_pattern
@@ -503,8 +434,6 @@ word_2 %>%
     4   C_180__5       Iamb    благ ль   ль     <NA>           <NA>            <NA>
     5  C_315__16       Iamb  ль печаль   ль     <NA>           <NA>            <NA>
     6 C_633__125       Iamb  ж стороне    ж     <NA>           <NA>            <NA>
-    7      P_246    Trochee    была нх   нх     <NA>           <NA>            <NA>
-    8 C_633__128       Iamb       ж же    ж     <NA>           <NA>            <NA>
       closure old_tag feats ending_st  pos
     1    <NA>    <NA>  <NA>      <NA> <NA>
     2    <NA>    <NA>  <NA>      <NA> <NA>
@@ -512,44 +441,26 @@ word_2 %>%
     4    <NA>    <NA>  <NA>      <NA> <NA>
     5    <NA>    <NA>  <NA>      <NA> <NA>
     6    <NA>    <NA>  <NA>      <NA> <NA>
-    7    <NA>    <NA>  <NA>      <NA> <NA>
-    8    <NA>    <NA>  <NA>      <NA> <NA>
 
 ``` r
 word_2 %>% 
-  filter(is.na(pos))
+  filter(is.na(pos)) %>% head()
 ```
 
-          text_id      meter           rhyme_alph        word     word_acc
-    1      P_1520 Amphibrach                ж мне           ж         <NA>
-    2    C_156__3    Trochee      покорныи черныи      черныи      черны'и
-    3    C_68__74       Iamb            ль печаль          ль         <NA>
-    4   C_633__55       Iamb              садов ф           ф         <NA>
-    5      P_1836 Amphibrach           вдруг рукь        рукь        ру'кь
-    6    C_180__5       Iamb              благ ль          ль         <NA>
-    7   C_315__16       Iamb            ль печаль          ль         <NA>
-    8   C_241__67       Iamb               бич ич          ич          и'ч
-    9      P_1935 Amphibrach          лbлей своей       лbлей       лbле'й
-    10 C_633__125       Iamb            ж стороне           ж         <NA>
-    11  C_154__40    Trochee         небесный сый         сый         сы'й
-    12      P_246    Trochee              была нх          нх         <NA>
-    13 C_633__128       Iamb                 ж же           ж         <NA>
-    14  C_154__48       Iamb обещанье просвещенъе просвещенъе просвеще'нъе
-       stress_pattern closure_pattern closure old_tag feats ending_st  pos
-    1            <NA>            <NA>    <NA>    <NA>  <NA>      <NA> <NA>
-    2             010              10     fem    <NA>  <NA>       ы'и <NA>
-    3            <NA>            <NA>    <NA>    <NA>  <NA>      <NA> <NA>
-    4            <NA>            <NA>    <NA>    <NA>  <NA>      <NA> <NA>
-    5               1               1    masc    <NA>  <NA>      у'кь <NA>
-    6            <NA>            <NA>    <NA>    <NA>  <NA>      <NA> <NA>
-    7            <NA>            <NA>    <NA>    <NA>  <NA>      <NA> <NA>
-    8               1               1    masc    <NA>  <NA>       и'ч <NA>
-    9               1               1    masc    <NA>  <NA>       е'й <NA>
-    10           <NA>            <NA>    <NA>    <NA>  <NA>      <NA> <NA>
-    11              1               1    masc    <NA>  <NA>       ы'й <NA>
-    12           <NA>            <NA>    <NA>    <NA>  <NA>      <NA> <NA>
-    13           <NA>            <NA>    <NA>    <NA>  <NA>      <NA> <NA>
-    14           0010              10     fem    <NA>  <NA>     е'нъе <NA>
+        text_id      meter      rhyme_alph   word word_acc stress_pattern
+    1    P_1520 Amphibrach           ж мне      ж     <NA>           <NA>
+    2  C_156__3    Trochee покорныи черныи черныи  черны'и            010
+    3  C_68__74       Iamb       ль печаль     ль     <NA>           <NA>
+    4 C_633__55       Iamb         садов ф      ф     <NA>           <NA>
+    5    P_1836 Amphibrach      вдруг рукь   рукь    ру'кь              1
+    6  C_180__5       Iamb         благ ль     ль     <NA>           <NA>
+      closure_pattern closure old_tag feats ending_st  pos
+    1            <NA>    <NA>    <NA>  <NA>      <NA> <NA>
+    2              10     fem    <NA>  <NA>       ы'и <NA>
+    3            <NA>    <NA>    <NA>  <NA>      <NA> <NA>
+    4            <NA>    <NA>    <NA>  <NA>      <NA> <NA>
+    5               1    masc    <NA>  <NA>      у'кь <NA>
+    6            <NA>    <NA>    <NA>  <NA>      <NA> <NA>
 
 ``` r
 # remove errors
@@ -822,15 +733,86 @@ all_words %>%
 
 ### POS distribution in meters / endings
 
--   add pos accodring to Shaw groups
+#### tab. 5.2.1 - all meters & clausulas together
 
--   separate periodicals / books to compare
+``` r
+all_words %>% 
+  filter(closure != "other") %>% 
+  count(pos) %>% 
+  mutate(perc_total = round(
+    n / nrow(all_words %>% filter(closure != "other")) * 100, 
+    2))
+```
 
--   in comparison to Shaw’s data we provide more texts & a more detailed
-    divisions in terms of meters & clausulas usage
+                 pos     n perc_total
+    1            ADJ 19385      11.94
+    2            ADP    27       0.02
+    3            ADV  4647       2.86
+    4           CONJ    15       0.01
+    5           INTJ   140       0.09
+    6           NOUN 83162      51.24
+    7            NUM   144       0.09
+    8           PART   646       0.40
+    9           PRON 12681       7.81
+    10          VERB 31207      19.23
+    11 VERB_deeprich  1784       1.10
+    12      VERB_imp  1647       1.01
+    13      VERB_inf  4268       2.63
+    14    VERB_prich  2550       1.57
 
--   Worth has some very detailed rhyme stats, might be interesting to
-    add somewhere (but not really important)
+Masc
+
+``` r
+all_words %>% 
+  filter(closure == "masc") %>% 
+  count(pos) %>% 
+  mutate(perc_total = round(
+    n / nrow(all_words %>% filter(closure == "masc")) * 100, 
+    2))
+```
+
+                 pos     n perc_total
+    1            ADJ  4808       5.82
+    2            ADP    24       0.03
+    3            ADV  2261       2.73
+    4           CONJ    11       0.01
+    5           INTJ   105       0.13
+    6           NOUN 43022      52.03
+    7            NUM    67       0.08
+    8           PART   601       0.73
+    9           PRON 11259      13.62
+    10          VERB 14398      17.41
+    11 VERB_deeprich   475       0.57
+    12      VERB_imp  1153       1.39
+    13      VERB_inf  3457       4.18
+    14    VERB_prich  1038       1.26
+
+Fem
+
+``` r
+all_words %>% 
+  filter(closure == "fem") %>% 
+  count(pos) %>% 
+  mutate(perc_total = round(
+    n / nrow(all_words %>% filter(closure == "fem")) * 100, 
+    2))
+```
+
+                 pos     n perc_total
+    1            ADJ 13039      17.16
+    2            ADP     3       0.00
+    3            ADV  2338       3.08
+    4           CONJ     4       0.01
+    5           INTJ    35       0.05
+    6           NOUN 38822      51.08
+    7            NUM    70       0.09
+    8           PART    45       0.06
+    9           PRON  1414       1.86
+    10          VERB 16410      21.59
+    11 VERB_deeprich  1280       1.68
+    12      VERB_imp   476       0.63
+    13      VERB_inf   790       1.04
+    14    VERB_prich  1275       1.68
 
 #### iamb
 
@@ -880,10 +862,83 @@ all_words %>%
   # 
   # # percentage of word of particular clausula type
   mutate(perc_iamb_clos = round((n / total_closure) * 100, 2 )) %>% 
-  select(-total_closure, -meter) %>% head(38)
+  select(-total_closure, -meter) %>% 
+  filter(closure == "masc")
 ```
 
-    # A tibble: 38 × 4
+    # A tibble: 14 × 4
+       closure pos               n perc_iamb_clos
+       <chr>   <chr>         <int>          <dbl>
+     1 masc    ADJ            3096           5.7 
+     2 masc    ADP              15           0.03
+     3 masc    ADV            1425           2.63
+     4 masc    CONJ             11           0.02
+     5 masc    INTJ             51           0.09
+     6 masc    NOUN          28393          52.3 
+     7 masc    NUM              45           0.08
+     8 masc    PART            430           0.79
+     9 masc    PRON           7516          13.8 
+    10 masc    VERB           9114          16.8 
+    11 masc    VERB_deeprich   312           0.57
+    12 masc    VERB_imp        768           1.41
+    13 masc    VERB_inf       2343           4.32
+    14 masc    VERB_prich      765           1.41
+
+``` r
+all_words %>% 
+  filter(meter == "Iamb" & closure != "other") %>% 
+  group_by(meter, closure) %>% 
+  count(meter, pos) %>% 
+  ungroup() %>% 
+  #left_join(total_meter, by = "meter") %>% 
+  
+  # percentage of all words in iamb
+  #mutate(perc_all_iambic = round((n / total) * 100, 2 )) # %>% 
+  left_join(iamb_closures, by = "closure") %>% 
+  # 
+  # # percentage of word of particular clausula type
+  mutate(perc_iamb_clos = round((n / total_closure) * 100, 2 )) %>% 
+  select(-total_closure, -meter) %>% 
+  filter(closure == "fem")
+```
+
+    # A tibble: 14 × 4
+       closure pos               n perc_iamb_clos
+       <chr>   <chr>         <int>          <dbl>
+     1 fem     ADJ            9071          17.1 
+     2 fem     ADP               2           0   
+     3 fem     ADV            1631           3.07
+     4 fem     CONJ              4           0.01
+     5 fem     INTJ             25           0.05
+     6 fem     NOUN          27119          51.1 
+     7 fem     NUM              44           0.08
+     8 fem     PART             32           0.06
+     9 fem     PRON           1043           1.97
+    10 fem     VERB          11363          21.4 
+    11 fem     VERB_deeprich   838           1.58
+    12 fem     VERB_imp        330           0.62
+    13 fem     VERB_inf        610           1.15
+    14 fem     VERB_prich      963           1.81
+
+``` r
+all_words %>% 
+  filter(meter == "Iamb" & closure != "other") %>% 
+  group_by(meter, closure) %>% 
+  count(meter, pos) %>% 
+  ungroup() %>% 
+  #left_join(total_meter, by = "meter") %>% 
+  
+  # percentage of all words in iamb
+  #mutate(perc_all_iambic = round((n / total) * 100, 2 )) # %>% 
+  left_join(iamb_closures, by = "closure") %>% 
+  # 
+  # # percentage of word of particular clausula type
+  mutate(perc_iamb_clos = round((n / total_closure) * 100, 2 )) %>% 
+  select(-total_closure, -meter) %>% 
+  filter(closure == "dactylic")
+```
+
+    # A tibble: 10 × 4
        closure  pos               n perc_iamb_clos
        <chr>    <chr>         <int>          <dbl>
      1 dactylic ADJ             343          25.9 
@@ -896,7 +951,6 @@ all_words %>%
      8 dactylic VERB_imp         11           0.83
      9 dactylic VERB_inf          6           0.45
     10 dactylic VERB_prich      123           9.29
-    # ℹ 28 more rows
 
 #### trochee
 
@@ -1151,15 +1205,17 @@ all_words %>%
     1      C 101241
     2      P  61210
 
-Store totals
+Store totals & filter only iambs for Table 5.2.2
 
 ``` r
 cp_total <- all_words %>% 
+  filter(meter == "Iamb") %>% 
   mutate(corpus = str_extract(text_id, "^\\w")) %>% 
   count(corpus) %>% 
   rename(total = n)
 
 cp_clausulas <- all_words %>% 
+  filter(meter == "Iamb") %>% 
   mutate(corpus = str_extract(text_id, "^\\w")) %>% 
   count(corpus, closure) %>% 
   mutate(corpus_closure = paste0(corpus, "__", closure)) %>% 
@@ -1171,6 +1227,7 @@ All POS
 
 ``` r
 all_words %>% 
+  filter(meter == "Iamb") %>% 
   mutate(corpus = str_extract(text_id, "^\\w")) %>% 
   count(corpus, pos) %>% 
   left_join(cp_total, by = "corpus") %>% 
@@ -1183,25 +1240,26 @@ all_words %>%
     # A tibble: 14 × 3
        pos               P     C
        <chr>         <dbl> <dbl>
-     1 NOUN          52.3  50.6 
-     2 VERB          18.0  19.9 
-     3 ADJ           12.5  11.6 
-     4 PRON           7.65  7.9 
-     5 ADV            2.98  2.79
-     6 VERB_inf       2.38  2.78
-     7 VERB_prich     1.53  1.61
-     8 VERB_deeprich  1.07  1.12
-     9 VERB_imp       0.94  1.06
-    10 PART           0.35  0.43
-    11 NUM            0.1   0.08
-    12 INTJ           0.09  0.08
+     1 NOUN          53.2  50.9 
+     2 VERB          17.3  19.8 
+     3 ADJ           12.3  11.2 
+     4 PRON           7.99  7.82
+     5 VERB_inf       2.24  2.96
+     6 ADV            2.94  2.78
+     7 VERB_prich     1.7   1.71
+     8 VERB_deeprich  1     1.11
+     9 VERB_imp       0.86  1.1 
+    10 PART           0.37  0.45
+    11 NUM            0.09  0.08
+    12 INTJ           0.05  0.08
     13 ADP            0.01  0.02
-    14 CONJ           0     0.01
+    14 CONJ           0.01  0.02
 
 By clausula
 
 ``` r
 all_words %>% 
+  filter(meter == "Iamb") %>% 
   mutate(corpus = str_extract(text_id, "^\\w")) %>% 
   count(corpus, pos, closure) %>% 
   mutate(corpus_closure = paste0(corpus, "__", closure)) %>% 
@@ -1218,20 +1276,45 @@ all_words %>%
     # A tibble: 14 × 5
        pos           P__fem C__fem P__masc C__masc
        <chr>          <dbl>  <dbl>   <dbl>   <dbl>
-     1 NOUN           53.3   49.8    52.2    51.9 
-     2 VERB           19.4   22.9    17.2    17.5 
-     3 ADJ            17.7   16.8     6.29    5.53
-     4 PRON            1.8    1.9    13.3    13.8 
-     5 VERB_inf        0.69   1.25    3.98    4.3 
-     6 ADV             3.27   2.96    2.81    2.69
-     7 VERB_prich      1.47   1.8     1.34    1.2 
-     8 VERB_deeprich   1.64   1.71    0.57    0.58
-     9 VERB_imp        0.48   0.71    1.38    1.4 
-    10 PART            0.06   0.06    0.64    0.78
-    11 INTJ            0.04   0.05    0.14    0.12
-    12 NUM             0.12   0.08    0.08    0.08
-    13 ADP             0      0       0.02    0.04
-    14 CONJ            0.01   0      NA       0.02
+     1 NOUN           53.6   49.9    52.9    52   
+     2 VERB           18.8   22.7    16.2    17.1 
+     3 ADJ            18.2   16.6     6.16    5.48
+     4 PRON            1.85   2.02   14.1    13.7 
+     5 VERB_inf        0.67   1.38    3.77    4.59
+     6 ADV             3.36   2.94    2.57    2.65
+     7 VERB_prich      1.57   1.93    1.6     1.31
+     8 VERB_deeprich   1.44   1.65    0.6     0.56
+     9 VERB_imp        0.41   0.72    1.31    1.47
+    10 PART            0.06   0.06    0.68    0.85
+    11 INTJ            0.04   0.05    0.07    0.11
+    12 NUM             0.11   0.07    0.08    0.09
+    13 ADP             0.01   0       0.02    0.03
+    14 CONJ            0.01   0.01   NA       0.03
+
+POS groups
+
+``` r
+all_words %>% 
+  filter(meter == "Iamb") %>% 
+  mutate(corpus = str_extract(text_id, "^\\w")) %>% 
+  count(corpus, pos_group, closure) %>% 
+  mutate(corpus_closure = paste0(corpus, "__", closure)) %>% 
+  left_join(cp_clausulas, by = "corpus_closure") %>% 
+  #select(-corpus_closure) %>% 
+  mutate(perc_closure = round( (n/total_closure)*100, 2 )) %>% 
+  filter(closure %in% c("masc", "fem")) %>% 
+  select(-corpus, -closure, -total_closure, -n) %>% 
+  arrange(desc(perc_closure)) %>% 
+  pivot_wider(names_from = corpus_closure, values_from = perc_closure) %>% 
+  select(pos_group, P__fem, C__fem, P__masc, C__masc)
+```
+
+    # A tibble: 3 × 5
+      pos_group P__fem C__fem P__masc C__masc
+      <chr>      <dbl>  <dbl>   <dbl>   <dbl>
+    1 declined   75.1   70.5    74.7    72.5 
+    2 verbs      19.8   24.8    21.2    23.2 
+    3 other       5.02   4.77    4.02    4.32
 
 ``` r
 rm(cp_clausulas, cp_total)
@@ -1289,88 +1372,93 @@ glimpse(all_words)
 
 ``` r
 all_words %>% 
+  filter(meter == "Iamb") %>% 
   left_join(authors, by = "text_id") %>% 
-  count(author_name, sort = T) %>% head(30) # quick view
+  filter(!is.na(author_name)) %>% 
+  count(author_name, sort = T) %>% head(40) # quick view
 ```
 
-            author_name     n
-    1              <NA> 16497
-    2    Жуковский В.А.  7382
-    3       Крылов И.А.  6397
-    4     Бороздна И.П.  4676
-    5   Быстроглазов А.  4081
-    6   Бенедиктов В.Г.  4009
-    7         Бернет Е.  3913
-    8  Баратынский Е.А.  3828
-    9        Мейснер А.  3158
-    10      Смирнова А.  3132
-    11      Шахова Е.Н.  3088
-    12    Тимофеев А.В.  2969
-    13    Некрасов Н.А.  2858
-    14     Демидов М.А.  2855
-    15      Башкатов А.  2591
-    16       Зилов А.М.  2584
-    17      Меркли М.М.  2152
-    18      Сушков Д.П.  2132
-    19    Тепляков В.Г.  2093
-    20     Суханов М.Д.  2072
-    21    Полежаев А.И.  2038
-    22 Подолинский А.И.  1965
-    23     Бакунин И.М.  1784
-    24    Мартынов А.М.  1780
-    25      Ушаков А.А.  1720
-    26   Лермонтов М.Ю.  1719
-    27      Кашкин Д.Е.  1684
-    28    Алексеев П.Ф.  1648
-    29      Козлов И.И.  1602
-    30  Ростопчина Е.П.  1568
+            author_name    n
+    1    Жуковский В.А. 6496
+    2       Крылов И.А. 6367
+    3     Бороздна И.П. 4510
+    4  Баратынский Е.А. 3432
+    5       Смирнова А. 3012
+    6   Быстроглазов А. 2399
+    7       Башкатов А. 2387
+    8         Бернет Е. 2249
+    9      Демидов М.А. 2075
+    10      Шахова Е.Н. 2005
+    11    Тепляков В.Г. 1909
+    12    Некрасов Н.А. 1896
+    13       Зилов А.М. 1862
+    14       Мейснер А. 1848
+    15     Суханов М.Д. 1834
+    16      Меркли М.М. 1582
+    17  Бенедиктов В.Г. 1547
+    18    Полежаев А.И. 1502
+    19    Мартынов А.М. 1478
+    20      Козлов И.И. 1474
+    21     Бакунин И.М. 1456
+    22      Сушков Д.П. 1448
+    23  Ростопчина Е.П. 1396
+    24    Тимофеев А.В. 1211
+    25      Пушкин А.С. 1089
+    26   Лермонтов М.Ю. 1045
+    27   Слепушкин Ф.Н. 1037
+    28      Менцов Ф.Н. 1030
+    29        Кашаев В.  996
+    30     Теплова Н.С.  984
+    31      Кашкин Д.Е.  980
+    32      Глинка Ф.Н.  916
+    33       Губер Э.И.  908
+    34       Ершов П.П.  898
+    35      Марков М.А.  828
+    36    Алексеев П.Ф.  780
+    37 Подолинский А.И.  768
+    38        Кони Ф.А.  706
+    39   Бутырский Н.И.  674
+    40     Савурский Н.  655
 
 ``` r
 # attachment & removal of NA
 words_authors <- all_words %>% 
+  # leave only iambic endings 
+  filter(meter == "Iamb") %>% 
   left_join(authors %>% select(-A_ID), by = "text_id") %>% 
   filter(!is.na(author_name))
 
-words_authors %>% 
-  filter(author_name == "Кульман Е.Б.")
+# words_authors %>% 
+#   filter(author_name == "Кульман Е.Б.")
 ```
-
-     [1] text_id         meter           rhyme_alph      word           
-     [5] word_acc        stress_pattern  closure_pattern closure        
-     [9] old_tag         feats           ending_st       pos            
-    [13] pos_group       author_name    
-    <0 rows> (or 0-length row.names)
 
 ### selection
 
-#### canonical
+#### pushkin-like verse
 
 ``` r
-# authors <- c("Жуковский В.А.", "Крылов И.А.", 
-#              "Баратынский Е.А.", "Тепляков В.Г.",
-#              "Пушкин А.С.",
-#              "Лермонтов М.Ю.",
-#              
-#              "Бенедиктов В.Г.", "Тимофеев А.В.", "Бернет Е.",
-#              
-#              "Зилов А.М.", 
-#              "Суханов М.Д.", "Слепушкин Ф.Н.", 
-#              "Шахова Е.Н."
-#              )
-
-authors <- c("Крылов И.А.", "Пушкин А.С.", "Баратынский Е.А." )
+author_v <- c("Баратынский Е.А.", "Козлов И.И.", "Ростопчина Е.П.")
 ```
 
 ``` r
 authors_total <- words_authors %>% 
-  filter(author_name %in% authors) %>% 
+  filter(author_name %in% author_v) %>% 
   count(author_name) %>% 
   rename(total = n)
+
+authors_total
 ```
+
+           author_name total
+    1 Баратынский Е.А.  3432
+    2      Козлов И.И.  1474
+    3  Ростопчина Е.П.  1396
+
+Total POS (without masc/fem devision
 
 ``` r
 words_authors %>% 
-  filter(author_name %in% authors) %>% 
+  filter(author_name %in% author_v) %>% 
   group_by(author_name) %>% 
   count(pos) %>% 
   left_join(authors_total, by = "author_name") %>% 
@@ -1380,27 +1468,9 @@ words_authors %>%
   pivot_wider(names_from = author_name, values_from = perc)
 ```
 
-    # A tibble: 14 × 4
-       pos           `Пушкин А.С.` `Баратынский Е.А.` `Крылов И.А.`
-       <chr>                 <dbl>              <dbl>         <dbl>
-     1 NOUN                  52.3               51.3          42.3 
-     2 VERB                  18.8               13.3          25.9 
-     3 PRON                   7.92              13.9           8.52
-     4 ADJ                   11.8               12.9           7.07
-     5 VERB_inf               1.76               0.81          6.11
-     6 ADV                    3.86               2.51          5.64
-     7 VERB_prich             1.22               2.25          0.88
-     8 VERB_imp               0.95               0.94          1.61
-     9 VERB_deeprich          0.54               1.38          0.63
-    10 PART                   0.61               0.55          1.06
-    11 NUM                    0.2                0.08          0.22
-    12 INTJ                  NA                  0.05          0.08
-    13 ADP                    0.07               0.03          0.02
-    14 CONJ                  NA                  0.03          0.03
-
 ``` r
 words_authors %>% 
-  filter(author_name %in% authors) %>% 
+  filter(author_name %in% author_v) %>% 
   group_by(author_name) %>% 
   count(pos_group) %>% 
   left_join(authors_total, by = "author_name") %>% 
@@ -1411,17 +1481,17 @@ words_authors %>%
 ```
 
     # A tibble: 3 × 4
-      pos_group `Баратынский Е.А.` `Пушкин А.С.` `Крылов И.А.`
-      <chr>                  <dbl>         <dbl>         <dbl>
-    1 declined               80.3          73.3          58.7 
-    2 verbs                  15.0          21.5          33.6 
-    3 other                   4.62          5.28          7.68
+      pos_group `Баратынский Е.А.` `Козлов И.И.` `Ростопчина Е.П.`
+      <chr>                  <dbl>         <dbl>             <dbl>
+    1 declined               80.8          76.3              70.3 
+    2 verbs                  14.6          18.9              27.2 
+    3 other                   4.63          4.82              2.51
 
 Clausulas
 
 ``` r
 authors_closures <- words_authors %>% 
-  filter(author_name %in% authors) %>% 
+  filter(author_name %in% author_v) %>% 
   count(author_name, closure) %>% 
   mutate(author_closure = paste0(author_name, "__", closure)) %>% 
   select(-author_name, -closure) %>% 
@@ -1430,7 +1500,7 @@ authors_closures <- words_authors %>%
 
 ``` r
 words_authors %>% 
-  filter(author_name %in% authors & closure %in% c("masc", "fem")) %>% 
+  filter(author_name %in% author_v & closure %in% c("masc", "fem")) %>% 
   group_by(author_name) %>% 
   count(pos, closure) %>% 
   ungroup() %>% 
@@ -1439,31 +1509,31 @@ words_authors %>%
   
   mutate(author_closure = paste0(author_name, "__", closure)) %>% 
   left_join(authors_closures, by = "author_closure") %>% 
-  mutate(perc_closure = round( (n/total_closure)*100, 2 )) %>% 
+  mutate(perc_closure = round( (n/total_closure)*100, 1 )) %>% 
   
   select(-n, -total_closure, -author_closure) %>% 
   arrange(desc(perc_closure)) %>% 
-  pivot_wider(names_from = author_name, values_from = perc_closure) %>% head(27)
+  filter(pos %in% c("NOUN", "VERB", "ADJ", "PRON", "ADV")) %>% 
+  pivot_wider(names_from = author_name, values_from = perc_closure)
 ```
 
-    # A tibble: 27 × 5
-       pos      closure `Пушкин А.С.` `Баратынский Е.А.` `Крылов И.А.`
-       <chr>    <chr>           <dbl>              <dbl>         <dbl>
-     1 NOUN     fem             53.4               52.2          39.1 
-     2 NOUN     masc            50.9               50.6          45.4 
-     3 VERB     fem             20.2               15.6          34.7 
-     4 PRON     masc            14.9               23.7          14.0 
-     5 ADJ      fem             16.3               20.0           8.86
-     6 VERB     masc            17.3               11.5          17.8 
-     7 VERB_inf masc             3.3                0.98          7.1 
-     8 ADV      fem              4.19               2.58          6.4 
-     9 ADJ      masc             6.31               5.71          5.29
-    10 VERB_inf fem              0.51               0.66          5.12
-    # ℹ 17 more rows
+    # A tibble: 10 × 5
+       pos   closure `Баратынский Е.А.` `Козлов И.И.` `Ростопчина Е.П.`
+       <chr> <chr>                <dbl>         <dbl>             <dbl>
+     1 NOUN  fem                   52.7          46.4              39.3
+     2 NOUN  masc                  51.1          49.1              35  
+     3 ADJ   fem                   19.5          22.9              27.9
+     4 VERB  fem                   15.4          19.7              25  
+     5 PRON  masc                  23.8          15.4              23.2
+     6 VERB  masc                  11            12.9              21.4
+     7 ADJ   masc                   5.6          10.3               9.1
+     8 PRON  fem                    4.2           2.3               1.6
+     9 ADV   masc                   2.6           1.7               1.9
+    10 ADV   fem                    2.5           1.8               1.7
 
 ``` r
 words_authors %>% 
-  filter(author_name %in% authors & closure %in% c("masc", "fem")) %>% 
+  filter(author_name %in% author_v & closure %in% c("masc", "fem")) %>% 
   group_by(author_name) %>% 
   count(pos_group, closure) %>% 
   ungroup() %>% 
@@ -1472,7 +1542,7 @@ words_authors %>%
   
   mutate(author_closure = paste0(author_name, "__", closure)) %>% 
   left_join(authors_closures, by = "author_closure") %>% 
-  mutate(perc_closure = round( (n/total_closure)*100, 2 )) %>% 
+  mutate(perc_closure = round( (n/total_closure)*100, 1 )) %>% 
   
   select(-n, -total_closure, -author_closure) %>% 
   arrange(desc(perc_closure)) %>% 
@@ -1480,32 +1550,80 @@ words_authors %>%
 ```
 
     # A tibble: 6 × 5
-      pos_group closure `Баратынский Е.А.` `Пушкин А.С.` `Крылов И.А.`
-      <chr>     <chr>                <dbl>         <dbl>         <dbl>
-    1 declined  masc                 81.6          72.8          65.4 
-    2 declined  fem                  78.5          73.2          51.3 
-    3 verbs     fem                  16.7          21.4          41.3 
-    4 verbs     masc                 13.8          21.9          26.7 
-    5 other     masc                  4.58          5.26          7.96
-    6 other     fem                   4.82          5.46          7.45
+      pos_group closure `Баратынский Е.А.` `Козлов И.И.` `Ростопчина Е.П.`
+      <chr>     <chr>                <dbl>         <dbl>             <dbl>
+    1 declined  masc                  82.1          79                69.6
+    2 declined  fem                   79            73.5              70.7
+    3 verbs     masc                  13.2          17.5              27.8
+    4 verbs     fem                   16.3          20.4              26.9
+    5 other     fem                    4.7           6.1               2.5
+    6 other     masc                   4.7           3.6               2.6
+
+``` r
+words_authors %>% 
+  filter(author_name %in% author_v & closure %in% c("masc", "fem")) %>% 
+  filter(author_name == "Ростопчина Е.П.") %>% 
+  filter(pos == "VERB") %>% sample_n(10)
+```
+
+         text_id meter          rhyme_alph     word  word_acc stress_pattern
+    1     P_1854  Iamb      возьмет почтет  возьмет  возьмё'т             01
+    2      P_706  Iamb     вопрошал угощал вопрошал вопроша'л            001
+    3      P_999  Iamb       молчит улетит   молчит   молчи'т             01
+    4     P_1082  Iamb      затмило томило  затмило  затми'ло            010
+    5      P_706  Iamb       достигал упал     упал     упа'л             01
+    6     P_1865  Iamb братался восхищался братался брата'лся            010
+    7      P_762  Iamb     водворена нашла    нашла    нашла'             01
+    8  C_169__13  Iamb    волновал выражал волновал волнова'л            001
+    9      P_762  Iamb         была судьба     была     была'             01
+    10     P_776  Iamb   живописал омрачал  омрачал  омрача'л            001
+       closure_pattern closure old_tag                          feats ending_st
+    1                1    masc       V   V,сов,пе=непрош,ед,изъяв,3-л       ё'т
+    2                1    masc       V   V=прош,ед,изъяв,муж,несов,пе       а'л
+    3                1    masc       V V,несов,нп=непрош,ед,изъяв,3-л       и'т
+    4               10     fem       V       V=прош,ед,изъяв,сред,сов      и'ло
+    5                1    masc       V     V,сов,нп=прош,ед,изъяв,муж       а'л
+    6               10     fem       V   V,несов,нп=прош,ед,изъяв,муж     а'лся
+    7                1    masc       V     V=прош,ед,изъяв,жен,сов,пе       ла'
+    8                1    masc       V   V,несов,пе=прош,ед,изъяв,муж       а'л
+    9                1    masc       V   V,нп=прош,ед,изъяв,жен,несов       ла'
+    10               1    masc       V   V,пе=прош,ед,изъяв,муж,несов       а'л
+        pos pos_group     author_name
+    1  VERB     verbs Ростопчина Е.П.
+    2  VERB     verbs Ростопчина Е.П.
+    3  VERB     verbs Ростопчина Е.П.
+    4  VERB     verbs Ростопчина Е.П.
+    5  VERB     verbs Ростопчина Е.П.
+    6  VERB     verbs Ростопчина Е.П.
+    7  VERB     verbs Ростопчина Е.П.
+    8  VERB     verbs Ростопчина Е.П.
+    9  VERB     verbs Ростопчина Е.П.
+    10 VERB     verbs Ростопчина Е.П.
 
 #### benediktov & co
 
 ``` r
-authors <- c("Бенедиктов В.Г.", "Тимофеев А.В.", "Бернет Е." )
+author_v <- c("Бенедиктов В.Г.", "Бернет Е.", "Шахова Е.Н." )
 
 authors_total <- words_authors %>% 
-  filter(author_name %in% authors) %>% 
+  filter(author_name %in% author_v) %>% 
   count(author_name) %>% 
   rename(total = n)
+
+authors_total
 ```
+
+          author_name total
+    1 Бенедиктов В.Г.  1547
+    2       Бернет Е.  2249
+    3     Шахова Е.Н.  2005
 
 All POS
 
 ``` r
 # pos separately
 words_authors %>% 
-  filter(author_name %in% authors) %>% 
+  filter(author_name %in% author_v) %>% 
   group_by(author_name) %>% 
   count(pos) %>% 
   left_join(authors_total, by = "author_name") %>% 
@@ -1513,29 +1631,10 @@ words_authors %>%
   select(-n, -total) %>% 
   arrange(desc(perc)) %>% 
   pivot_wider(names_from = author_name, values_from = perc)
-```
 
-    # A tibble: 13 × 4
-       pos           `Бернет Е.` `Тимофеев А.В.` `Бенедиктов В.Г.`
-       <chr>               <dbl>           <dbl>             <dbl>
-     1 NOUN                59.6            55.4              54.7 
-     2 VERB                17.4            21.0              16.4 
-     3 ADJ                  9.17            8.08             13.8 
-     4 PRON                 4.4             6.5               6.66
-     5 ADV                  2.4             3.27              2.72
-     6 VERB_inf             2.81            2.12              1.5 
-     7 VERB_prich           1.43            0.88              1.75
-     8 VERB_deeprich        1.02            0.4               1.57
-     9 VERB_imp             1.18            1.41              0.6 
-    10 PART                 0.43            0.67              0.2 
-    11 NUM                  0.03            0.13              0.05
-    12 INTJ                 0.1             0.1              NA   
-    13 CONJ                 0.03            0.07             NA   
-
-``` r
 # pos groups
 words_authors %>% 
-  filter(author_name %in% authors) %>% 
+  filter(author_name %in% author_v) %>% 
   group_by(author_name) %>% 
   count(pos_group) %>% 
   left_join(authors_total, by = "author_name") %>% 
@@ -1545,19 +1644,12 @@ words_authors %>%
   pivot_wider(names_from = author_name, values_from = perc)
 ```
 
-    # A tibble: 3 × 4
-      pos_group `Бенедиктов В.Г.` `Бернет Е.` `Тимофеев А.В.`
-      <chr>                 <dbl>       <dbl>           <dbl>
-    1 declined              77.0        74.6            70.8 
-    2 verbs                 18.5        21.4            24.5 
-    3 other                  4.54        4.01            4.65
-
 Clausulas
 
 ``` r
 # total clausulas
 authors_closures <- words_authors %>% 
-  filter(author_name %in% authors) %>% 
+  filter(author_name %in% author_v) %>% 
   count(author_name, closure) %>% 
   mutate(author_closure = paste0(author_name, "__", closure)) %>% 
   select(-author_name, -closure) %>% 
@@ -1565,7 +1657,7 @@ authors_closures <- words_authors %>%
 
 # pos separately
 words_authors %>% 
-  filter(author_name %in% authors & closure %in% c("masc", "fem")) %>% 
+  filter(author_name %in% author_v & closure %in% c("masc", "fem")) %>% 
   group_by(author_name) %>% 
   count(pos, closure) %>% 
   ungroup() %>% 
@@ -1574,32 +1666,32 @@ words_authors %>%
   
   mutate(author_closure = paste0(author_name, "__", closure)) %>% 
   left_join(authors_closures, by = "author_closure") %>% 
-  mutate(perc_closure = round( (n/total_closure)*100, 2 )) %>% 
+  mutate(perc_closure = round( (n/total_closure)*100, 1 )) %>% 
   
   select(-n, -total_closure, -author_closure) %>% 
   arrange(desc(perc_closure)) %>% 
-  pivot_wider(names_from = author_name, values_from = perc_closure)
+  filter(pos %in% c("NOUN", "VERB", "ADJ", "PRON", "ADV")) %>% 
+  pivot_wider(names_from = author_name, values_from = perc_closure) 
 ```
 
-    # A tibble: 25 × 5
-       pos      closure `Бернет Е.` `Бенедиктов В.Г.` `Тимофеев А.В.`
-       <chr>    <chr>         <dbl>             <dbl>           <dbl>
-     1 NOUN     fem           60.1              54.6            55.4 
-     2 NOUN     masc          59.5              56.8            56.6 
-     3 VERB     fem           18.3              18.4            22.5 
-     4 VERB     masc          16.9              15.0            20.2 
-     5 ADJ      fem           13.3              17.7            11.2 
-     6 PRON     masc           6.72             12.3             9.44
-     7 ADJ      masc           4.94              6.79            3.7 
-     8 VERB_inf masc           4.75              2.4             3.29
-     9 ADV      fem            2.46              2.87            3.85
-    10 ADV      masc           2.4               2.72            2.99
-    # ℹ 15 more rows
+    # A tibble: 10 × 5
+       pos   closure `Бернет Е.` `Бенедиктов В.Г.` `Шахова Е.Н.`
+       <chr> <chr>         <dbl>             <dbl>         <dbl>
+     1 NOUN  fem            59.8              54.1          46.8
+     2 NOUN  masc           57.6              53.9          46  
+     3 VERB  fem            19.7              18.3          24  
+     4 ADJ   fem            12.7              17.6          20.2
+     5 VERB  masc           17.5              16.4          16.7
+     6 PRON  masc            6.5              12.2          16.6
+     7 ADJ   masc            4.6               6.8           9.4
+     8 ADV   fem             1.7               3.4           3.5
+     9 ADV   masc            2                 3.2           2.8
+    10 PRON  fem             1.6               1             1.4
 
 ``` r
 # pos groups
 words_authors %>% 
-  filter(author_name %in% authors & closure %in% c("masc", "fem")) %>% 
+  filter(author_name %in% author_v & closure %in% c("masc", "fem")) %>% 
   group_by(author_name) %>% 
   count(pos_group, closure) %>% 
   ungroup() %>% 
@@ -1608,7 +1700,7 @@ words_authors %>%
   
   mutate(author_closure = paste0(author_name, "__", closure)) %>% 
   left_join(authors_closures, by = "author_closure") %>% 
-  mutate(perc_closure = round( (n/total_closure)*100, 2 )) %>% 
+  mutate(perc_closure = round( (n/total_closure)*100, 1 )) %>% 
   
   select(-n, -total_closure, -author_closure) %>% 
   arrange(desc(perc_closure)) %>% 
@@ -1616,38 +1708,26 @@ words_authors %>%
 ```
 
     # A tibble: 6 × 5
-      pos_group closure `Бенедиктов В.Г.` `Бернет Е.` `Тимофеев А.В.`
-      <chr>     <chr>               <dbl>       <dbl>           <dbl>
-    1 declined  masc                77.4        72.4            70.6 
-    2 declined  fem                 75.5        76.8            70.2 
-    3 verbs     masc                18.5        23.5            24.9 
-    4 verbs     fem                 19.2        19.3            24.7 
-    5 other     fem                  5.27        3.91            5.08
-    6 other     masc                 4.07        4.18            4.48
+      pos_group closure `Бернет Е.` `Бенедиктов В.Г.` `Шахова Е.Н.`
+      <chr>     <chr>         <dbl>             <dbl>         <dbl>
+    1 declined  fem            76                74            69.5
+    2 declined  masc           70.4              75.4          72.9
+    3 verbs     fem            20.6              19.7          26.2
+    4 verbs     masc           25.8              19.8          23.2
+    5 other     fem             3.4               6.3           4.2
+    6 other     masc            3.8               4.9           3.9
 
 #### other authors
 
 ``` r
-# authors <- c("Жуковский В.А.", "Крылов И.А.", 
-#              "Баратынский Е.А.", "Тепляков В.Г.",
-#              "Пушкин А.С.",
-#              "Лермонтов М.Ю.",
-#              
-#              "Бенедиктов В.Г.", "Тимофеев А.В.", "Бернет Е.",
-#              
-#              "Зилов А.М.", 
-#              "Суханов М.Д.", "Слепушкин Ф.Н.", 
-#              "Шахова Е.Н."
-#              )
-
-authors <- c("Тепляков В.Г.", "Лермонтов М.Ю.", "Зилов А.М.", "Суханов М.Д.", "Слепушкин Ф.Н.",  "Шахова Е.Н.")
+author_v <- c("Слепушкин Ф.Н.",  "Мейснер А.", "Некрасов Н.А.")
 ```
 
 All POS
 
 ``` r
 authors_total <- words_authors %>% 
-  filter(author_name %in% authors) %>% 
+  filter(author_name %in% author_v) %>% 
   count(author_name) %>% 
   rename(total = n)
 
@@ -1655,17 +1735,14 @@ authors_total
 ```
 
          author_name total
-    1     Зилов А.М.  2584
-    2 Лермонтов М.Ю.  1719
-    3 Слепушкин Ф.Н.  1111
-    4   Суханов М.Д.  2072
-    5  Тепляков В.Г.  2093
-    6    Шахова Е.Н.  3088
+    1     Мейснер А.  1848
+    2  Некрасов Н.А.  1896
+    3 Слепушкин Ф.Н.  1037
 
 ``` r
 # pos separately
 words_authors %>% 
-  filter(author_name %in% authors) %>% 
+  filter(author_name %in% author_v) %>% 
   group_by(author_name) %>% 
   count(pos) %>% 
   left_join(authors_total, by = "author_name") %>% 
@@ -1673,31 +1750,10 @@ words_authors %>%
   select(-n, -total) %>% 
   arrange(desc(perc)) %>% 
   pivot_wider(names_from = author_name, values_from = perc) 
-```
 
-    # A tibble: 14 × 7
-       pos           `Зилов А.М.` `Слепушкин Ф.Н.` `Лермонтов М.Ю.` `Тепляков В.Г.`
-       <chr>                <dbl>            <dbl>            <dbl>           <dbl>
-     1 NOUN                 57.7             57.2             54.2            48.7 
-     2 VERB                 16.3             23.3             14.4            21.1 
-     3 ADJ                  13.1             10.4             15.2            14.4 
-     4 PRON                  4.88             2.7              7.91            8.89
-     5 VERB_inf              2.98             3.33             1.92            0.96
-     6 ADV                   2.36             0.99             4.48            1.29
-     7 VERB_imp              0.81             1.08             0.06            2.1 
-     8 VERB_prich            1.01             0.36             0.7             1.77
-     9 VERB_deeprich         0.7              0.36             0.81            0.57
-    10 PART                  0.08             0.27             0.29            0.14
-    11 INTJ                 NA               NA               NA              NA   
-    12 CONJ                  0.04            NA               NA              NA   
-    13 NUM                   0.04             0.09            NA              NA   
-    14 ADP                   0.04            NA               NA               0.05
-    # ℹ 2 more variables: `Шахова Е.Н.` <dbl>, `Суханов М.Д.` <dbl>
-
-``` r
 # pos groups
 words_authors %>% 
-  filter(author_name %in% authors) %>% 
+  filter(author_name %in% author_v) %>% 
   group_by(author_name) %>% 
   count(pos_group) %>% 
   left_join(authors_total, by = "author_name") %>% 
@@ -1707,20 +1763,12 @@ words_authors %>%
   pivot_wider(names_from = author_name, values_from = perc) 
 ```
 
-    # A tibble: 3 × 7
-      pos_group `Лермонтов М.Ю.` `Зилов А.М.` `Тепляков В.Г.` `Шахова Е.Н.`
-      <chr>                <dbl>        <dbl>           <dbl>         <dbl>
-    1 declined             78.0         76.7            73.8          72.2 
-    2 verbs                16.4         20.1            24.2          23.4 
-    3 other                 5.58         3.25            2.05          4.44
-    # ℹ 2 more variables: `Слепушкин Ф.Н.` <dbl>, `Суханов М.Д.` <dbl>
-
 Clausulas
 
 ``` r
 # total clausulas
 authors_closures <- words_authors %>% 
-  filter(author_name %in% authors) %>% 
+  filter(author_name %in% author_v) %>% 
   count(author_name, closure) %>% 
   mutate(author_closure = paste0(author_name, "__", closure)) %>% 
   select(-author_name, -closure) %>% 
@@ -1728,7 +1776,7 @@ authors_closures <- words_authors %>%
 
 # pos separately
 words_authors %>% 
-  filter(author_name %in% authors & closure %in% c("masc", "fem")) %>% 
+  filter(author_name %in% author_v & closure %in% c("masc", "fem")) %>% 
   group_by(author_name) %>% 
   count(pos, closure) %>% 
   ungroup() %>% 
@@ -1737,33 +1785,28 @@ words_authors %>%
   
   mutate(author_closure = paste0(author_name, "__", closure)) %>% 
   left_join(authors_closures, by = "author_closure") %>% 
-  mutate(perc_closure = round( (n/total_closure)*100, 2 )) %>% 
+  mutate(perc_closure = round( (n/total_closure)*100, 1 )) %>% 
   
   select(-n, -total_closure, -author_closure) %>% 
   arrange(desc(perc_closure)) %>% 
-  pivot_wider(names_from = author_name, values_from = perc_closure) 
+  filter(pos %in% c("NOUN", "VERB", "ADJ", "PRON", "ADV")) %>% 
+  pivot_wider(names_from = author_name, values_from = perc_closure) %>% 
+  filter(closure == "fem")
 ```
 
-    # A tibble: 25 × 8
-       pos    closure `Слепушкин Ф.Н.` `Зилов А.М.` `Лермонтов М.Ю.` `Тепляков В.Г.`
-       <chr>  <chr>              <dbl>        <dbl>            <dbl>           <dbl>
-     1 NOUN   masc               64.4         59.0             54.9            53.6 
-     2 NOUN   fem                51.5         56.5             55.7            44.0 
-     3 VERB   fem                29.3         15.1             13.8            25.1 
-     4 ADJ    fem                13.8         22.6             19.6            19.5 
-     5 VERB   masc               16.0         17.3             15.5            17.1 
-     6 PRON   masc                3.85         8.54            14.1            16.5 
-     7 ADJ    masc                5.96         4.6              7.52            9.03
-     8 VERB_… masc                5.77         5.4              3.08            0.97
-     9 ADV    fem                 0.71         2.42             5.74            1.54
-    10 VERB_… masc                1.35         1.39             0.11            1.07
-    # ℹ 15 more rows
-    # ℹ 2 more variables: `Шахова Е.Н.` <dbl>, `Суханов М.Д.` <dbl>
+    # A tibble: 5 × 5
+      pos   closure `Слепушкин Ф.Н.` `Некрасов Н.А.` `Мейснер А.`
+      <chr> <chr>              <dbl>           <dbl>        <dbl>
+    1 NOUN  fem                 51.7            64.5         57.7
+    2 VERB  fem                 30.6             9.1         13.8
+    3 ADJ   fem                 13.6            15.7         18.5
+    4 ADV   fem                  0.8             5.4          4.8
+    5 PRON  fem                  1.7             0.7          1.1
 
 ``` r
 # pos groups
 words_authors %>% 
-  filter(author_name %in% authors & closure %in% c("masc", "fem")) %>% 
+  filter(author_name %in% author_v & closure %in% c("masc", "fem")) %>% 
   group_by(author_name) %>% 
   count(pos_group, closure) %>% 
   ungroup() %>% 
@@ -1772,24 +1815,22 @@ words_authors %>%
   
   mutate(author_closure = paste0(author_name, "__", closure)) %>% 
   left_join(authors_closures, by = "author_closure") %>% 
-  mutate(perc_closure = round( (n/total_closure)*100, 2 )) %>% 
+  mutate(perc_closure = round( (n/total_closure)*100, 1 )) %>% 
   
   select(-n, -total_closure, -author_closure) %>% 
   arrange(desc(perc_closure)) %>% 
   pivot_wider(names_from = author_name, values_from = perc_closure) 
 ```
 
-    # A tibble: 6 × 8
-      pos_group closure `Зилов А.М.` `Тепляков В.Г.` `Лермонтов М.Ю.`
-      <chr>     <chr>          <dbl>           <dbl>            <dbl>
-    1 declined  fem            81.4            68.2             78.2 
-    2 declined  masc           72.5            79.4             76.6 
-    3 verbs     fem            15.5            29.1             14.6 
-    4 verbs     masc           24.1            19.1             18.7 
-    5 other     fem             3.09            2.69             7.17
-    6 other     masc            3.43            1.46             4.67
-    # ℹ 3 more variables: `Слепушкин Ф.Н.` <dbl>, `Шахова Е.Н.` <dbl>,
-    #   `Суханов М.Д.` <dbl>
+    # A tibble: 6 × 5
+      pos_group closure `Некрасов Н.А.` `Мейснер А.` `Слепушкин Ф.Н.`
+      <chr>     <chr>             <dbl>        <dbl>            <dbl>
+    1 declined  fem                81.8         79.6             67.2
+    2 declined  masc               72.9         79.1             74.7
+    3 verbs     fem                10.7         14.5             31.9
+    4 verbs     masc               22           15.2             22.8
+    5 other     fem                 7.5          5.9              0.9
+    6 other     masc                5.1          5.7              2.5
 
 ``` r
 rm(authors_closures, authors_total, authors)
@@ -1798,39 +1839,29 @@ rm(authors_closures, authors_total, authors)
 ### all authors scaled
 
 ``` r
-authors <- c("Крылов И.А.",
-             "Баратынский Е.А.", "Тепляков В.Г.",
-             "Пушкин А.С.",
-             "Лермонтов М.Ю.",
-
-             "Бенедиктов В.Г.", "Тимофеев А.В.", "Бернет Е.",
-
-             "Зилов А.М.",
-             "Суханов М.Д.", "Слепушкин Ф.Н.",
-             "Шахова Е.Н."
+author_v <- c("Баратынский Е.А.", "Козлов И.И.", "Ростопчина Е.П.",
+              "Бенедиктов В.Г.", "Бернет Е.", "Шахова Е.Н.",
+              "Слепушкин Ф.Н.",  "Мейснер А.", "Некрасов Н.А."
              )
 
 authors_total <- words_authors %>% 
-  filter(author_name %in% authors) %>% 
+  filter(author_name %in% author_v) %>% 
   count(author_name) %>% 
   rename(total = n)
 
 authors_total
 ```
 
-            author_name total
-    1  Баратынский Е.А.  3828
-    2   Бенедиктов В.Г.  4009
-    3         Бернет Е.  3913
-    4        Зилов А.М.  2584
-    5       Крылов И.А.  6397
-    6    Лермонтов М.Ю.  1719
-    7       Пушкин А.С.  1477
-    8    Слепушкин Ф.Н.  1111
-    9      Суханов М.Д.  2072
-    10    Тепляков В.Г.  2093
-    11    Тимофеев А.В.  2969
-    12      Шахова Е.Н.  3088
+           author_name total
+    1 Баратынский Е.А.  3432
+    2  Бенедиктов В.Г.  1547
+    3        Бернет Е.  2249
+    4      Козлов И.И.  1474
+    5       Мейснер А.  1848
+    6    Некрасов Н.А.  1896
+    7  Ростопчина Е.П.  1396
+    8   Слепушкин Ф.Н.  1037
+    9      Шахова Е.Н.  2005
 
 ``` r
 top_authors <- words_authors %>% count(author_name, sort = T) %>% filter(n > 1000) %>% pull(author_name)
@@ -1854,40 +1885,39 @@ a <- words_authors %>%
   count(pos) %>% 
   pivot_wider(names_from = pos, values_from = n) %>% select(author_name)
 
-cbind(a, as.tibble(scale(v))) %>% filter(author_name %in% authors) 
+cbind(a, as.tibble(scale(v))) %>% filter(author_name %in% author_v) 
 ```
 
     Warning: `as.tibble()` was deprecated in tibble 2.0.0.
     ℹ Please use `as_tibble()` instead.
     ℹ The signature and semantics have changed, see `?as_tibble`.
 
-    # A tibble: 12 × 10
-    # Groups:   author_name [12]
-       author_name         ADJ     ADV   NOUN    PRON    VERB VERB_inf VERB_imp
-       <chr>             <dbl>   <dbl>  <dbl>   <dbl>   <dbl>    <dbl>    <dbl>
-     1 Баратынский Е.А.  0.160  0.0946 -0.344  2.66   -0.734    -0.916   0.0264
-     2 Бенедиктов В.Г.   0.323 -0.460   0.468 -0.393  -0.431    -0.759  -0.291 
-     3 Бернет Е.        -0.983  0.0946  1.29  -1.21   -0.347     0.132  -0.132 
-     4 Зилов А.М.        0.568 -0.0902  0.454 -1.25   -0.297     0.447   0.0264
-     5 Крылов И.А.      -1.47   2.78   -1.04  -0.216   0.678     2.80    1.45  
-     6 Лермонтов М.Ю.    0.786  0.834   0.625  0.0685 -0.868    -0.392  -1.40  
-     7 Пушкин А.С.      -0.275  1.11    0.212 -0.251   0.0392   -0.444   0.343 
-     8 Слепушкин Ф.Н.   -0.602 -1.48    0.924 -1.89    0.678     0.237   0.0264
-     9 Суханов М.Д.     -1.34   0.649  -1.61   1.24    1.32      0.971   3.36  
-    10 Тепляков В.Г.     0.160 -1.38   -0.301  0.282   0.628    -0.759   0.977 
-    11 Тимофеев А.В.    -0.983  0.742   0.297 -0.891   0.644    -0.182   0.502 
-    12 Шахова Е.Н.       0.868  0.372  -0.786  0.850   0.106     0.289  -0.608 
+    # A tibble: 9 × 10
+    # Groups:   author_name [9]
+      author_name          ADJ      ADV    NOUN   PRON   VERB VERB_inf VERB_imp
+      <chr>              <dbl>    <dbl>   <dbl>  <dbl>  <dbl>    <dbl>    <dbl>
+    1 Баратынский Е.А. -0.0804  0.161    0.0229  2.51  -0.894   -1.05    -0.639
+    2 Бенедиктов В.Г.   0.354   0.0789   0.437  -0.485 -0.386   -0.707   -0.383
+    3 Бернет Е.        -0.623  -0.412    1.01   -1.17  -0.168   -0.113    0.255
+    4 Козлов И.И.       1.33   -0.903   -0.458   0.400 -0.313   -0.410   -0.894
+    5 Мейснер А.       -0.0804  1.39     1.22   -0.758 -1.05    -0.757    0    
+    6 Некрасов Н.А.     0.0281  1.63     0.704   0.230 -1.10    -0.262    0.766
+    7 Ростопчина Е.П.   2.04   -0.821   -1.93    2.14   0.341    0.481   NA    
+    8 Слепушкин Ф.Н.   -0.542  -1.39     0.877  -1.71   0.631    0.134   -0.255
+    9 Шахова Е.Н.       1.17   -0.00292 -0.858   0.468  0.137    0.432    0.255
     # ℹ 2 more variables: VERB_prich <dbl>, VERB_deeprich <dbl>
 
 ``` r
-cbind(a, as.tibble(scale(v))) %>% filter(author_name %in% authors) %>% 
+cbind(a, as.tibble(scale(v))) %>% filter(author_name %in% author_v) %>% 
   pivot_longer(!author_name, names_to = "pos", values_to = "z_score") %>% 
   ggplot(aes(x = author_name, y = z_score, fill = pos)) + 
   geom_col(position = "dodge", width = 0.5) + 
   theme(axis.text.x = element_text(angle = 90))
 ```
 
-![](05_4_rhyme_morhp_words.markdown_strict_files/figure-markdown_strict/unnamed-chunk-61-1.png)
+    Warning: Removed 1 rows containing missing values (`geom_col()`).
+
+![](05_4_rhyme_morhp_words.markdown_strict_files/figure-markdown_strict/unnamed-chunk-66-1.png)
 
 Masc clausula
 
@@ -1896,13 +1926,13 @@ Masc clausula
 top_authors <- words_authors %>% 
   filter(closure == "masc") %>% 
   count(author_name, sort = T) %>% 
-  filter(n > 500) %>% 
+  filter(n > 300) %>% 
   pull(author_name)
 
 v <- words_authors %>% 
   filter(author_name %in% top_authors & closure == "masc") %>% 
   group_by(author_name) %>% 
-  sample_n(500) %>% 
+  sample_n(300) %>% 
   count(pos) %>% 
   ungroup() %>% 
   pivot_wider(names_from = pos, values_from = n) %>% 
@@ -1914,29 +1944,26 @@ a <- words_authors %>%
   count(pos) %>% 
   pivot_wider(names_from = pos, values_from = n) %>% select(author_name)
 
-cbind(a, as.tibble(scale(v))) %>% filter(author_name %in% authors) 
+cbind(a, as.tibble(scale(v))) %>% filter(author_name %in% author_v) 
 ```
 
-    # A tibble: 12 × 10
-    # Groups:   author_name [12]
-       author_name          ADJ     ADV    NOUN    PRON    VERB VERB_inf VERB_imp
-       <chr>              <dbl>   <dbl>   <dbl>   <dbl>   <dbl>    <dbl>    <dbl>
-     1 Баратынский Е.А.  0.248   0.0373  0.0234  1.91   -1.50    -1.16   -0.255  
-     2 Бенедиктов В.Г.  -0.255   0.0373  0.992  -0.671  -0.736   -0.460  -0.255  
-     3 Бернет Е.         0.0470 -0.115   1.28   -1.62   -0.481   -0.0142  1.24   
-     4 Зилов А.М.       -0.457   0.0373  1.05   -1.02   -0.227    0.177  -0.255  
-     5 Крылов И.А.      -0.457   2.78   -0.461  -0.283  -0.142    0.623  -0.00580
-     6 Лермонтов М.Ю.    0.349   0.800   0.679  -0.0249 -0.524   -0.269  NA      
-     7 Пушкин А.С.       0.450   0.952  -0.290   0.406  -0.0998  -0.396  -0.255  
-     8 Слепушкин Ф.Н.    0.0470 -1.03    1.82   -2.22   -0.312    0.559  -0.255  
-     9 Суханов М.Д.     -0.0537  0.190  -1.49    0.793   0.663   -0.0778  2.99   
-    10 Тепляков В.Г.     1.76   -1.64    0.365   0.535  -0.227   -0.969  -1.00   
-    11 Тимофеев А.В.    -0.255   1.41    0.593  -1.02    0.324   -0.524  -0.255  
-    12 Шахова Е.Н.       1.46   -0.725  -1.12    1.65   -0.863    0.304   0.992  
-    # ℹ 2 more variables: VERB_prich <dbl>, VERB_deeprich <dbl>
+    # A tibble: 9 × 10
+    # Groups:   author_name [9]
+      author_name      ADJ    ADV   NOUN   PRON    VERB VERB_inf VERB_imp VERB_prich
+      <chr>          <dbl>  <dbl>  <dbl>  <dbl>   <dbl>    <dbl>    <dbl>      <dbl>
+    1 Баратынский … -0.132 -0.505 -0.430  2.37  -1.29     -0.943   -0.192    0.261  
+    2 Бенедиктов В…  0.436 -0.243  0.643 -0.357 -0.255    -0.734   -1.12    -0.00686
+    3 Бернет Е.     -0.273 -0.243  0.347 -1.47  -0.118     1.25     1.66     0.261  
+    4 Козлов И.И.    2.14  -0.243 -1.02  -0.233  0.0196    0.729   -1.12     2.94   
+    5 Мейснер А.    -0.699  1.07   1.49  -0.976 -1.49     -0.525    0.426    0.528  
+    6 Некрасов Н.А. -1.27   0.542 -0.430  0.572 -0.118     0.206    0.735    1.60   
+    7 Ростопчина Е…  0.577 -0.505 -1.91   1.93   1.05      0.415   -1.12     1.33   
+    8 Слепушкин Ф.…  0.436 -0.505  1.31  -1.66  -0.324     0.415   -1.12    NA      
+    9 Шахова Е.Н.    0.861 -1.03  -0.874  0.510 -0.0491    1.04     0.735   -0.00686
+    # ℹ 1 more variable: VERB_deeprich <dbl>
 
 ``` r
-cbind(a, as.tibble(scale(v))) %>% filter(author_name %in% authors) %>% 
+cbind(a, as.tibble(scale(v))) %>% filter(author_name %in% author_v) %>% 
   pivot_longer(!author_name, names_to = "pos", values_to = "z_score") %>% 
   ggplot(aes(x = author_name, y = z_score, fill = pos)) + 
   geom_col(position = "dodge", width = 0.5) + 
@@ -1944,9 +1971,59 @@ cbind(a, as.tibble(scale(v))) %>% filter(author_name %in% authors) %>%
   labs(title = "Masculine rhymes")
 ```
 
-    Warning: Removed 4 rows containing missing values (`geom_col()`).
+    Warning: Removed 3 rows containing missing values (`geom_col()`).
 
-![](05_4_rhyme_morhp_words.markdown_strict_files/figure-markdown_strict/unnamed-chunk-62-1.png)
+![](05_4_rhyme_morhp_words.markdown_strict_files/figure-markdown_strict/unnamed-chunk-67-1.png)
+
+``` r
+words_authors %>% 
+  filter(closure == "masc" & pos == "ADJ") %>% sample_n(10)
+```
+
+         text_id meter       rhyme_alph     word  word_acc stress_pattern
+    1      P_227  Iamb     мной морской  морской  морско'й             01
+    2      P_110  Iamb        нем огнем      нем      не'м              1
+    3  C_142__11  Iamb       должна она   должна   должна'             01
+    4   C_207__7  Iamb       готов слов    готов    гото'в             01
+    5      P_921  Iamb красотой луговой  луговой  лугово'й            001
+    6      P_676  Iamb      мной ночной   ночной   ночно'й             01
+    7      P_663  Iamb      свой святой   святой   свято'й             01
+    8     P_1425  Iamb      сатрап слаб     слаб     сла'б              1
+    9  C_316__30  Iamb   неземной собой неземной неземно'й            001
+    10   C_68__6  Iamb     живых земных   земных   земны'х             01
+       closure_pattern closure old_tag
+    1                1    masc       A
+    2                1    masc       A
+    3                1    masc       A
+    4                1    masc       A
+    5                1    masc       A
+    6                1    masc       A
+    7                1    masc       A
+    8                1    masc       A
+    9                1    masc       A
+    10               1    masc       A
+                                                                                                         feats
+    1                           A,полн=(пр,ед,жен|дат,ед,жен|род,ед,жен|твор,ед,жен|вин,ед,муж,неод|им,ед,муж)
+    2                                                                                              A=ед,кр,муж
+    3                                                                                              A=ед,кр,жен
+    4                                                                                              A=ед,кр,муж
+    5  A=(вин,ед,полн,муж,неод|им,ед,полн,муж|пр,ед,полн,жен|дат,ед,полн,жен|род,ед,полн,жен|твор,ед,полн,жен)
+    6  A=(вин,ед,полн,муж,неод|им,ед,полн,муж|пр,ед,полн,жен|дат,ед,полн,жен|род,ед,полн,жен|твор,ед,полн,жен)
+    7  A=(вин,ед,полн,муж,неод|им,ед,полн,муж|пр,ед,полн,жен|дат,ед,полн,жен|род,ед,полн,жен|твор,ед,полн,жен)
+    8                                                                                              A=ед,кр,муж
+    9  A=(вин,ед,полн,муж,неод|им,ед,полн,муж|пр,ед,полн,жен|дат,ед,полн,жен|род,ед,полн,жен|твор,ед,полн,жен)
+    10                                                               A=(пр,мн,полн|вин,мн,полн,од|род,мн,полн)
+       ending_st pos pos_group      author_name
+    1        о'й ADJ  declined            Траум
+    2        е'м ADJ  declined  Бенедиктов В.Г.
+    3        на' ADJ  declined    Бороздна И.П.
+    4        о'в ADJ  declined    Полежаев А.И.
+    5        о'й ADJ  declined   Жуковский В.А.
+    6        о'й ADJ  declined  Ободовский П.Г.
+    7        о'й ADJ  declined       Бистром А.
+    8        а'б ADJ  declined      Крылов И.А.
+    9        о'й ADJ  declined    Некрасов Н.А.
+    10       ы'х ADJ  declined Баратынский Е.А.
 
 Feminine rhymes
 
@@ -1973,29 +2050,26 @@ a <- words_authors %>%
   count(pos) %>% 
   pivot_wider(names_from = pos, values_from = n) %>% select(author_name)
 
-cbind(a, as.tibble(scale(v))) %>% filter(author_name %in% authors) 
+cbind(a, as.tibble(scale(v))) %>% filter(author_name %in% author_v) 
 ```
 
-    # A tibble: 12 × 10
-    # Groups:   author_name [12]
-       author_name          ADJ     ADV     NOUN   PRON    VERB VERB_inf VERB_imp
-       <chr>              <dbl>   <dbl>    <dbl>  <dbl>   <dbl>    <dbl>    <dbl>
-     1 Баратынский Е.А.  0.0372 -0.310   0.265    1.70  -0.528   -0.638    -0.279
-     2 Бенедиктов В.Г.  -0.306  -0.310   0.610    0.127 -0.322   -0.496    -0.807
-     3 Бернет Е.        -1.15   -0.707   1.23    -0.773 -0.322   -0.213    -0.543
-     4 Зилов А.М.        1.07   -0.310   0.585   -1.22  -0.760   -0.780    -0.807
-     5 Крылов И.А.      -1.83    2.60   -1.31     0.127  1.48     3.61      1.30 
-     6 Лермонтов М.Ю.    0.457   2.33    0.363   -0.323 -0.811   -0.354    NA    
-     7 Пушкин А.С.      -0.0772  1.01   -0.00678  0.801 -0.0901  -0.638     0.248
-     8 Слепушкин Ф.Н.   -0.573  -1.37   -0.105    0.127  1.07    -0.213     0.248
-     9 Суханов М.Д.     -1.34   -0.310  -1.24     2.60   1.64     2.06      0.512
-    10 Тепляков В.Г.     0.686  -0.707  -0.993   -0.323  0.322    0.0709    3.15 
-    11 Тимофеев А.В.    -1.56    0.482   0.511    1.93   0.399   -0.638     0.512
-    12 Шахова Е.Н.       0.495   0.0859 -0.771    0.577  0.425    0.638    -0.807
-    # ℹ 2 more variables: VERB_prich <dbl>, VERB_deeprich <dbl>
+    # A tibble: 9 × 10
+    # Groups:   author_name [9]
+      author_name    ADJ    ADV   NOUN    PRON     VERB VERB_inf VERB_imp VERB_prich
+      <chr>        <dbl>  <dbl>  <dbl>   <dbl>    <dbl>    <dbl>    <dbl>      <dbl>
+    1 Баратынски…  0.536 -0.132  0.201  2.50   -0.772     -0.747   -0.547     1.75  
+    2 Бенедиктов…  0.127  0.609  0.139 -1.08   -0.216     -0.210   -0.547    -0.373 
+    3 Бернет Е.   -0.987 -0.751  0.947 -0.879  -0.00956   -0.747   -0.750     0.401 
+    4 Козлов И.И.  1.17  -0.751 -0.317 -0.284  -0.318     -0.747   -0.344     0.401 
+    5 Мейснер А.   0.424  1.35   0.698 -0.879  -0.875     -0.881   -0.750     0.401 
+    6 Некрасов Н… -0.541  1.85   1.63  -0.879  -1.33      -0.747   -0.344    -0.760 
+    7 Ростопчина…  1.80  -0.503 -1.17   0.113   0.299      0.193   -0.547     0.0138
+    8 Слепушкин … -0.727 -1.25   0.201 -0.0851  0.814     -0.344   -0.547    -1.53  
+    9 Шахова Е.Н.  0.684  0.609 -0.524 -1.08    0.361      0.193   NA        -0.373 
+    # ℹ 1 more variable: VERB_deeprich <dbl>
 
 ``` r
-cbind(a, as.tibble(scale(v))) %>% filter(author_name %in% authors) %>% 
+cbind(a, as.tibble(scale(v))) %>% filter(author_name %in% author_v) %>% 
   pivot_longer(!author_name, names_to = "pos", values_to = "z_score") %>% 
   ggplot(aes(x = author_name, y = z_score, fill = pos)) + 
   geom_col(position = "dodge", width = 0.5) + 
@@ -2003,9 +2077,9 @@ cbind(a, as.tibble(scale(v))) %>% filter(author_name %in% authors) %>%
   labs(title = "Feminine rhymes")
 ```
 
-    Warning: Removed 1 rows containing missing values (`geom_col()`).
+    Warning: Removed 2 rows containing missing values (`geom_col()`).
 
-![](05_4_rhyme_morhp_words.markdown_strict_files/figure-markdown_strict/unnamed-chunk-63-1.png)
+![](05_4_rhyme_morhp_words.markdown_strict_files/figure-markdown_strict/unnamed-chunk-69-1.png)
 
 ``` r
 glimpse(v)
@@ -2022,11 +2096,14 @@ proj <- umap(d[1:5], data = "dist")
 ```
 
 ``` r
-rm(a, authors_closures, authors_total,words_authors, authors, closures, top_authors, total_meter)
+rm(a, authors_closures, authors_total,words_authors, authors, author_v, closures, top_authors, total_meter)
 ```
 
     Warning in rm(a, authors_closures, authors_total, words_authors, authors, :
     object 'authors_closures' not found
+
+    Warning in rm(a, authors_closures, authors_total, words_authors, authors, :
+    object 'authors' not found
 
 ## blanc verse
 
@@ -2361,6 +2438,8 @@ rnc_i3_pos <- rnc_i3 %>%
   count(pos) %>% 
   rename(rnc_i3 = n) %>% 
   mutate(perc_rnc_i3 = round( (rnc_i3/rnc_i3_total)*100, 2 ))
+
+rnc_i3_pos
 ```
 
 i3 kulmann POS
@@ -2371,7 +2450,7 @@ total_k <- nrow(k_ew_pos)
 k_ew_pos %>% 
   count(pos) %>% 
   rename(n_kulmann = n) %>% 
-  mutate(perc_kulmann = round( (n_kulmann/total_k)*100 , 2)) %>% 
+  mutate(perc_kulmann = round( (n_kulmann/total_k)*100 , 1)) %>% 
   left_join(i3_rhymed, by = "pos") %>% 
   left_join(iambs_rhymed, by = "pos") %>% 
   #left_join(rnc_i3_pos, by = "pos") %>% 
@@ -2382,16 +2461,16 @@ k_ew_pos %>%
 ```
 
                  pos perc_kulmann perc_rhyme_i3 perc_rhyme_iambs
-    1           NOUN        52.58         55.19            51.10
-    2           VERB        13.72         18.12            21.41
-    3            ADJ        17.94         17.30            17.09
-    4     VERB_prich         2.88          3.10             1.81
-    5            ADV         4.33          2.09             3.07
-    6           PRON         2.99          1.73             1.97
-    7  VERB_deeprich         3.05          1.09             1.58
-    8       VERB_inf         1.31          0.64             1.15
-    9       VERB_imp         0.52          0.46             0.62
-    10           NUM         0.27          0.18             0.08
-    11          PART         0.32          0.09             0.06
-    12          CONJ         0.01            NA             0.01
-    13          <NA>         0.06            NA               NA
+    1           NOUN         52.6         55.19            51.10
+    2           VERB         13.7         18.12            21.41
+    3            ADJ         17.9         17.30            17.09
+    4     VERB_prich          2.9          3.10             1.81
+    5            ADV          4.3          2.09             3.07
+    6           PRON          3.0          1.73             1.97
+    7  VERB_deeprich          3.0          1.09             1.58
+    8       VERB_inf          1.3          0.64             1.15
+    9       VERB_imp          0.5          0.46             0.62
+    10           NUM          0.3          0.18             0.08
+    11          PART          0.3          0.09             0.06
+    12          CONJ          0.0            NA             0.01
+    13          <NA>          0.1            NA               NA

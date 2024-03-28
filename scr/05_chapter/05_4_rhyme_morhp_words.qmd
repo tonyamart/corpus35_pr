@@ -185,10 +185,10 @@ head(word_1, 10)
 
 # check errors
 word_1 %>% 
-  filter(is.na(word_acc))
+  filter(is.na(word_acc)) %>% head()
 
 word_1 %>% 
-  filter(is.na(pos))
+  filter(is.na(pos)) %>% head()
 
 # remove errors
 word_1 <- word_1 %>% 
@@ -209,10 +209,10 @@ head(word_2, 10)
 
 # check errors
 word_2 %>% 
-  filter(is.na(word_acc))
+  filter(is.na(word_acc)) %>% head()
 
 word_2 %>% 
-  filter(is.na(pos))
+  filter(is.na(pos)) %>% head()
 
 # remove errors
 word_2 <- word_2 %>% 
@@ -372,15 +372,7 @@ all_words %>%
 
 ### POS distribution in meters / endings
 
--   add pos accodring to Shaw groups
-
--   separate periodicals / books to compare
-
--   in comparison to Shaw's data we provide more texts & a more detailed divisions in terms of meters & clausulas usage
-
--   Worth has some very detailed rhyme stats, might be interesting to add somewhere (but not really important)
-
-#### tab. 5.2.1 - all meters together
+#### tab. 5.2.1 - all meters & clausulas together
 
 ```{r}
 all_words %>% 
@@ -388,36 +380,6 @@ all_words %>%
   count(pos) %>% 
   mutate(perc_total = round(
     n / nrow(all_words %>% filter(closure != "other")) * 100, 
-    2))
-```
-
-Periodicals vs Books
-
-```{r}
-# periodicals
-
-all_words %>% 
-  mutate(corpus = str_extract(text_id, "^\\w")) %>% 
-  filter(corpus == "P" & closure != "other") %>% 
-  count(pos) %>% 
-  mutate(perc_total = round(
-    n / nrow(
-      all_words %>% mutate(corpus = str_extract(text_id, "^\\w")) %>% 
-          filter(corpus == "P" & closure != "other")
-  ) * 100, 
-    2))
-
-
-# books
-all_words %>% 
-  mutate(corpus = str_extract(text_id, "^\\w")) %>% 
-  filter(corpus == "C" & closure != "other") %>% 
-  count(pos) %>% 
-  mutate(perc_total = round(
-    n / nrow(
-      all_words %>% mutate(corpus = str_extract(text_id, "^\\w")) %>% 
-          filter(corpus == "C" & closure != "other")
-  ) * 100, 
     2))
 ```
 
@@ -493,65 +455,22 @@ all_words %>%
   mutate(perc_iamb_clos = round((n / total_closure) * 100, 2 )) %>% 
   select(-total_closure, -meter) %>% 
   filter(closure == "fem")
-```
 
-Periodicals vs Books
-
-```{r}
-total_corpus <- all_words %>% 
-  filter(meter == "Iamb" & closure %in% c("masc", "fem")) %>% 
-  mutate(corpus = str_extract(text_id, "^\\w")) %>%
-  count(corpus, closure) %>% 
-  rename(total_closure = n) %>% 
-  mutate(corpus_closure = paste0(corpus, "_", closure))
-
-total_corpus
-```
-
-Masc
-
-```{r}
 all_words %>% 
-  mutate(corpus = str_extract(text_id, "^\\w"),
-         corpus_closure = paste0(corpus, "_", closure)) %>%
-  #filter(corpus == "P") %>% 
-  filter(meter == "Iamb" & closure %in% c("masc", "fem")) %>% 
-  group_by(corpus_closure) %>% 
-  count(pos) %>% 
+  filter(meter == "Iamb" & closure != "other") %>% 
+  group_by(meter, closure) %>% 
+  count(meter, pos) %>% 
   ungroup() %>% 
   #left_join(total_meter, by = "meter") %>% 
   
   # percentage of all words in iamb
   #mutate(perc_all_iambic = round((n / total) * 100, 2 )) # %>% 
-  left_join(total_corpus, by = "corpus_closure") %>% 
+  left_join(iamb_closures, by = "closure") %>% 
   # 
   # # percentage of word of particular clausula type
   mutate(perc_iamb_clos = round((n / total_closure) * 100, 2 )) %>% 
-  select(-corpus_closure, -total_closure) %>% 
-  filter(closure == "masc")
-```
-
-Fem
-
-```{r}
-all_words %>% 
-  mutate(corpus = str_extract(text_id, "^\\w"),
-         corpus_closure = paste0(corpus, "_", closure)) %>%
-  #filter(corpus == "P") %>% 
-  filter(meter == "Iamb" & closure %in% c("masc", "fem")) %>% 
-  group_by(corpus_closure) %>% 
-  count(pos) %>% 
-  ungroup() %>% 
-  #left_join(total_meter, by = "meter") %>% 
-  
-  # percentage of all words in iamb
-  #mutate(perc_all_iambic = round((n / total) * 100, 2 )) # %>% 
-  left_join(total_corpus, by = "corpus_closure") %>% 
-  # 
-  # # percentage of word of particular clausula type
-  mutate(perc_iamb_clos = round((n / total_closure) * 100, 2 )) %>% 
-  select(-corpus_closure, -total_closure) %>% 
-  filter(closure == "fem")
+  select(-total_closure, -meter) %>% 
+  filter(closure == "dactylic")
 ```
 
 #### trochee
@@ -655,27 +574,6 @@ all_words %>%
   select(-total_closure, -meter)
 ```
 
-```{r}
-total_corpus
-
-all_words %>% 
-  mutate(corpus = str_extract(text_id, "^\\w"),
-         corpus_closure = paste0(corpus, "_", closure)) %>% 
-  filter(meter == "Iamb" & closure %in% c("fem", "masc")) %>% 
-  group_by(corpus_closure) %>% 
-  count(pos_group) %>% 
-  ungroup() %>% 
-  #left_join(total_meter, by = "meter") %>% 
-  
-  # percentage of all words in iamb
-  #mutate(perc_all_iambic = round((n / total) * 100, 2 )) # %>% 
-  left_join(total_corpus, by = "corpus_closure") %>% 
-  # 
-  # # percentage of word of particular clausula type
-  mutate(perc_iamb_clos = round((n / total_closure) * 100, 2 )) %>% 
-  select(-total_closure)
-```
-
 #### trochee
 
 Total POS
@@ -727,15 +625,17 @@ all_words %>%
 
 ```
 
-Store totals
+Store totals & filter only iambs for Table 5.2.2
 
 ```{r}
 cp_total <- all_words %>% 
+  filter(meter == "Iamb") %>% 
   mutate(corpus = str_extract(text_id, "^\\w")) %>% 
   count(corpus) %>% 
   rename(total = n)
 
 cp_clausulas <- all_words %>% 
+  filter(meter == "Iamb") %>% 
   mutate(corpus = str_extract(text_id, "^\\w")) %>% 
   count(corpus, closure) %>% 
   mutate(corpus_closure = paste0(corpus, "__", closure)) %>% 
@@ -747,6 +647,7 @@ All POS
 
 ```{r}
 all_words %>% 
+  filter(meter == "Iamb") %>% 
   mutate(corpus = str_extract(text_id, "^\\w")) %>% 
   count(corpus, pos) %>% 
   left_join(cp_total, by = "corpus") %>% 
@@ -760,6 +661,7 @@ By clausula
 
 ```{r}
 all_words %>% 
+  filter(meter == "Iamb") %>% 
   mutate(corpus = str_extract(text_id, "^\\w")) %>% 
   count(corpus, pos, closure) %>% 
   mutate(corpus_closure = paste0(corpus, "__", closure)) %>% 
@@ -771,6 +673,24 @@ all_words %>%
   arrange(desc(perc_closure)) %>% 
   pivot_wider(names_from = corpus_closure, values_from = perc_closure) %>% 
   select(pos, P__fem, C__fem, P__masc, C__masc)
+```
+
+POS groups
+
+```{r}
+all_words %>% 
+  filter(meter == "Iamb") %>% 
+  mutate(corpus = str_extract(text_id, "^\\w")) %>% 
+  count(corpus, pos_group, closure) %>% 
+  mutate(corpus_closure = paste0(corpus, "__", closure)) %>% 
+  left_join(cp_clausulas, by = "corpus_closure") %>% 
+  #select(-corpus_closure) %>% 
+  mutate(perc_closure = round( (n/total_closure)*100, 2 )) %>% 
+  filter(closure %in% c("masc", "fem")) %>% 
+  select(-corpus, -closure, -total_closure, -n) %>% 
+  arrange(desc(perc_closure)) %>% 
+  pivot_wider(names_from = corpus_closure, values_from = perc_closure) %>% 
+  select(pos_group, P__fem, C__fem, P__masc, C__masc)
 ```
 
 ```{r}
@@ -798,48 +718,44 @@ authors <- meta %>%
 # attach authors to rhyme words
 glimpse(all_words)
 all_words %>% 
+  filter(meter == "Iamb") %>% 
   left_join(authors, by = "text_id") %>% 
-  count(author_name, sort = T) %>% head(30) # quick view
+  filter(!is.na(author_name)) %>% 
+  count(author_name, sort = T) %>% head(40) # quick view
 
 # attachment & removal of NA
 words_authors <- all_words %>% 
+  # leave only iambic endings 
+  filter(meter == "Iamb") %>% 
   left_join(authors %>% select(-A_ID), by = "text_id") %>% 
   filter(!is.na(author_name))
 
-words_authors %>% 
-  filter(author_name == "Кульман Е.Б.")
+# words_authors %>% 
+#   filter(author_name == "Кульман Е.Б.")
 ```
 
 ### selection
 
-#### canonical
+#### pushkin-like verse
 
 ```{r}
-# authors <- c("Жуковский В.А.", "Крылов И.А.", 
-#              "Баратынский Е.А.", "Тепляков В.Г.",
-#              "Пушкин А.С.",
-#              "Лермонтов М.Ю.",
-#              
-#              "Бенедиктов В.Г.", "Тимофеев А.В.", "Бернет Е.",
-#              
-#              "Зилов А.М.", 
-#              "Суханов М.Д.", "Слепушкин Ф.Н.", 
-#              "Шахова Е.Н."
-#              )
-
-authors <- c("Крылов И.А.", "Пушкин А.С.", "Баратынский Е.А." )
+author_v <- c("Баратынский Е.А.", "Козлов И.И.", "Ростопчина Е.П.")
 ```
 
 ```{r}
 authors_total <- words_authors %>% 
-  filter(author_name %in% authors) %>% 
+  filter(author_name %in% author_v) %>% 
   count(author_name) %>% 
   rename(total = n)
+
+authors_total
 ```
 
-```{r}
+Total POS (without masc/fem devision
+
+```{r, eval=FALSE}
 words_authors %>% 
-  filter(author_name %in% authors) %>% 
+  filter(author_name %in% author_v) %>% 
   group_by(author_name) %>% 
   count(pos) %>% 
   left_join(authors_total, by = "author_name") %>% 
@@ -851,7 +767,7 @@ words_authors %>%
 
 ```{r}
 words_authors %>% 
-  filter(author_name %in% authors) %>% 
+  filter(author_name %in% author_v) %>% 
   group_by(author_name) %>% 
   count(pos_group) %>% 
   left_join(authors_total, by = "author_name") %>% 
@@ -865,7 +781,7 @@ Clausulas
 
 ```{r}
 authors_closures <- words_authors %>% 
-  filter(author_name %in% authors) %>% 
+  filter(author_name %in% author_v) %>% 
   count(author_name, closure) %>% 
   mutate(author_closure = paste0(author_name, "__", closure)) %>% 
   select(-author_name, -closure) %>% 
@@ -874,7 +790,7 @@ authors_closures <- words_authors %>%
 
 ```{r}
 words_authors %>% 
-  filter(author_name %in% authors & closure %in% c("masc", "fem")) %>% 
+  filter(author_name %in% author_v & closure %in% c("masc", "fem")) %>% 
   group_by(author_name) %>% 
   count(pos, closure) %>% 
   ungroup() %>% 
@@ -883,16 +799,17 @@ words_authors %>%
   
   mutate(author_closure = paste0(author_name, "__", closure)) %>% 
   left_join(authors_closures, by = "author_closure") %>% 
-  mutate(perc_closure = round( (n/total_closure)*100, 2 )) %>% 
+  mutate(perc_closure = round( (n/total_closure)*100, 1 )) %>% 
   
   select(-n, -total_closure, -author_closure) %>% 
   arrange(desc(perc_closure)) %>% 
-  pivot_wider(names_from = author_name, values_from = perc_closure) %>% head(27)
+  filter(pos %in% c("NOUN", "VERB", "ADJ", "PRON", "ADV")) %>% 
+  pivot_wider(names_from = author_name, values_from = perc_closure)
 ```
 
 ```{r}
 words_authors %>% 
-  filter(author_name %in% authors & closure %in% c("masc", "fem")) %>% 
+  filter(author_name %in% author_v & closure %in% c("masc", "fem")) %>% 
   group_by(author_name) %>% 
   count(pos_group, closure) %>% 
   ungroup() %>% 
@@ -901,30 +818,39 @@ words_authors %>%
   
   mutate(author_closure = paste0(author_name, "__", closure)) %>% 
   left_join(authors_closures, by = "author_closure") %>% 
-  mutate(perc_closure = round( (n/total_closure)*100, 2 )) %>% 
+  mutate(perc_closure = round( (n/total_closure)*100, 1 )) %>% 
   
   select(-n, -total_closure, -author_closure) %>% 
   arrange(desc(perc_closure)) %>% 
   pivot_wider(names_from = author_name, values_from = perc_closure)
 ```
 
+```{r}
+words_authors %>% 
+  filter(author_name %in% author_v & closure %in% c("masc", "fem")) %>% 
+  filter(author_name == "Ростопчина Е.П.") %>% 
+  filter(pos == "VERB") %>% sample_n(10)
+```
+
 #### benediktov & co
 
 ```{r}
-authors <- c("Бенедиктов В.Г.", "Тимофеев А.В.", "Бернет Е." )
+author_v <- c("Бенедиктов В.Г.", "Бернет Е.", "Шахова Е.Н." )
 
 authors_total <- words_authors %>% 
-  filter(author_name %in% authors) %>% 
+  filter(author_name %in% author_v) %>% 
   count(author_name) %>% 
   rename(total = n)
+
+authors_total
 ```
 
 All POS
 
-```{r}
+```{r, eval=FALSE}
 # pos separately
 words_authors %>% 
-  filter(author_name %in% authors) %>% 
+  filter(author_name %in% author_v) %>% 
   group_by(author_name) %>% 
   count(pos) %>% 
   left_join(authors_total, by = "author_name") %>% 
@@ -935,7 +861,7 @@ words_authors %>%
 
 # pos groups
 words_authors %>% 
-  filter(author_name %in% authors) %>% 
+  filter(author_name %in% author_v) %>% 
   group_by(author_name) %>% 
   count(pos_group) %>% 
   left_join(authors_total, by = "author_name") %>% 
@@ -950,7 +876,7 @@ Clausulas
 ```{r}
 # total clausulas
 authors_closures <- words_authors %>% 
-  filter(author_name %in% authors) %>% 
+  filter(author_name %in% author_v) %>% 
   count(author_name, closure) %>% 
   mutate(author_closure = paste0(author_name, "__", closure)) %>% 
   select(-author_name, -closure) %>% 
@@ -958,7 +884,7 @@ authors_closures <- words_authors %>%
 
 # pos separately
 words_authors %>% 
-  filter(author_name %in% authors & closure %in% c("masc", "fem")) %>% 
+  filter(author_name %in% author_v & closure %in% c("masc", "fem")) %>% 
   group_by(author_name) %>% 
   count(pos, closure) %>% 
   ungroup() %>% 
@@ -967,15 +893,16 @@ words_authors %>%
   
   mutate(author_closure = paste0(author_name, "__", closure)) %>% 
   left_join(authors_closures, by = "author_closure") %>% 
-  mutate(perc_closure = round( (n/total_closure)*100, 2 )) %>% 
+  mutate(perc_closure = round( (n/total_closure)*100, 1 )) %>% 
   
   select(-n, -total_closure, -author_closure) %>% 
   arrange(desc(perc_closure)) %>% 
-  pivot_wider(names_from = author_name, values_from = perc_closure)
+  filter(pos %in% c("NOUN", "VERB", "ADJ", "PRON", "ADV")) %>% 
+  pivot_wider(names_from = author_name, values_from = perc_closure) 
 
 # pos groups
 words_authors %>% 
-  filter(author_name %in% authors & closure %in% c("masc", "fem")) %>% 
+  filter(author_name %in% author_v & closure %in% c("masc", "fem")) %>% 
   group_by(author_name) %>% 
   count(pos_group, closure) %>% 
   ungroup() %>% 
@@ -984,7 +911,7 @@ words_authors %>%
   
   mutate(author_closure = paste0(author_name, "__", closure)) %>% 
   left_join(authors_closures, by = "author_closure") %>% 
-  mutate(perc_closure = round( (n/total_closure)*100, 2 )) %>% 
+  mutate(perc_closure = round( (n/total_closure)*100, 1 )) %>% 
   
   select(-n, -total_closure, -author_closure) %>% 
   arrange(desc(perc_closure)) %>% 
@@ -994,36 +921,24 @@ words_authors %>%
 #### other authors
 
 ```{r}
-# authors <- c("Жуковский В.А.", "Крылов И.А.", 
-#              "Баратынский Е.А.", "Тепляков В.Г.",
-#              "Пушкин А.С.",
-#              "Лермонтов М.Ю.",
-#              
-#              "Бенедиктов В.Г.", "Тимофеев А.В.", "Бернет Е.",
-#              
-#              "Зилов А.М.", 
-#              "Суханов М.Д.", "Слепушкин Ф.Н.", 
-#              "Шахова Е.Н."
-#              )
-
-authors <- c("Тепляков В.Г.", "Лермонтов М.Ю.", "Зилов А.М.", "Суханов М.Д.", "Слепушкин Ф.Н.",  "Шахова Е.Н.")
+author_v <- c("Слепушкин Ф.Н.",  "Мейснер А.", "Некрасов Н.А.")
 ```
 
 All POS
 
 ```{r}
 authors_total <- words_authors %>% 
-  filter(author_name %in% authors) %>% 
+  filter(author_name %in% author_v) %>% 
   count(author_name) %>% 
   rename(total = n)
 
 authors_total
 ```
 
-```{r}
+```{r, eval=FALSE}
 # pos separately
 words_authors %>% 
-  filter(author_name %in% authors) %>% 
+  filter(author_name %in% author_v) %>% 
   group_by(author_name) %>% 
   count(pos) %>% 
   left_join(authors_total, by = "author_name") %>% 
@@ -1034,7 +949,7 @@ words_authors %>%
 
 # pos groups
 words_authors %>% 
-  filter(author_name %in% authors) %>% 
+  filter(author_name %in% author_v) %>% 
   group_by(author_name) %>% 
   count(pos_group) %>% 
   left_join(authors_total, by = "author_name") %>% 
@@ -1046,10 +961,10 @@ words_authors %>%
 
 Clausulas
 
-```{r, cols.print=10}
+```{r}
 # total clausulas
 authors_closures <- words_authors %>% 
-  filter(author_name %in% authors) %>% 
+  filter(author_name %in% author_v) %>% 
   count(author_name, closure) %>% 
   mutate(author_closure = paste0(author_name, "__", closure)) %>% 
   select(-author_name, -closure) %>% 
@@ -1057,7 +972,7 @@ authors_closures <- words_authors %>%
 
 # pos separately
 words_authors %>% 
-  filter(author_name %in% authors & closure %in% c("masc", "fem")) %>% 
+  filter(author_name %in% author_v & closure %in% c("masc", "fem")) %>% 
   group_by(author_name) %>% 
   count(pos, closure) %>% 
   ungroup() %>% 
@@ -1066,15 +981,17 @@ words_authors %>%
   
   mutate(author_closure = paste0(author_name, "__", closure)) %>% 
   left_join(authors_closures, by = "author_closure") %>% 
-  mutate(perc_closure = round( (n/total_closure)*100, 2 )) %>% 
+  mutate(perc_closure = round( (n/total_closure)*100, 1 )) %>% 
   
   select(-n, -total_closure, -author_closure) %>% 
   arrange(desc(perc_closure)) %>% 
-  pivot_wider(names_from = author_name, values_from = perc_closure) 
+  filter(pos %in% c("NOUN", "VERB", "ADJ", "PRON", "ADV")) %>% 
+  pivot_wider(names_from = author_name, values_from = perc_closure) %>% 
+  filter(closure == "fem")
 
 # pos groups
 words_authors %>% 
-  filter(author_name %in% authors & closure %in% c("masc", "fem")) %>% 
+  filter(author_name %in% author_v & closure %in% c("masc", "fem")) %>% 
   group_by(author_name) %>% 
   count(pos_group, closure) %>% 
   ungroup() %>% 
@@ -1083,7 +1000,7 @@ words_authors %>%
   
   mutate(author_closure = paste0(author_name, "__", closure)) %>% 
   left_join(authors_closures, by = "author_closure") %>% 
-  mutate(perc_closure = round( (n/total_closure)*100, 2 )) %>% 
+  mutate(perc_closure = round( (n/total_closure)*100, 1 )) %>% 
   
   select(-n, -total_closure, -author_closure) %>% 
   arrange(desc(perc_closure)) %>% 
@@ -1097,20 +1014,13 @@ rm(authors_closures, authors_total, authors)
 ### all authors scaled
 
 ```{r}
-authors <- c("Крылов И.А.",
-             "Баратынский Е.А.", "Тепляков В.Г.",
-             "Пушкин А.С.",
-             "Лермонтов М.Ю.",
-
-             "Бенедиктов В.Г.", "Тимофеев А.В.", "Бернет Е.",
-
-             "Зилов А.М.",
-             "Суханов М.Д.", "Слепушкин Ф.Н.",
-             "Шахова Е.Н."
+author_v <- c("Баратынский Е.А.", "Козлов И.И.", "Ростопчина Е.П.",
+              "Бенедиктов В.Г.", "Бернет Е.", "Шахова Е.Н.",
+              "Слепушкин Ф.Н.",  "Мейснер А.", "Некрасов Н.А."
              )
 
 authors_total <- words_authors %>% 
-  filter(author_name %in% authors) %>% 
+  filter(author_name %in% author_v) %>% 
   count(author_name) %>% 
   rename(total = n)
 
@@ -1137,9 +1047,9 @@ a <- words_authors %>%
   count(pos) %>% 
   pivot_wider(names_from = pos, values_from = n) %>% select(author_name)
 
-cbind(a, as.tibble(scale(v))) %>% filter(author_name %in% authors) 
+cbind(a, as.tibble(scale(v))) %>% filter(author_name %in% author_v) 
 
-cbind(a, as.tibble(scale(v))) %>% filter(author_name %in% authors) %>% 
+cbind(a, as.tibble(scale(v))) %>% filter(author_name %in% author_v) %>% 
   pivot_longer(!author_name, names_to = "pos", values_to = "z_score") %>% 
   ggplot(aes(x = author_name, y = z_score, fill = pos)) + 
   geom_col(position = "dodge", width = 0.5) + 
@@ -1153,13 +1063,13 @@ Masc clausula
 top_authors <- words_authors %>% 
   filter(closure == "masc") %>% 
   count(author_name, sort = T) %>% 
-  filter(n > 500) %>% 
+  filter(n > 300) %>% 
   pull(author_name)
 
 v <- words_authors %>% 
   filter(author_name %in% top_authors & closure == "masc") %>% 
   group_by(author_name) %>% 
-  sample_n(500) %>% 
+  sample_n(300) %>% 
   count(pos) %>% 
   ungroup() %>% 
   pivot_wider(names_from = pos, values_from = n) %>% 
@@ -1171,14 +1081,19 @@ a <- words_authors %>%
   count(pos) %>% 
   pivot_wider(names_from = pos, values_from = n) %>% select(author_name)
 
-cbind(a, as.tibble(scale(v))) %>% filter(author_name %in% authors) 
+cbind(a, as.tibble(scale(v))) %>% filter(author_name %in% author_v) 
 
-cbind(a, as.tibble(scale(v))) %>% filter(author_name %in% authors) %>% 
+cbind(a, as.tibble(scale(v))) %>% filter(author_name %in% author_v) %>% 
   pivot_longer(!author_name, names_to = "pos", values_to = "z_score") %>% 
   ggplot(aes(x = author_name, y = z_score, fill = pos)) + 
   geom_col(position = "dodge", width = 0.5) + 
   theme(axis.text.x = element_text(angle = 90)) + 
   labs(title = "Masculine rhymes")
+```
+
+```{r}
+words_authors %>% 
+  filter(closure == "masc" & pos == "ADJ") %>% sample_n(10)
 ```
 
 Feminine rhymes
@@ -1206,9 +1121,9 @@ a <- words_authors %>%
   count(pos) %>% 
   pivot_wider(names_from = pos, values_from = n) %>% select(author_name)
 
-cbind(a, as.tibble(scale(v))) %>% filter(author_name %in% authors) 
+cbind(a, as.tibble(scale(v))) %>% filter(author_name %in% author_v) 
 
-cbind(a, as.tibble(scale(v))) %>% filter(author_name %in% authors) %>% 
+cbind(a, as.tibble(scale(v))) %>% filter(author_name %in% author_v) %>% 
   pivot_longer(!author_name, names_to = "pos", values_to = "z_score") %>% 
   ggplot(aes(x = author_name, y = z_score, fill = pos)) + 
   geom_col(position = "dodge", width = 0.5) + 
@@ -1232,7 +1147,7 @@ proj <- umap(d[1:5], data = "dist")
 ```
 
 ```{r}
-rm(a, authors_closures, authors_total,words_authors, authors, closures, top_authors, total_meter)
+rm(a, authors_closures, authors_total,words_authors, authors, author_v, closures, top_authors, total_meter)
 ```
 
 ## blanc verse
@@ -1450,6 +1365,8 @@ rnc_i3_pos <- rnc_i3 %>%
   count(pos) %>% 
   rename(rnc_i3 = n) %>% 
   mutate(perc_rnc_i3 = round( (rnc_i3/rnc_i3_total)*100, 2 ))
+
+rnc_i3_pos
 ```
 
 i3 kulmann POS
@@ -1460,7 +1377,7 @@ total_k <- nrow(k_ew_pos)
 k_ew_pos %>% 
   count(pos) %>% 
   rename(n_kulmann = n) %>% 
-  mutate(perc_kulmann = round( (n_kulmann/total_k)*100 , 2)) %>% 
+  mutate(perc_kulmann = round( (n_kulmann/total_k)*100 , 1)) %>% 
   left_join(i3_rhymed, by = "pos") %>% 
   left_join(iambs_rhymed, by = "pos") %>% 
   #left_join(rnc_i3_pos, by = "pos") %>% 

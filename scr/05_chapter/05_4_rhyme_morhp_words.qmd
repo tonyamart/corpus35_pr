@@ -12,7 +12,7 @@ editor: visual
 library(tidyverse)
 library(tidytext)
 
-#library(kableExtra)
+# library(kableExtra)
 # library(umap)
 
 library(MetBrewer)
@@ -243,12 +243,13 @@ table(all_words$meter)
 
 Errors: hyperdactyllic edings
 
-```{r}
+```{r, eval=F}
 all_words %>% 
   filter(closure == "other") %>% 
   select(word_acc, closure_pattern) %>% 
   #distinct() %>% 
   nrow()
+# 148 words
 # mostly wrongly annotated stresses (but very small number of words)
 ```
 
@@ -1168,6 +1169,15 @@ texts <- read_csv("../../data/corpus1835/corpus1835_texts_lemm_acc.csv")
 
 kulmann_texts <- kulmann_texts %>% 
   left_join(texts %>% select(text_id, text_cln), by = "text_id")
+```
+
+```{r}
+# number of texts
+nrow(kulmann_texts)
+
+# total number of lines
+kulmann_texts %>% 
+  summarise(total_lines_kulmann = sum(n_lines))
 ```
 
 Extract endwords

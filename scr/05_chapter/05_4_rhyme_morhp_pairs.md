@@ -8,9 +8,6 @@ Load pckg
 library(tidyverse)
 library(tidytext)
 
-
-# library(umap)
-
 library(MetBrewer)
 library(patchwork)
 theme_set(theme_minimal())
@@ -37,18 +34,18 @@ table(meta$meter)
 
 ``` r
 meter_lables <- meta %>% 
-  select(text_id, meter) %>% distinct()
+  select(text_id, meter, feet) %>% distinct()
 
 head(meter_lables)
 ```
 
-      text_id   meter
-    1     P_1   Other
-    2    P_10    Iamb
-    3   P_100    Iamb
-    4  P_1000    Iamb
-    5  P_1001 Trochee
-    6  P_1002    Iamb
+      text_id   meter  feet
+    1     P_1   Other other
+    2    P_10    Iamb     3
+    3   P_100    Iamb     4
+    4  P_1000    Iamb     4
+    5  P_1001 Trochee     4
+    6  P_1002    Iamb     4
 
 Rhyme pairs
 
@@ -84,12 +81,13 @@ glimpse(rhyme_pairs)
 ```
 
     Rows: 81,247
-    Columns: 5
+    Columns: 6
     $ text_id    <chr> "P_1938", "P_1938", "P_1938", "C_156__20", "C_156__20", "C_…
     $ from       <chr> "краса", "огневым", "красавицей", "око", "силки", "стонет",…
     $ to         <chr> "небеса", "земным", "красавице", "высоко", "легки", "догони…
     $ rhyme_alph <chr> "краса небеса", "земным огневым", "красавице красавицей", "…
     $ meter      <chr> "Other", "Other", "Other", "Trochee", "Trochee", "Trochee",…
+    $ feet       <chr> "other", "other", "other", "4", "4", "4", "4", "4", "4", "4…
 
 Rhyme words
 
@@ -158,20 +156,22 @@ Attach word’s features to rhyme pairs data
 ``` r
 rhyme_pairs <- rhyme_pairs %>% 
   left_join(rhyme_words %>% 
-              select(word, closure, pos, ending_st, feats) %>% 
+              select(word, closure, pos, ending_st, feats, stress_pattern) %>% 
               rename(from = word,
                      from_closure = closure,
                      from_pos = pos,
                      from_ending = ending_st, 
-                     from_feats = feats),
+                     from_feats = feats,
+                     from_sp = stress_pattern),
             by = "from") %>% 
   left_join(rhyme_words %>% 
-              select(word, closure, pos, ending_st, feats) %>% 
+              select(word, closure, pos, ending_st, feats, stress_pattern) %>% 
               rename(to = word,
                      to_closure = closure,
                      to_pos = pos,
                      to_ending = ending_st, 
-                     to_feats = feats),
+                     to_feats = feats,
+                     to_sp = stress_pattern),
             by = "to") 
 
 nrow(rhyme_pairs)
@@ -184,22 +184,25 @@ glimpse(rhyme_pairs)
 ```
 
     Rows: 81,247
-    Columns: 13
+    Columns: 16
     $ text_id      <chr> "P_1938", "P_1938", "P_1938", "C_156__20", "C_156__20", "…
     $ from         <chr> "краса", "огневым", "красавицей", "око", "силки", "стонет…
     $ to           <chr> "небеса", "земным", "красавице", "высоко", "легки", "дого…
     $ rhyme_alph   <chr> "краса небеса", "земным огневым", "красавице красавицей",…
     $ meter        <chr> "Other", "Other", "Other", "Trochee", "Trochee", "Trochee…
+    $ feet         <chr> "other", "other", "other", "4", "4", "4", "4", "4", "4", …
     $ from_closure <chr> "masc", "masc", "dactylic", "fem", "masc", "fem", "masc",…
     $ from_pos     <chr> "NOUN", "NOUN", "NOUN", "NOUN", "NOUN", "VERB", "NOUN", "…
     $ from_ending  <chr> "са'", "ы'м", "а'вицей", "о'ко", "ки'", "о'нет", "о'р", "…
     $ from_feats   <chr> "S,жен,неод=им,ед", "S,фам,муж,од=(дат,мн|твор,ед)", "S,ж…
+    $ from_sp      <chr> "01", "001", "0100", "10", "01", "10", "1", "10", "010", …
     $ to_closure   <chr> "masc", "masc", "dactylic", "masc", "masc", "fem", "masc"…
     $ to_pos       <chr> "NOUN", "ADJ", "NOUN", "ADV", "ADJ", "VERB", "NOUN", "ADJ…
     $ to_ending    <chr> "са'", "ы'м", "а'вице", "ко'", "ки'", "о'нит", "о'р", "у'…
     $ to_feats     <chr> "S,сред,неод=(вин,мн|им,мн)", "A=(дат,мн,полн|твор,ед,пол…
+    $ to_sp        <chr> "001", "01", "0100", "001", "01", "010", "01", "010", "01…
 
-## POS pairs
+## POS pairs & syl variation
 
 ### masc
 
@@ -244,7 +247,9 @@ t
 
 ``` r
 iamb_count <- iamb_masc %>% 
-  mutate(pos_pair = paste0(from_pos, " -- ", to_pos)) %>% 
+  rowwise() %>% 
+  mutate(pos_pair = paste0(sort(c(from_pos, to_pos)), collapse = " -- ")) %>% 
+  ungroup() %>% 
   count(pos_pair, sort = T) %>% 
   mutate(perc = round( (n/t)*100, 2 )) %>% 
   rename(n_iamb = n,
@@ -253,27 +258,68 @@ iamb_count <- iamb_masc %>%
 head(iamb_count, 20)
 ```
 
-                   pos_pair n_iamb perc_iamb
-    1          NOUN -- NOUN   8980     35.88
-    2          VERB -- VERB   3183     12.72
-    3          NOUN -- PRON   1743      6.96
-    4          PRON -- NOUN   1681      6.72
-    5          PRON -- PRON   1077      4.30
-    6  VERB_inf -- VERB_inf    970      3.88
-    7          NOUN -- VERB    855      3.42
-    8           ADJ -- NOUN    670      2.68
-    9           NOUN -- ADJ    651      2.60
-    10         VERB -- NOUN    642      2.56
-    11          ADV -- NOUN    422      1.69
-    12          NOUN -- ADV    363      1.45
-    13           ADJ -- ADJ    348      1.39
-    14          ADJ -- PRON    331      1.32
-    15          PRON -- ADJ    294      1.17
-    16 VERB_imp -- VERB_imp    186      0.74
-    17     NOUN -- VERB_inf    184      0.74
-    18         NOUN -- PART    153      0.61
-    19         PART -- NOUN    140      0.56
-    20   NOUN -- VERB_prich    128      0.51
+    # A tibble: 20 × 3
+       pos_pair                 n_iamb perc_iamb
+       <chr>                     <int>     <dbl>
+     1 NOUN -- NOUN               8980     35.9 
+     2 NOUN -- PRON               3424     13.7 
+     3 VERB -- VERB               3183     12.7 
+     4 NOUN -- VERB               1497      5.98
+     5 ADJ -- NOUN                1321      5.28
+     6 PRON -- PRON               1077      4.3 
+     7 VERB_inf -- VERB_inf        970      3.88
+     8 ADV -- NOUN                 785      3.14
+     9 ADJ -- PRON                 625      2.5 
+    10 ADJ -- ADJ                  348      1.39
+    11 NOUN -- PART                293      1.17
+    12 NOUN -- VERB_inf            271      1.08
+    13 NOUN -- VERB_prich          237      0.95
+    14 NOUN -- VERB_imp            228      0.91
+    15 ADV -- PRON                 192      0.77
+    16 VERB_imp -- VERB_imp        186      0.74
+    17 PRON -- VERB_prich          161      0.64
+    18 NOUN -- VERB_deeprich       147      0.59
+    19 PRON -- VERB                133      0.53
+    20 VERB_prich -- VERB_prich     85      0.34
+
+Syllable variation
+
+``` r
+iamb_count_syl <- iamb_masc %>% 
+  mutate(# calculate number of syllables in each word
+         from_n_syl = nchar(from_sp),
+         to_n_syl = nchar(to_sp),
+         
+         # attach n_syl to pos
+         from_pos_syl = paste0(from_pos, "_", from_n_syl),
+         to_pos_syl = paste0(to_pos, "_", to_n_syl)) %>% 
+  rowwise() %>% 
+  mutate(pos_pair = paste0(sort(c(from_pos_syl, to_pos_syl)), collapse = " -- ")
+         ) %>%
+  ungroup() %>% 
+  count(pos_pair, sort = T) %>% 
+  mutate(perc = round( (n/t)*100, 2 )) %>% 
+  rename(n_iamb = n,
+         perc_iamb = perc) %>% 
+  mutate(rank_iamb = row_number())
+
+iamb_count_syl %>% 
+  head(10)
+```
+
+    # A tibble: 10 × 4
+       pos_pair         n_iamb perc_iamb rank_iamb
+       <chr>             <int>     <dbl>     <int>
+     1 NOUN_2 -- NOUN_2   2941     11.8          1
+     2 NOUN_1 -- NOUN_2   1909      7.63         2
+     3 NOUN_2 -- NOUN_3   1735      6.93         3
+     4 NOUN_1 -- NOUN_1   1377      5.5          4
+     5 NOUN_2 -- PRON_2   1045      4.17         5
+     6 VERB_2 -- VERB_3    996      3.98         6
+     7 VERB_2 -- VERB_2    943      3.77         7
+     8 NOUN_2 -- PRON_1    872      3.48         8
+     9 VERB_3 -- VERB_3    546      2.18         9
+    10 ADJ_2 -- NOUN_2     524      2.09        10
 
 Trochee
 
@@ -289,36 +335,120 @@ t
 
 ``` r
 tr_masc %>% 
-  mutate(pos_pair = paste0(from_pos, " -- ", to_pos)) %>% 
+  rowwise() %>% 
+  mutate(pos_pair = paste0(sort(c(from_pos, to_pos)), collapse = " -- ")) %>% 
+  ungroup() %>% 
   count(pos_pair, sort = T) %>% 
   mutate(perc = round( (n/t)*100, 2 )) %>% 
   rename(n_tr = n,
          perc_tr = perc) %>% 
   left_join(iamb_count, by = "pos_pair") %>% 
+  select(pos_pair, perc_iamb, perc_tr, n_iamb, n_tr) %>% 
   head(20)
 ```
 
-                   pos_pair n_tr perc_tr n_iamb perc_iamb
-    1          NOUN -- NOUN 2577   36.58   8980     35.88
-    2          VERB -- VERB  928   13.17   3183     12.72
-    3          NOUN -- PRON  436    6.19   1743      6.96
-    4          PRON -- NOUN  425    6.03   1681      6.72
-    5          PRON -- PRON  283    4.02   1077      4.30
-    6          NOUN -- VERB  268    3.80    855      3.42
-    7  VERB_inf -- VERB_inf  261    3.70    970      3.88
-    8           NOUN -- ADJ  209    2.97    651      2.60
-    9           ADJ -- NOUN  206    2.92    670      2.68
-    10         VERB -- NOUN  205    2.91    642      2.56
-    11          ADV -- NOUN  126    1.79    422      1.69
-    12          NOUN -- ADV  116    1.65    363      1.45
-    13           ADJ -- ADJ   98    1.39    348      1.39
-    14          PRON -- ADJ   85    1.21    294      1.17
-    15          ADJ -- PRON   82    1.16    331      1.32
-    16 VERB_imp -- VERB_imp   57    0.81    186      0.74
-    17     NOUN -- VERB_inf   39    0.55    184      0.74
-    18     NOUN -- VERB_imp   35    0.50    126      0.50
-    19   NOUN -- VERB_prich   35    0.50    128      0.51
-    20           ADV -- ADV   32    0.45     78      0.31
+    # A tibble: 20 × 5
+       pos_pair             perc_iamb perc_tr n_iamb  n_tr
+       <chr>                    <dbl>   <dbl>  <int> <int>
+     1 NOUN -- NOUN             35.9    36.6    8980  2577
+     2 VERB -- VERB             12.7    13.2    3183   928
+     3 NOUN -- PRON             13.7    12.2    3424   861
+     4 NOUN -- VERB              5.98    6.71   1497   473
+     5 ADJ -- NOUN               5.28    5.89   1321   415
+     6 PRON -- PRON              4.3     4.02   1077   283
+     7 VERB_inf -- VERB_inf      3.88    3.7     970   261
+     8 ADV -- NOUN               3.14    3.44    785   242
+     9 ADJ -- PRON               2.5     2.37    625   167
+    10 ADJ -- ADJ                1.39    1.39    348    98
+    11 NOUN -- VERB_inf          1.08    0.92    271    65
+    12 ADV -- PRON               0.77    0.88    192    62
+    13 NOUN -- VERB_imp          0.91    0.84    228    59
+    14 NOUN -- VERB_prich        0.95    0.84    237    59
+    15 VERB_imp -- VERB_imp      0.74    0.81    186    57
+    16 NOUN -- PART              1.17    0.75    293    53
+    17 PRON -- VERB_prich        0.64    0.48    161    34
+    18 ADV -- ADV                0.31    0.45     78    32
+    19 PRON -- VERB              0.53    0.45    133    32
+    20 ADV -- VERB               0.26    0.43     65    30
+
+``` r
+tr_count_syl <- tr_masc %>% 
+  mutate(# calculate number of syllables in each word
+         from_n_syl = nchar(from_sp),
+         to_n_syl = nchar(to_sp),
+         
+         # attach n_syl to pos
+         from_pos_syl = paste0(from_pos, "_", from_n_syl),
+         to_pos_syl = paste0(to_pos, "_", to_n_syl)) %>% 
+  rowwise() %>% 
+  mutate(pos_pair = paste0(sort(c(from_pos_syl, to_pos_syl)), collapse = " -- ")
+         ) %>%
+  ungroup() %>% 
+  count(pos_pair, sort = T) %>% 
+  mutate(perc = round( (n/t)*100, 2 )) %>% 
+  rename(n_tr = n,
+         perc_tr = perc) %>% 
+  mutate(rank_tr = row_number())
+
+tr_count_syl %>% 
+  head(10)
+```
+
+    # A tibble: 10 × 4
+       pos_pair          n_tr perc_tr rank_tr
+       <chr>            <int>   <dbl>   <int>
+     1 NOUN_2 -- NOUN_2   873   12.4        1
+     2 NOUN_2 -- NOUN_3   568    8.06       2
+     3 NOUN_1 -- NOUN_2   491    6.97       3
+     4 NOUN_1 -- NOUN_1   391    5.55       4
+     5 VERB_2 -- VERB_2   309    4.39       5
+     6 VERB_2 -- VERB_3   298    4.23       6
+     7 NOUN_2 -- PRON_2   297    4.22       7
+     8 NOUN_2 -- PRON_1   205    2.91       8
+     9 ADJ_2 -- NOUN_2    162    2.3        9
+    10 NOUN_2 -- VERB_2   149    2.11      10
+
+``` r
+tr_count_syl %>% 
+  left_join(iamb_count_syl, by = "pos_pair") %>% 
+  select(pos_pair, rank_iamb, rank_tr, perc_iamb, perc_tr, n_iamb, n_tr) %>% 
+  head(20)
+```
+
+    # A tibble: 20 × 7
+       pos_pair                 rank_iamb rank_tr perc_iamb perc_tr n_iamb  n_tr
+       <chr>                        <int>   <int>     <dbl>   <dbl>  <int> <int>
+     1 NOUN_2 -- NOUN_2                 1       1     11.8    12.4    2941   873
+     2 NOUN_2 -- NOUN_3                 3       2      6.93    8.06   1735   568
+     3 NOUN_1 -- NOUN_2                 2       3      7.63    6.97   1909   491
+     4 NOUN_1 -- NOUN_1                 4       4      5.5     5.55   1377   391
+     5 VERB_2 -- VERB_2                 7       5      3.77    4.39    943   309
+     6 VERB_2 -- VERB_3                 6       6      3.98    4.23    996   298
+     7 NOUN_2 -- PRON_2                 5       7      4.17    4.22   1045   297
+     8 NOUN_2 -- PRON_1                 8       8      3.48    2.91    872   205
+     9 ADJ_2 -- NOUN_2                 10       9      2.09    2.3     524   162
+    10 NOUN_2 -- VERB_2                16      10      1.64    2.11    410   149
+    11 VERB_3 -- VERB_3                 9      11      2.18    2.04    546   144
+    12 NOUN_3 -- NOUN_3                12      12      1.89    1.8     473   127
+    13 NOUN_3 -- PRON_1                11      13      1.9     1.66    475   117
+    14 NOUN_1 -- NOUN_3                13      14      1.86    1.63    466   115
+    15 NOUN_1 -- PRON_1                15      15      1.72    1.41    431    99
+    16 PRON_2 -- PRON_2                17      16      1.4     1.39    350    98
+    17 ADJ_3 -- NOUN_2                 22      17      0.99    1.33    248    94
+    18 NOUN_1 -- VERB_2                18      18      1.34    1.33    336    94
+    19 PRON_1 -- PRON_2                14      19      1.81    1.31    454    92
+    20 VERB_inf_2 -- VERB_inf_3        19      20      1.27    1.25    317    88
+
+``` r
+ranks <- tr_count_syl %>% 
+  left_join(iamb_count_syl, by = "pos_pair") %>% 
+  select(pos_pair, rank_iamb, rank_tr, perc_iamb, perc_tr, n_iamb, n_tr) %>%
+  drop_na() 
+
+cor(ranks$rank_iamb[1:100], ranks$rank_tr[1:100], method = "kendall")
+```
+
+    [1] 0.800404
 
 ### fem
 
@@ -360,8 +490,9 @@ tr_fem <- fem_pairs %>%
 ``` r
 t <- nrow(iamb_fem)
 
-iamb_count <- iamb_fem %>% 
-  mutate(pos_pair = paste0(from_pos, " -- ", to_pos)) %>% 
+iamb_count <- iamb_fem %>% rowwise() %>% 
+  mutate(pos_pair = paste0(sort(c(from_pos, to_pos)), collapse = " -- ")) %>% 
+  ungroup() %>% 
   count(pos_pair, sort = T) %>% 
   mutate(perc = round( (n/t)*100, 2 )) %>% 
   rename(n_iamb = n,
@@ -370,65 +501,191 @@ iamb_count <- iamb_fem %>%
 head(iamb_count, 20)
 ```
 
-                             pos_pair n_iamb perc_iamb
-    1                    NOUN -- NOUN  10639     43.96
-    2                    VERB -- VERB   4779     19.75
-    3                      ADJ -- ADJ   3045     12.58
-    4                     ADJ -- NOUN    701      2.90
-    5                     NOUN -- ADJ    689      2.85
-    6                    PRON -- NOUN    318      1.31
-    7                      ADV -- ADV    287      1.19
-    8                    NOUN -- PRON    283      1.17
-    9            VERB_inf -- VERB_inf    281      1.16
-    10                   NOUN -- VERB    275      1.14
-    11                    ADV -- NOUN    257      1.06
-    12                   VERB -- NOUN    252      1.04
-    13                    NOUN -- ADV    208      0.86
-    14 VERB_deeprich -- VERB_deeprich    192      0.79
-    15              ADJ -- VERB_prich    180      0.74
-    16                     ADV -- ADJ    179      0.74
-    17       VERB_prich -- VERB_prich    173      0.71
-    18                     ADJ -- ADV    167      0.69
-    19              VERB_prich -- ADJ    157      0.65
-    20           VERB_imp -- VERB_imp    137      0.57
+    # A tibble: 20 × 3
+       pos_pair                       n_iamb perc_iamb
+       <chr>                           <int>     <dbl>
+     1 NOUN -- NOUN                    10639     44.0 
+     2 VERB -- VERB                     4779     19.8 
+     3 ADJ -- ADJ                       3045     12.6 
+     4 ADJ -- NOUN                      1390      5.74
+     5 NOUN -- PRON                      601      2.48
+     6 NOUN -- VERB                      527      2.18
+     7 ADV -- NOUN                       465      1.92
+     8 ADJ -- ADV                        346      1.43
+     9 ADJ -- VERB_prich                 337      1.39
+    10 ADV -- ADV                        287      1.19
+    11 VERB_inf -- VERB_inf              281      1.16
+    12 VERB_deeprich -- VERB_deeprich    192      0.79
+    13 ADJ -- VERB_deeprich              176      0.73
+    14 VERB_prich -- VERB_prich          173      0.71
+    15 ADJ -- PRON                       143      0.59
+    16 NOUN -- VERB_deeprich             140      0.58
+    17 VERB_imp -- VERB_imp              137      0.57
+    18 NOUN -- VERB_prich                115      0.48
+    19 ADV -- VERB                       107      0.44
+    20 PRON -- PRON                       64      0.26
+
+``` r
+f_iamb_count_syl <- iamb_fem %>% 
+  mutate(# calculate number of syllables in each word
+         from_n_syl = nchar(from_sp),
+         to_n_syl = nchar(to_sp),
+         
+         # attach n_syl to pos
+         from_pos_syl = paste0(from_pos, "_", from_n_syl),
+         to_pos_syl = paste0(to_pos, "_", to_n_syl)) %>% 
+  rowwise() %>% 
+  mutate(pos_pair = paste0(sort(c(from_pos_syl, to_pos_syl)), collapse = " -- ")
+         ) %>%
+  ungroup() %>% 
+  count(pos_pair, sort = T) %>% 
+  mutate(perc = round( (n/t)*100, 2 )) %>% 
+  rename(n_iamb = n,
+         perc_iamb = perc) %>% 
+  mutate(rank_iamb = row_number())
+
+f_iamb_count_syl %>% 
+  head(10)
+```
+
+    # A tibble: 10 × 4
+       pos_pair         n_iamb perc_iamb rank_iamb
+       <chr>             <int>     <dbl>     <int>
+     1 NOUN_3 -- NOUN_3   3046     12.6          1
+     2 NOUN_2 -- NOUN_3   2433     10.0          2
+     3 NOUN_3 -- NOUN_4   1928      7.97         3
+     4 NOUN_2 -- NOUN_2   1456      6.02         4
+     5 VERB_3 -- VERB_4   1406      5.81         5
+     6 VERB_4 -- VERB_4   1037      4.29         6
+     7 VERB_3 -- VERB_3    887      3.67         7
+     8 ADJ_3 -- ADJ_3      842      3.48         8
+     9 ADJ_3 -- ADJ_4      801      3.31         9
+    10 VERB_2 -- VERB_3    605      2.5         10
 
 ``` r
 t <- nrow(tr_fem)
 
 tr_fem %>% 
-  mutate(pos_pair = paste0(from_pos, " -- ", to_pos)) %>% 
+  rowwise() %>% 
+  mutate(pos_pair = paste0(sort(c(from_pos, to_pos)), collapse = " -- ")) %>% 
+  ungroup() %>% 
   count(pos_pair, sort = T) %>% 
   mutate(perc = round( (n/t)*100, 2 )) %>% 
   rename(n_tr = n,
          perc_tr = perc) %>% 
   left_join(iamb_count, by = "pos_pair") %>% 
+  select(pos_pair, perc_iamb, perc_tr, n_iamb, n_tr) %>% 
   head(20)
 ```
 
-                             pos_pair n_tr perc_tr n_iamb perc_iamb
-    1                    NOUN -- NOUN 2739   43.35  10639     43.96
-    2                    VERB -- VERB 1126   17.82   4779     19.75
-    3                      ADJ -- ADJ  858   13.58   3045     12.58
-    4                     ADJ -- NOUN  229    3.62    701      2.90
-    5                     NOUN -- ADJ  217    3.43    689      2.85
-    6                    NOUN -- VERB   88    1.39    275      1.14
-    7                      ADV -- ADV   86    1.36    287      1.19
-    8                    VERB -- NOUN   77    1.22    252      1.04
-    9                     ADV -- NOUN   76    1.20    257      1.06
-    10                   PRON -- NOUN   75    1.19    318      1.31
-    11                     ADV -- ADJ   63    1.00    179      0.74
-    12                    NOUN -- ADV   57    0.90    208      0.86
-    13                   NOUN -- PRON   56    0.89    283      1.17
-    14                     ADJ -- ADV   52    0.82    167      0.69
-    15           VERB_inf -- VERB_inf   51    0.81    281      1.16
-    16 VERB_deeprich -- VERB_deeprich   50    0.79    192      0.79
-    17           ADJ -- VERB_deeprich   36    0.57    112      0.46
-    18          NOUN -- VERB_deeprich   35    0.55     60      0.25
-    19           VERB_imp -- VERB_imp   35    0.55    137      0.57
-    20              ADJ -- VERB_prich   33    0.52    180      0.74
+    # A tibble: 20 × 5
+       pos_pair                       perc_iamb perc_tr n_iamb  n_tr
+       <chr>                              <dbl>   <dbl>  <int> <int>
+     1 NOUN -- NOUN                       44.0    43.4   10639  2739
+     2 VERB -- VERB                       19.8    17.8    4779  1126
+     3 ADJ -- ADJ                         12.6    13.6    3045   858
+     4 ADJ -- NOUN                         5.74    7.06   1390   446
+     5 NOUN -- VERB                        2.18    2.61    527   165
+     6 ADV -- NOUN                         1.92    2.1     465   133
+     7 NOUN -- PRON                        2.48    2.07    601   131
+     8 ADJ -- ADV                          1.43    1.82    346   115
+     9 ADV -- ADV                          1.19    1.36    287    86
+    10 ADJ -- VERB_prich                   1.39    1.03    337    65
+    11 NOUN -- VERB_deeprich               0.58    1       140    63
+    12 ADJ -- VERB_deeprich                0.73    0.93    176    59
+    13 VERB_inf -- VERB_inf                1.16    0.81    281    51
+    14 VERB_deeprich -- VERB_deeprich      0.79    0.79    192    50
+    15 ADJ -- PRON                         0.59    0.65    143    41
+    16 ADV -- VERB                         0.44    0.59    107    37
+    17 VERB_imp -- VERB_imp                0.57    0.55    137    35
+    18 VERB_prich -- VERB_prich            0.71    0.47    173    30
+    19 NOUN -- VERB_prich                  0.48    0.38    115    24
+    20 ADJ -- VERB                         0.1     0.27     23    17
 
 ``` r
-rm(iamb_count, pos_transl, t, iamb_fem, iamb_masc, tr_fem, tr_masc)
+f_tr_count_syl <- tr_fem %>% 
+  mutate(# calculate number of syllables in each word
+         from_n_syl = nchar(from_sp),
+         to_n_syl = nchar(to_sp),
+         
+         # attach n_syl to pos
+         from_pos_syl = paste0(from_pos, "_", from_n_syl),
+         to_pos_syl = paste0(to_pos, "_", to_n_syl)) %>% 
+  rowwise() %>% 
+  mutate(pos_pair = paste0(sort(c(from_pos_syl, to_pos_syl)), collapse = " -- ")
+         ) %>%
+  ungroup() %>% 
+  count(pos_pair, sort = T) %>% 
+  mutate(perc = round( (n/t)*100, 2 )) %>% 
+  rename(n_tr = n,
+         perc_tr = perc) %>% 
+  mutate(rank_tr = row_number())
+
+f_tr_count_syl %>% 
+  head(10)
+```
+
+    # A tibble: 10 × 4
+       pos_pair          n_tr perc_tr rank_tr
+       <chr>            <int>   <dbl>   <int>
+     1 NOUN_3 -- NOUN_3   815   12.9        1
+     2 NOUN_2 -- NOUN_3   681   10.8        2
+     3 NOUN_2 -- NOUN_2   471    7.45       3
+     4 NOUN_3 -- NOUN_4   440    6.96       4
+     5 VERB_3 -- VERB_4   306    4.84       5
+     6 ADJ_3 -- ADJ_3     243    3.85       6
+     7 ADJ_3 -- ADJ_4     233    3.69       7
+     8 VERB_3 -- VERB_3   224    3.54       8
+     9 VERB_4 -- VERB_4   207    3.28       9
+    10 VERB_2 -- VERB_3   199    3.15      10
+
+Syllable variation
+
+``` r
+f_tr_count_syl %>% 
+  left_join(f_iamb_count_syl, by = "pos_pair") %>% 
+  select(pos_pair, rank_iamb, rank_tr, perc_iamb, perc_tr, n_iamb, n_tr) %>% 
+  head(20)
+```
+
+    # A tibble: 20 × 7
+       pos_pair         rank_iamb rank_tr perc_iamb perc_tr n_iamb  n_tr
+       <chr>                <int>   <int>     <dbl>   <dbl>  <int> <int>
+     1 NOUN_3 -- NOUN_3         1       1     12.6    12.9    3046   815
+     2 NOUN_2 -- NOUN_3         2       2     10.0    10.8    2433   681
+     3 NOUN_2 -- NOUN_2         4       3      6.02    7.45   1456   471
+     4 NOUN_3 -- NOUN_4         3       4      7.97    6.96   1928   440
+     5 VERB_3 -- VERB_4         5       5      5.81    4.84   1406   306
+     6 ADJ_3 -- ADJ_3           8       6      3.48    3.85    842   243
+     7 ADJ_3 -- ADJ_4           9       7      3.31    3.69    801   233
+     8 VERB_3 -- VERB_3         7       8      3.67    3.54    887   224
+     9 VERB_4 -- VERB_4         6       9      4.29    3.28   1037   207
+    10 VERB_2 -- VERB_3        10      10      2.5     3.15    605   199
+    11 ADJ_2 -- ADJ_3          12      11      2.29    2.69    554   170
+    12 ADJ_3 -- NOUN_2         14      12      1.57    2.22    381   140
+    13 NOUN_2 -- NOUN_4        13      13      2.06    2.18    499   138
+    14 ADJ_3 -- NOUN_3         16      14      1.3     1.65    315   104
+    15 NOUN_4 -- NOUN_4        11      15      2.49    1.39    602    88
+    16 VERB_2 -- VERB_4        17      16      1.22    1.14    295    72
+    17 VERB_2 -- VERB_2        21      17      0.82    1.12    199    71
+    18 ADJ_4 -- ADJ_4          18      18      1.09    1.04    263    66
+    19 ADJ_2 -- ADJ_4          23      19      0.78    1       188    63
+    20 NOUN_3 -- PRON_2        20      20      1       0.9     241    57
+
+``` r
+ranks <- f_tr_count_syl %>% 
+  left_join(f_iamb_count_syl, by = "pos_pair") %>% 
+  select(pos_pair, rank_iamb, rank_tr, perc_iamb, perc_tr, n_iamb, n_tr) %>% 
+  drop_na()
+
+cor(ranks$rank_iamb[1:100], ranks$rank_tr[1:100], method = "kendall")
+```
+
+    [1] 0.7418182
+
+``` r
+rm(iamb_count, pos_transl, t, iamb_fem, iamb_masc, tr_fem, tr_masc,
+   f_iamb_count_syl, f_tr_count_syl, iamb_count_syl, tr_count_syl)
 ```
 
 ## endings
@@ -444,20 +701,23 @@ glimpse(masc_pairs)
 ```
 
     Rows: 38,011
-    Columns: 13
+    Columns: 16
     $ text_id      <chr> "P_1938", "P_1938", "C_156__20", "C_156__20", "C_156__20"…
     $ from         <chr> "краса", "огневым", "силки", "спор", "сном", "твоя", "тиш…
     $ to           <chr> "небеса", "земным", "легки", "простор", "лучом", "я", "по…
     $ rhyme_alph   <chr> "краса небеса", "земным огневым", "легки силки", "простор…
     $ meter        <chr> "Other", "Other", "Trochee", "Trochee", "Trochee", "Iamb"…
+    $ feet         <chr> "other", "other", "4", "4", "4", "4", "4", "4", "4", "4",…
     $ from_closure <chr> "masc", "masc", "masc", "masc", "masc", "masc", "masc", "…
     $ from_pos     <chr> "NOUN", "NOUN", "NOUN", "NOUN", "NOUN", "PRON", "NOUN", "…
     $ from_ending  <chr> "са'", "ы'м", "ки'", "о'р", "о'м", "оя'", "не'", "ё'т", "…
     $ from_feats   <chr> "S,жен,неод=им,ед", "S,фам,муж,од=(дат,мн|твор,ед)", "S,м…
+    $ from_sp      <chr> "01", "001", "01", "1", "1", "01", "001", "01", "01", "01…
     $ to_closure   <chr> "masc", "masc", "masc", "masc", "masc", "masc", "masc", "…
     $ to_pos       <chr> "NOUN", "ADJ", "ADJ", "NOUN", "NOUN", "PRON", "NOUN", "VE…
     $ to_ending    <chr> "са'", "ы'м", "ки'", "о'р", "о'м", "я'", "не'", "ё'т", "и…
     $ to_feats     <chr> "S,сред,неод=(вин,мн|им,мн)", "A=(дат,мн,полн|твор,ед,пол…
+    $ to_sp        <chr> "001", "01", "01", "01", "01", "1", "001", "01", "001", "…
 
 ``` r
 # total number of masc pairs
@@ -568,7 +828,7 @@ m_ranked_pos %>%
                                met.brewer("Veronese")[3]))
 ```
 
-![](05_4_rhyme_morhp_pairs.markdown_strict_files/figure-markdown_strict/unnamed-chunk-18-1.png)
+![](05_4_rhyme_morhp_pairs.markdown_strict_files/figure-markdown_strict/unnamed-chunk-24-1.png)
 
 Analysis of the less variate pairs
 
@@ -643,20 +903,23 @@ glimpse(fem_pairs)
 ```
 
     Rows: 34,383
-    Columns: 13
+    Columns: 16
     $ text_id      <chr> "C_156__20", "C_156__20", "C_156__20", "C_70__25", "C_70_…
     $ from         <chr> "стонет", "тучи", "тумане", "утратой", "унылой", "мною", …
     $ to           <chr> "догонит", "гремучий", "заране", "крылатой", "огнекрылой"…
     $ rhyme_alph   <chr> "догонит стонет", "гремучий тучи", "заране тумане", "крыл…
     $ meter        <chr> "Trochee", "Trochee", "Trochee", "Trochee", "Trochee", "T…
+    $ feet         <chr> "4", "4", "4", "4", "4", "4", "4", "other", "6", "6", "6"…
     $ from_closure <chr> "fem", "fem", "fem", "fem", "fem", "fem", "fem", "fem", "…
     $ from_pos     <chr> "VERB", "NOUN", "NOUN", "NOUN", "ADJ", "PRON", "NOUN", "N…
     $ from_ending  <chr> "о'нет", "у'чи", "а'не", "а'той", "ы'лой", "о'ю", "а'ми",…
     $ from_feats   <chr> "V,несов,нп=непрош,ед,изъяв,3-л", "S,жен,неод=(вин,мн|род…
+    $ from_sp      <chr> "10", "10", "010", "010", "010", "10", "010", "10", "0010…
     $ to_closure   <chr> "fem", "fem", "fem", "fem", "fem", "fem", "fem", "fem", "…
     $ to_pos       <chr> "VERB", "ADJ", "NOUN", "ADJ", "ADJ", "NOUN", "NOUN", "NOU…
     $ to_ending    <chr> "о'нит", "у'чий", "а'не", "а'той", "ы'лой", "о'ю", "а'ми"…
     $ to_feats     <chr> "V,сов,пе=непрош,ед,изъяв,3-л", "A=(вин,ед,полн,муж,неод|…
+    $ to_sp        <chr> "010", "010", "010", "010", "0010", "010", "010", "10", "…
 
 ``` r
 # total number of masc pairs
@@ -764,7 +1027,7 @@ f_ranked_pos  %>%
                                met.brewer("Veronese")[3]))
 ```
 
-![](05_4_rhyme_morhp_pairs.markdown_strict_files/figure-markdown_strict/unnamed-chunk-20-1.png)
+![](05_4_rhyme_morhp_pairs.markdown_strict_files/figure-markdown_strict/unnamed-chunk-26-1.png)
 
 Analysis of the less variate pairs
 
@@ -949,7 +1212,7 @@ m_ranked_long %>%
 
     `geom_smooth()` using method = 'gam' and formula = 'y ~ s(x, bs = "cs")'
 
-![](05_4_rhyme_morhp_pairs.markdown_strict_files/figure-markdown_strict/unnamed-chunk-23-1.png)
+![](05_4_rhyme_morhp_pairs.markdown_strict_files/figure-markdown_strict/unnamed-chunk-29-1.png)
 
 ### feats variability
 
@@ -997,7 +1260,7 @@ m_ranked_feats %>%
 
     `geom_smooth()` using method = 'gam' and formula = 'y ~ s(x, bs = "cs")'
 
-![](05_4_rhyme_morhp_pairs.markdown_strict_files/figure-markdown_strict/unnamed-chunk-24-1.png)
+![](05_4_rhyme_morhp_pairs.markdown_strict_files/figure-markdown_strict/unnamed-chunk-30-1.png)
 
 #### kendall
 
@@ -1125,20 +1388,20 @@ masc_pairs %>%
   distinct(rhyme_alph, .keep_all = TRUE)
 ```
 
-    # A tibble: 134 × 7
+    # A tibble: 137 × 7
        ending_pair    rhyme_alph      from     to       from_pos to_pos feats_pair  
        <chr>          <chr>           <chr>    <chr>    <chr>    <chr>  <chr>       
      1 -а'ль -- -а'ль печаль скрыжаль скрыжаль печаль   ADV      NOUN   ADV,вводн= …
-     2 -а'ль -- -а'ль жаль печаль     жаль     печаль   ADV      NOUN   ADV,прдк= -…
+     2 -а'ль -- -а'ль даль жаль       жаль     даль     ADV      NOUN   ADV,прдк= -…
      3 -а'ль -- -а'ль жаль хрусталь   жаль     хрусталь ADV      NOUN   ADV,прдк= -…
      4 -а'ль -- -а'ль вдаль жаль      вдаль    жаль     ADV      ADV    ADV= -- ADV…
      5 -а'ль -- -а'ль вдаль печаль    вдаль    печаль   ADV      NOUN   ADV= -- S,ж…
-     6 -а'ль -- -а'ль даль жаль       даль     жаль     NOUN     ADV    S,жен,неод=…
-     7 -а'ль -- -а'ль даль печаль     даль     печаль   NOUN     NOUN   S,жен,неод=…
+     6 -а'ль -- -а'ль вдаль скрижаль  скрижаль вдаль    NOUN     ADV    S,жен,неод=…
+     7 -а'ль -- -а'ль даль сталь      сталь    даль     NOUN     NOUN   S,жен,неод=…
      8 -а'ль -- -а'ль даль хрусталь   даль     хрусталь NOUN     NOUN   S,жен,неод=…
      9 -а'ль -- -а'ль враль жаль      враль    жаль     NOUN     ADV    S,муж,од=им…
     10 -а'ль -- -а'ль даль москаль    москаль  даль     NOUN     NOUN   S,муж,од=им…
-    # ℹ 124 more rows
+    # ℹ 127 more rows
 
 FEM rhymes feats analysis
 
@@ -1219,20 +1482,23 @@ glimpse(masc_pairs)
 ```
 
     Rows: 38,011
-    Columns: 13
+    Columns: 16
     $ text_id      <chr> "P_1938", "P_1938", "C_156__20", "C_156__20", "C_156__20"…
     $ from         <chr> "краса", "огневым", "силки", "спор", "сном", "твоя", "тиш…
     $ to           <chr> "небеса", "земным", "легки", "простор", "лучом", "я", "по…
     $ rhyme_alph   <chr> "краса небеса", "земным огневым", "легки силки", "простор…
     $ meter        <chr> "Other", "Other", "Trochee", "Trochee", "Trochee", "Iamb"…
+    $ feet         <chr> "other", "other", "4", "4", "4", "4", "4", "4", "4", "4",…
     $ from_closure <chr> "masc", "masc", "masc", "masc", "masc", "masc", "masc", "…
     $ from_pos     <chr> "NOUN", "NOUN", "NOUN", "NOUN", "NOUN", "PRON", "NOUN", "…
     $ from_ending  <chr> "са'", "ы'м", "ки'", "о'р", "о'м", "оя'", "не'", "ё'т", "…
     $ from_feats   <chr> "S,жен,неод=им,ед", "S,фам,муж,од=(дат,мн|твор,ед)", "S,м…
+    $ from_sp      <chr> "01", "001", "01", "1", "1", "01", "001", "01", "01", "01…
     $ to_closure   <chr> "masc", "masc", "masc", "masc", "masc", "masc", "masc", "…
     $ to_pos       <chr> "NOUN", "ADJ", "ADJ", "NOUN", "NOUN", "PRON", "NOUN", "VE…
     $ to_ending    <chr> "са'", "ы'м", "ки'", "о'р", "о'м", "я'", "не'", "ё'т", "и…
     $ to_feats     <chr> "S,сред,неод=(вин,мн|им,мн)", "A=(дат,мн,полн|твор,ед,пол…
+    $ to_sp        <chr> "001", "01", "01", "01", "01", "1", "001", "01", "001", "…
 
 ``` r
 m_1 <- masc_pairs %>% 
@@ -1275,16 +1541,8 @@ fem_words_p <- fem_words %>%
   mutate(group = "fem")
 
 
-glimpse(masc_words)
-```
+# glimpse(masc_words)
 
-    Rows: 76,022
-    Columns: 3
-    $ word        <chr> "краса", "огневым", "силки", "спор", "сном", "твоя", "тиши…
-    $ ending      <chr> "са'", "ы'м", "ки'", "о'р", "о'м", "оя'", "не'", "ё'т", "и…
-    $ ending_pair <chr> "-са' -- -са'", "-ы'м -- -ы'м", "-ки' -- -ки'", "-о'р -- -…
-
-``` r
 masc_words %>% 
   group_by(ending_pair) %>% 
   count(word, sort = T) %>% 
@@ -1307,7 +1565,7 @@ masc_words %>%
 
     `geom_smooth()` using method = 'gam' and formula = 'y ~ s(x, bs = "cs")'
 
-![](05_4_rhyme_morhp_pairs.markdown_strict_files/figure-markdown_strict/unnamed-chunk-30-1.png)
+![](05_4_rhyme_morhp_pairs.markdown_strict_files/figure-markdown_strict/unnamed-chunk-36-1.png)
 
 ``` r
 masc_words %>% 

@@ -779,7 +779,7 @@ all_words %>%
     16 Trochee masc     на'         498        1.62         3.22
     17 Trochee masc     ё'т         425        1.38         2.75
 
-### POS distribution in meters / endings
+## POS distribution in meters / endings
 
 #### tab. 5.2.1 - all meters & clausulas together
 
@@ -1077,23 +1077,11 @@ How it works:
 #glimpse(all_words)
 
 all_words$stress_pattern[3]
-```
 
-    [1] "0100"
-
-``` r
 unlist(gregexpr(pattern = "1", "0100")) # stress position
-```
-
-    [1] 2
-
-``` r
 nchar("0100") # length of the word
-```
 
-    [1] 4
 
-``` r
 all_words %>% 
   sample_n(10) %>% 
   select(word, pos, stress_pattern) %>% 
@@ -1101,18 +1089,6 @@ all_words %>%
          syl_len = nchar(stress_pattern)
          )
 ```
-
-              word      pos stress_pattern stress_position syl_len
-    1      подруга     NOUN            010               2       3
-    2    монастырь     NOUN            001               3       3
-    3         свет     NOUN              1               1       1
-    4      могилой     NOUN            010               2       3
-    5          иди VERB_imp             01               2       2
-    6        своим     PRON             01               2       2
-    7        полна      ADJ             01               2       2
-    8     цветисто      ADV            010               2       3
-    9         моря     NOUN             10               1       2
-    10 заблуждений     NOUN           0010               3       4
 
 Altogether
 
@@ -1201,6 +1177,47 @@ m
     19 Trochee   PRON              1.6             1.6              2              2
     20 Trochee   VERB              2.3             2.3              2              2
 
+#### masc pos_syl counter
+
+``` r
+masc_total <- all_words %>% filter(closure == "masc" & meter != "Other") %>% 
+  count(meter) %>% 
+  rename(total_meter = n)
+  
+
+all_words %>% 
+  filter(closure == "masc" & meter != "Other" & 
+           pos %in% c("NOUN", "VERB", "ADJ", "PRON")) %>% 
+  select(meter, pos, stress_pattern) %>% 
+  mutate(stress_position = unlist(gregexpr(pattern = "1", stress_pattern)),
+         syl_len = nchar(stress_pattern),
+         pos_syl = paste0(pos, "_", syl_len)
+         ) %>% 
+  count(meter, pos, pos_syl) %>% 
+  left_join(masc_total, by = "meter") %>% 
+  mutate(perc = round((n / total_meter)*100,1 )) %>% 
+  select(meter, pos, pos_syl, perc, n, total_meter) %>% 
+  filter(pos == "NOUN" & meter %in% c("Iamb", "Trochee")) 
+```
+
+         meter  pos pos_syl perc     n total_meter
+    1     Iamb NOUN  NOUN_1 14.3  7756       54284
+    2     Iamb NOUN  NOUN_2 28.9 15664       54284
+    3     Iamb NOUN  NOUN_3  8.9  4818       54284
+    4     Iamb NOUN  NOUN_4  0.3   153       54284
+    5     Iamb NOUN  NOUN_5  0.0     2       54284
+    6  Trochee NOUN  NOUN_1 13.2  2037       15444
+    7  Trochee NOUN  NOUN_2 29.7  4588       15444
+    8  Trochee NOUN  NOUN_3  9.2  1421       15444
+    9  Trochee NOUN  NOUN_4  0.2    25       15444
+    10 Trochee NOUN  NOUN_5  0.0     1       15444
+
+``` r
+  # NB other POS can be tested via filter
+```
+
+#### fem pos_syl
+
 Fem rhymes
 
 ``` r
@@ -1253,6 +1270,39 @@ f
     20 Trochee    VERB                  2.2                 3.2              2
     # ℹ 1 more variable: med_syl_length <dbl>
 
+``` r
+fem_total <- all_words %>% filter(closure == "fem" & meter != "Other") %>% 
+  count(meter) %>% 
+  rename(total_meter = n)
+  
+
+all_words %>% 
+  filter(closure == "fem" & meter != "Other" & 
+           pos %in% c("NOUN", "VERB", "ADJ", "PRON")) %>% 
+  select(meter, pos, stress_pattern) %>% 
+  mutate(stress_position = unlist(gregexpr(pattern = "1", stress_pattern)),
+         syl_len = nchar(stress_pattern),
+         pos_syl = paste0(pos, "_", syl_len)
+         ) %>% 
+  count(meter, pos, pos_syl) %>% 
+  left_join(masc_total, by = "meter") %>% 
+  mutate(perc = round((n / total_meter)*100,1 )) %>% 
+  select(meter, pos, pos_syl, perc, n, total_meter) %>% 
+  filter(pos == "VERB" & meter %in% c("Iamb", "Trochee")) 
+```
+
+         meter  pos pos_syl perc    n total_meter
+    1     Iamb VERB  VERB_2  3.3 1781       54284
+    2     Iamb VERB  VERB_3  8.6 4660       54284
+    3     Iamb VERB  VERB_4  8.3 4514       54284
+    4     Iamb VERB  VERB_5  0.7  407       54284
+    5     Iamb VERB  VERB_6  0.0    1       54284
+    6  Trochee VERB  VERB_2  4.0  612       15444
+    7  Trochee VERB  VERB_3  7.9 1223       15444
+    8  Trochee VERB  VERB_4  6.3  967       15444
+    9  Trochee VERB  VERB_5  0.3   54       15444
+    10 Trochee VERB  VERB_6  0.0    1       15444
+
 dactylic
 
 ``` r
@@ -1303,6 +1353,37 @@ d
     18 Troc… VERB                1.8               3.8            2              4  
 
 ``` r
+dact_total <- all_words %>% filter(closure == "dactylic" & meter != "Other") %>% 
+  count(meter) %>% 
+  rename(total_meter = n)
+  
+
+all_words %>% 
+  filter(closure == "dactylic" & meter != "Other" & 
+           pos %in% c("NOUN", "VERB", "ADJ", "PRON")) %>% 
+  select(meter, pos, stress_pattern) %>% 
+  mutate(stress_position = unlist(gregexpr(pattern = "1", stress_pattern)),
+         syl_len = nchar(stress_pattern),
+         pos_syl = paste0(pos, "_", syl_len)
+         ) %>% 
+  count(meter, pos, pos_syl) %>% 
+  left_join(masc_total, by = "meter") %>% 
+  mutate(perc = round((n / total_meter)*100,1 )) %>% 
+  select(meter, pos, pos_syl, perc, n, total_meter) %>% 
+  filter(pos == "ADJ" & meter %in% c("Iamb", "Trochee")) 
+```
+
+        meter pos pos_syl perc   n total_meter
+    1    Iamb ADJ   ADJ_3  0.2  97       54284
+    2    Iamb ADJ   ADJ_4  0.3 189       54284
+    3    Iamb ADJ   ADJ_5  0.1  53       54284
+    4    Iamb ADJ   ADJ_6  0.0   4       54284
+    5 Trochee ADJ   ADJ_3  1.0 151       15444
+    6 Trochee ADJ   ADJ_4  1.5 233       15444
+    7 Trochee ADJ   ADJ_5  0.9 145       15444
+    8 Trochee ADJ   ADJ_6  0.1  11       15444
+
+``` r
 glimpse(m)
 ```
 
@@ -1322,7 +1403,7 @@ cbind(m %>% select(-med_stress_pos, -med_syl_length),
       ) %>% 
   select(meter, pos, 
          mean_syl_lenght, `f$fem_mean_syl_lenght`,
-         mean_stress_pos, `f$fem_mean_stress_pos`,)
+         mean_stress_pos, `f$fem_mean_stress_pos`)
 ```
 
             meter  pos mean_syl_lenght f$fem_mean_syl_lenght mean_stress_pos
@@ -1367,6 +1448,10 @@ cbind(m %>% select(-med_stress_pos, -med_syl_length),
     18                   1.8
     19                   1.5
     20                   2.2
+
+``` r
+rm(dact_total, fem_total, masc_total, m, d, f)
+```
 
 ### POS groups
 
@@ -1913,39 +1998,39 @@ words_authors %>%
   filter(pos == "VERB") %>% sample_n(10)
 ```
 
-         text_id meter             rhyme_alph        word     word_acc
-    1     P_1058  Iamb           был истребил    истребил    истреби'л
-    2  C_169__13  Iamb       загорится таится      таится      таи'тся
-    3     P_1082  Iamb     отзывался раздался    раздался    разда'лся
-    4     P_1058  Iamb      сокрылся трудился    сокрылся    сокры'лся
-    5     P_1104  Iamb               уважаю я      уважаю      уважа'ю
-    6     P_1086  Iamb забывалась предавалась предавалась предава'лась
-    7      P_120  Iamb             дала ждала        дала        дала'
-    8     P_1061  Iamb     поминают принимают   принимают   принима'ют
-    9      P_121  Iamb      вечереет тускнеет    тускнеет    тускне'ет
-    10    P_1066  Iamb            была влекла        была        была'
-       stress_pattern closure_pattern closure old_tag
-    1             001               1    masc       V
-    2             010              10     fem       V
-    3             010              10     fem       V
-    4             010              10     fem       V
-    5            0010              10     fem       V
-    6            0010              10     fem       V
-    7              01               1    masc       V
-    8            0010              10     fem       V
-    9             010              10     fem       V
-    10             01               1    masc       V
-                                feats ending_st  pos pos_group     author_name
-    1      V,пе=прош,ед,изъяв,муж,сов       и'л VERB     verbs Ростопчина Е.П.
-    2  V,несов,нп=непрош,ед,изъяв,3-л     и'тся VERB     verbs Ростопчина Е.П.
-    3      V,нп=прош,ед,изъяв,муж,сов     а'лся VERB     verbs Ростопчина Е.П.
-    4      V,сов,нп=прош,ед,изъяв,муж     ы'лся VERB     verbs Ростопчина Е.П.
-    5  V,несов,пе=непрош,ед,изъяв,1-л       а'ю VERB     verbs Ростопчина Е.П.
-    6    V,нп=прош,ед,изъяв,жен,несов    а'лась VERB     verbs Ростопчина Е.П.
-    7      V,пе=прош,ед,изъяв,жен,сов       ла' VERB     verbs Ростопчина Е.П.
-    8  V=непрош,мн,изъяв,3-л,несов,пе      а'ют VERB     verbs Ростопчина Е.П.
-    9  V,несов,нп=непрош,ед,изъяв,3-л      е'ет VERB     verbs Ростопчина Е.П.
-    10   V,нп=прош,ед,изъяв,жен,несов       ла' VERB     verbs Ростопчина Е.П.
+       text_id meter            rhyme_alph        word     word_acc stress_pattern
+    1    P_762  Iamb        почитает стоит       стоит       сто'ит             10
+    2    P_853  Iamb      отведут призовут    призовут    призову'т            001
+    3   P_1865  Iamb         бежал оторвал     оторвал     оторва'л            001
+    4    P_819  Iamb       мечтала пропала     пропала     пропа'ла            010
+    5   P_1854  Iamb       возьмет нанесет     возьмет     возьмё'т             01
+    6    P_776  Iamb               был жил         был         бы'л              1
+    7    P_519  Iamb забавлялось чуждалась забавлялось забавля'лось           0010
+    8    P_163  Iamb     наказует уврачует    наказует    наказу'ет           0010
+    9    P_804  Iamb        запоет увлечет     увлечет     увлечё'т            001
+    10   P_121  Iamb      приуныло светило    приуныло    приуны'ло           0010
+       closure_pattern closure old_tag                                feats
+    1               10     fem       V       V,несов,нп=непрош,ед,изъяв,3-л
+    2                1    masc       V         V,пе=непрош,мн,изъяв,3-л,сов
+    3                1    masc       V           V,пе=прош,ед,изъяв,муж,сов
+    4               10     fem       V           V,нп=прош,ед,изъяв,жен,сов
+    5                1    masc       V         V,сов,пе=непрош,ед,изъяв,3-л
+    6                1    masc       V         V,нп=прош,ед,изъяв,муж,несов
+    7               10     fem       V        V,несов,нп=прош,ед,изъяв,сред
+    8               10     fem       V V=устар,непрош,ед,изъяв,3-л,несов,пе
+    9                1    masc       V            V=непрош,ед,изъяв,3-л,сов
+    10              10     fem       V          V,сов,нп=прош,ед,изъяв,сред
+       ending_st  pos pos_group     author_name
+    1       о'ит VERB     verbs Ростопчина Е.П.
+    2        у'т VERB     verbs Ростопчина Е.П.
+    3        а'л VERB     verbs Ростопчина Е.П.
+    4       а'ла VERB     verbs Ростопчина Е.П.
+    5        ё'т VERB     verbs Ростопчина Е.П.
+    6        ы'л VERB     verbs Ростопчина Е.П.
+    7     я'лось VERB     verbs Ростопчина Е.П.
+    8       у'ет VERB     verbs Ростопчина Е.П.
+    9        ё'т VERB     verbs Ростопчина Е.П.
+    10      ы'ло VERB     verbs Ростопчина Е.П.
 
 #### benediktov & co
 
@@ -2241,18 +2326,18 @@ cbind(a, as.tibble(scale(v))) %>% filter(author_name %in% author_v)
 
     # A tibble: 9 × 10
     # Groups:   author_name [9]
-      author_name          ADJ    ADV    NOUN    PRON    VERB VERB_inf VERB_imp
-      <chr>              <dbl>  <dbl>   <dbl>   <dbl>   <dbl>    <dbl>    <dbl>
-    1 Баратынский Е.А. -0.0729 -0.213 -0.0802  2.47   -0.789   -1.14    -0.222 
-    2 Бенедиктов В.Г.   0.179   0.114  0.288  -0.495  -0.0721  -0.613   -0.367 
-    3 Бернет Е.        -0.800  -0.213  0.879  -1.51    0.0449   0.0247   0.0672
-    4 Козлов И.И.       1.69   -0.947 -0.632   0.718  -0.570   -0.454   -0.657 
-    5 Мейснер А.       -0.0170  0.766  1.13   -0.394  -1.04    -0.666   -0.0776
-    6 Некрасов Н.А.     0.0949  1.42   0.590   0.0445 -1.05     0.184    0.791 
-    7 Ростопчина Е.П.   2.02   -0.784 -1.81    1.59    0.469    0.397   -1.24  
-    8 Слепушкин Ф.Н.   -0.576  -1.44   0.905  -1.71    0.616    0.184   -0.222 
-    9 Шахова Е.Н.       1.10    0.195 -0.658   0.887  -0.160   -0.0285   0.502 
-    # ℹ 2 more variables: VERB_prich <dbl>, VERB_deeprich <dbl>
+      author_name      ADJ    ADV    NOUN   PRON   VERB VERB_inf VERB_imp VERB_prich
+      <chr>          <dbl>  <dbl>   <dbl>  <dbl>  <dbl>    <dbl>    <dbl>      <dbl>
+    1 Баратынский… -0.0552  0      0.0676  2.37  -0.700  -1.29     -0.868      0.577
+    2 Бенедиктов …  0.0878  0.517  0.511  -0.568 -0.447  -0.766    -0.439      0.678
+    3 Бернет Е.    -0.999  -0.775  0.779  -0.994 -0.313   0.346     1.13       1.08 
+    4 Козлов И.И.   1.35   -0.603 -0.577   0.477 -0.150  -0.713    -1.01       1.08 
+    5 Мейснер А.   -0.0552  0.517  1.24   -0.491 -1.16   -0.501    -0.153      0.476
+    6 Некрасов Н.… -0.198   1.98   0.739   0.167 -1.03   -0.395     0.990     -0.534
+    7 Ростопчина …  1.78   -0.517 -1.56    1.41   0.490   0.293    -1.01       0.375
+    8 Слепушкин Ф… -0.570  -1.46   0.873  -1.92   0.683   0.0813   -0.153     -1.34 
+    9 Шахова Е.Н.   1.09   -0.345 -0.738   0.671  0.133   0.452     0.419     -0.837
+    # ℹ 1 more variable: VERB_deeprich <dbl>
 
 ``` r
 cbind(a, as.tibble(scale(v))) %>% filter(author_name %in% author_v) %>% 
@@ -2262,7 +2347,7 @@ cbind(a, as.tibble(scale(v))) %>% filter(author_name %in% author_v) %>%
   theme(axis.text.x = element_text(angle = 90))
 ```
 
-![](05_4_rhyme_morhp_words.markdown_strict_files/figure-markdown_strict/unnamed-chunk-72-1.png)
+![](05_4_rhyme_morhp_words.markdown_strict_files/figure-markdown_strict/unnamed-chunk-76-1.png)
 
 Masc clausula
 
@@ -2294,17 +2379,17 @@ cbind(a, as.tibble(scale(v))) %>% filter(author_name %in% author_v)
 
     # A tibble: 9 × 10
     # Groups:   author_name [9]
-      author_name     ADJ     ADV   NOUN    PRON   VERB VERB_inf VERB_imp VERB_prich
-      <chr>         <dbl>   <dbl>  <dbl>   <dbl>  <dbl>    <dbl>    <dbl>      <dbl>
-    1 Баратынски… -0.863  -0.0977 -0.175  1.78   -0.855   -1.07     0.193      1.16 
-    2 Бенедиктов…  0.0980  0.671  -0.295 -0.0619  0.619   -0.684   -0.880      1.16 
-    3 Бернет Е.   -0.176  -0.354   0.624 -1.71    0.325    0.368    1.62      -0.200
-    4 Козлов И.И.  1.88   -0.610  -0.494  0.572  -0.486   -0.589   -1.24       2.18 
-    5 Мейснер А.   0.235   1.44    0.624 -0.505  -1.30    -0.206   -0.164      1.16 
-    6 Некрасов Н… -0.314   0.671  -0.135  0.952  -0.707   -0.589    0.909      0.139
-    7 Ростопчина…  1.47   -0.354  -2.13   2.16    0.398    0.368   -1.24       1.84 
-    8 Слепушкин … -0.0392 -0.867   1.30  -1.90    0.104    0.464   -0.880     -1.22 
-    9 Шахова Е.Н.  1.61   -0.354  -0.933  0.635  -0.118    0.273    0.909     -0.200
+      author_name      ADJ    ADV   NOUN   PRON    VERB VERB_inf VERB_imp VERB_prich
+      <chr>          <dbl>  <dbl>  <dbl>  <dbl>   <dbl>    <dbl>    <dbl>      <dbl>
+    1 Баратынский … -0.524 -0.657  0.190  1.98  -1.54    -1.02     -0.922     -0.145
+    2 Бенедиктов В…  0.272  1.63  -0.205 -0.223 -0.0236  -1.13     -0.307      2.86 
+    3 Бернет Е.     -0.524 -0.149  0.702 -1.42  -0.222   -0.137     2.77       0.188
+    4 Козлов И.И.    1.07  -0.911 -0.244  0.532 -0.949    0.522    -0.922      1.86 
+    5 Мейснер А.    -0.126 -0.149  0.978 -0.160 -1.34    -0.576     0.307      0.522
+    6 Некрасов Н.А. -0.524  1.38  -0.402  0.280 -0.420    0.0830    1.84       0.522
+    7 Ростопчина Е…  1.86  -0.657 -2.49   2.17   0.967    0.303    -1.23       1.52 
+    8 Слепушкин Ф.… -0.259 -0.911  1.25  -1.92   0.175    0.632    -0.307     -1.15 
+    9 Шахова Е.Н.    2.66   0.359 -1.03   0.343 -0.222    0.303     0         -0.479
     # ℹ 1 more variable: VERB_deeprich <dbl>
 
 ``` r
@@ -2316,57 +2401,38 @@ cbind(a, as.tibble(scale(v))) %>% filter(author_name %in% author_v) %>%
   labs(title = "Masculine rhymes")
 ```
 
-![](05_4_rhyme_morhp_words.markdown_strict_files/figure-markdown_strict/unnamed-chunk-73-1.png)
+![](05_4_rhyme_morhp_words.markdown_strict_files/figure-markdown_strict/unnamed-chunk-77-1.png)
+
+Syllable variation scaled
 
 ``` r
-words_authors %>% 
-  filter(closure == "masc" & pos == "ADJ") %>% sample_n(10)
+v <- words_authors %>% 
+  filter(author_name %in% top_authors & closure == "masc") %>% 
+  group_by(author_name) %>% 
+  sample_n(300) %>% 
+  filter(pos %in% c("NOUN", "VERB", "ADJ", "PRON")) %>% 
+  mutate(syl_len = nchar(stress_pattern),
+         pos_syl = paste0(pos, "_", syl_len)
+         ) %>% 
+  count(pos_syl) %>% 
+  ungroup() %>% 
+  pivot_wider(names_from = pos_syl, values_from = n, values_fill = 0) 
+
+a <- v %>% select(author_name)
+
+v <- v %>% select(-author_name) # remove authors for scaling
+
+# cbind(a, as.tibble(scale(v))) %>% filter(author_name %in% author_v) 
+
+cbind(a, as.tibble(scale(v))) %>% filter(author_name %in% author_v) %>% 
+  pivot_longer(!author_name, names_to = "pos_syl", values_to = "z_score") %>% 
+  ggplot(aes(x = author_name, y = z_score, fill = pos_syl)) + 
+  geom_col(position = "dodge", width = 0.5) + 
+  theme(axis.text.x = element_text(angle = 90)) + 
+  labs(title = "Masculine rhymes")
 ```
 
-          text_id meter       rhyme_alph     word  word_acc stress_pattern
-    1   C_327__59  Iamb       легка меня    легка    легка'             01
-    2    C_75__27  Iamb     полна струна    полна    полна'             01
-    3   C_192__23  Iamb  головой голубой  голубой  голубо'й            001
-    4  C_633__170  Iamb    готов дураков    готов    гото'в             01
-    5      P_1140  Iamb        живых них    живых    живы'х             01
-    6    C_142__8  Iamb     готов покров    готов    гото'в             01
-    7    C_173__4  Iamb  гробовой родной   родной   родно'й             01
-    8   C_277__11  Iamb  поскорей сытней   сытней   сытне'й             01
-    9   C_633__14  Iamb    густом кругом   густом   густо'м             01
-    10     P_1527  Iamb костяной пожилой костяной костяно'й            001
-       closure_pattern closure old_tag
-    1                1    masc       A
-    2                1    masc       A
-    3                1    masc       A
-    4                1    masc       A
-    5                1    masc       A
-    6                1    masc       A
-    7                1    masc       A
-    8                1    masc       A
-    9                1    masc       A
-    10               1    masc       A
-                                                                                                         feats
-    1                                                                                              A=ед,кр,жен
-    2                                                                                              A=ед,кр,жен
-    3  A=(вин,ед,полн,муж,неод|им,ед,полн,муж|пр,ед,полн,жен|дат,ед,полн,жен|род,ед,полн,жен|твор,ед,полн,жен)
-    4                                                                                              A=ед,кр,муж
-    5                                                                A=(пр,мн,полн|вин,мн,полн,од|род,мн,полн)
-    6                                                                                              A=ед,кр,муж
-    7  A=(вин,ед,полн,муж,неод|им,ед,полн,муж|пр,ед,полн,жен|дат,ед,полн,жен|род,ед,полн,жен|твор,ед,полн,жен)
-    8                                                                                                   A=срав
-    9                                                                       A=(пр,ед,полн,муж|пр,ед,полн,сред)
-    10 A=(вин,ед,полн,муж,неод|им,ед,полн,муж|пр,ед,полн,жен|дат,ед,полн,жен|род,ед,полн,жен|твор,ед,полн,жен)
-       ending_st pos pos_group     author_name
-    1        ка' ADJ  declined   Алексеев П.Ф.
-    2        на' ADJ  declined     Меркли М.М.
-    3        о'й ADJ  declined Вердеревский А.
-    4        о'в ADJ  declined     Крылов И.А.
-    5        ы'х ADJ  declined  Лермонтов М.Ю.
-    6        о'в ADJ  declined   Бороздна И.П.
-    7        о'й ADJ  declined      Пустельгин
-    8        е'й ADJ  declined     Мягков Н.И.
-    9        о'м ADJ  declined     Крылов И.А.
-    10       о'й ADJ  declined   Бахтурин К.А.
+![](05_4_rhyme_morhp_words.markdown_strict_files/figure-markdown_strict/unnamed-chunk-78-1.png)
 
 Feminine rhymes
 
@@ -2398,18 +2464,18 @@ cbind(a, as.tibble(scale(v))) %>% filter(author_name %in% author_v)
 
     # A tibble: 9 × 10
     # Groups:   author_name [9]
-      author_name           ADJ    ADV    NOUN   PRON    VERB VERB_inf VERB_imp
-      <chr>               <dbl>  <dbl>   <dbl>  <dbl>   <dbl>    <dbl>    <dbl>
-    1 Баратынский Е.А.  0.874    0.286 -0.0908  1.72  -0.662    -0.566   -0.238
-    2 Бенедиктов В.Г.   0.00901  0.286  0.345  -0.792 -0.342    -0.280   -0.733
-    3 Бернет Е.        -1.14    -0.590  0.732   0.122  0.0214   -0.423   -0.486
-    4 Козлов И.И.       1.13    -0.965 -0.696   0.122 -0.0855   -0.710   -0.486
-    5 Мейснер А.        0.261    0.662  1.34   -1.25  -1.07     NA       -0.486
-    6 Некрасов Н.А.    -0.423    1.79   1.80   -1.48  -1.37     -0.423   -0.238
-    7 Ростопчина Е.П.   1.63    -0.215 -1.18   -0.563  0.342    -0.280   -0.486
-    8 Слепушкин Ф.Н.   -0.675   -1.22   0.103  -0.335  0.983    -0.423   -0.486
-    9 Шахова Е.Н.       0.261    0.662 -0.333  -1.02   0.385     0.149   -0.733
-    # ℹ 2 more variables: VERB_prich <dbl>, VERB_deeprich <dbl>
+      author_name     ADJ    ADV     NOUN   PRON   VERB VERB_inf VERB_imp VERB_prich
+      <chr>         <dbl>  <dbl>    <dbl>  <dbl>  <dbl>    <dbl>    <dbl>      <dbl>
+    1 Баратынский…  0.318 -0.562  0.00391  2.40  -0.404  -0.467   -0.585       0.435
+    2 Бенедиктов … -0.437  0.511  0.508   -0.929 -0.315  -0.102   -0.374      -0.642
+    3 Бернет Е.    -0.588 -0.562  0.814   -0.147 -0.138  -0.711   -0.374      -0.283
+    4 Козлов И.И.   0.922 -0.562 -0.368    0.245 -0.205  -0.711   -0.374      -0.283
+    5 Мейснер А.    0.356  1.23   0.771   -1.13  -0.868  -0.589   -0.585       0.435
+    6 Некрасов Н.… -0.399  1.11   1.62    -1.71  -1.31   -0.467    0.0468     -1.00 
+    7 Ростопчина …  2.24  -0.681 -1.22    -0.342  0.260   0.0203  -0.374      -0.104
+    8 Слепушкин Ф… -0.701 -1.28   0.201   -0.342  0.923  -0.345   -0.374      -1.54 
+    9 Шахова Е.Н.   0.620  0.511 -0.434   -0.538  0.260  -0.102   -0.585      -0.642
+    # ℹ 1 more variable: VERB_deeprich <dbl>
 
 ``` r
 cbind(a, as.tibble(scale(v))) %>% filter(author_name %in% author_v) %>% 
@@ -2420,23 +2486,40 @@ cbind(a, as.tibble(scale(v))) %>% filter(author_name %in% author_v) %>%
   labs(title = "Feminine rhymes")
 ```
 
-    Warning: Removed 2 rows containing missing values (`geom_col()`).
+    Warning: Removed 1 rows containing missing values (`geom_col()`).
 
-![](05_4_rhyme_morhp_words.markdown_strict_files/figure-markdown_strict/unnamed-chunk-75-1.png)
+![](05_4_rhyme_morhp_words.markdown_strict_files/figure-markdown_strict/unnamed-chunk-79-1.png)
+
+Syllable variation
 
 ``` r
-glimpse(v)
-glimpse(a)
-
-d <- cbind(a, v) %>% 
+v <- words_authors %>% 
+  filter(author_name %in% top_authors & closure == "fem") %>% 
+  group_by(author_name) %>% 
+  sample_n(500) %>% 
+  filter(pos %in% c("NOUN", "VERB", "ADJ", "PRON")) %>% 
+  mutate(syl_len = nchar(stress_pattern),
+         pos_syl = paste0(pos, "_", syl_len)
+         ) %>% 
+  count(pos_syl) %>% 
   ungroup() %>% 
-  filter(author_name %in% authors[1:3]) %>% 
-  select(-author_name)
+  pivot_wider(names_from = pos_syl, values_from = n, values_fill = 0) 
 
-d[,1:5]
+a <- v %>% select(author_name)
 
-proj <- umap(d[1:5], data = "dist")
+v <- v %>% select(-author_name) # remove authors for scaling
+
+# cbind(a, as.tibble(scale(v))) %>% filter(author_name %in% author_v) 
+
+cbind(a, as.tibble(scale(v))) %>% filter(author_name %in% author_v) %>% 
+  pivot_longer(!author_name, names_to = "pos_syl", values_to = "z_score") %>% 
+  ggplot(aes(x = author_name, y = z_score, fill = pos_syl)) + 
+  geom_col(position = "dodge", width = 0.5) + 
+  theme(axis.text.x = element_text(angle = 90)) + 
+  labs(title = "Feminine rhymes")
 ```
+
+![](05_4_rhyme_morhp_words.markdown_strict_files/figure-markdown_strict/unnamed-chunk-80-1.png)
 
 ``` r
 rm(a, authors_closures, authors_total,words_authors, authors, author_v, closures, top_authors, total_meter)

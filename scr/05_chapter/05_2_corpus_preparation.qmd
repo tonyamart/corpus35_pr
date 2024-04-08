@@ -1037,3 +1037,118 @@ write.csv(rhyme_words_upd,
           "../../data/corpus1835/sql_db/rhyme_words_upd.csv", 
           row.names = FALSE)
 ```
+
+## RNC rhymes
+
+```{r}
+nkrja <- read.csv("../../data/ch5/rnc_rhymes.csv")
+glimpse(nkrja)
+```
+
+to do:
+
+-   extract unique words =\> accent
+
+-   add accents & solve ë issues
+
+-   add masc / fem + 001 annotation
+
+-   create table similar to C-1835 rhymes
+
+Extract unique words for accentuation
+
+```{r, eval=FALSE}
+w_vec <- unique(c(nkrja$from, nkrja$to))
+
+writeLines(w_vec, "nkrja_words.txt")
+```
+
+Read accented words & add non-acc word (same processing as above with corpus-1835)
+
+```{r}
+w_vec <- read_file("nkrja_words.accented.txt")
+
+rw_acc <- tibble(accented = w_vec) %>% # create one-cell tibble
+  # separate one word = one row
+  separate_rows(accented, sep = "\n") 
+  
+rw_acc <- rw_acc %>% 
+  # add id columns
+   mutate(doc_id = row_number(), 
+         row_id = row_number())
+
+head(rw_acc)
+
+# compare if some words are missing
+nrow(rw_acc)
+length(unique(c(nkrja$from, nkrja$to)))
+
+rw_acc <- rw_acc[-which(rw_acc$accented == ""),]
+```
+
+Attach words without stresses
+
+```{r}
+w_vec <- read_file("nkrja_words.txt")
+
+rw_words <- tibble(word = w_vec) %>% # create one-cell tibble
+  # separate one word = one row
+  separate_rows(word, sep = "\n") 
+  
+rw_words %>% 
+  mutate(row_id = row_number()) %>% head
+
+nrow(rw_words)
+nrow(rw_acc)
+
+# merge accented words with true words (ru_accent_poet merge ë in a strange way)
+rw_acc <- rw_words %>% 
+  filter(word != "") %>% 
+  # select(-word) %>% 
+  cbind(rw_acc) %>% 
+  select(word, accented, doc_id, row_id) 
+
+# quick check
+rw_acc %>% 
+  sample_n(10)
+
+nrow(rw_acc)
+```
+
+```{r}
+write.csv(rw_acc, file = "nkrja_acc_words_temp.csv", row.names = F)
+```
+
+Binarisation
+
+```{r}
+b <- to_binary(rw_acc, text = "accented")
+
+# head(b)
+# glimpse(rw_acc)
+
+words <- rw_acc %>% 
+  select(-doc_id) %>% 
+  left_join(b %>% select(-doc_id), by = "row_id") %>% 
+  select(-row_id) %>% 
+  mutate(accented = tolower(accented),
+         word = tolower(word))
+
+words %>% sample_n(10)
+```
+
+Fix errors
+
+no stress
+
+ë stress
+
+one-syl words
+
+add closure type
+
+add n_syl
+
+add ending
+
+Attach to rhyme pairs table

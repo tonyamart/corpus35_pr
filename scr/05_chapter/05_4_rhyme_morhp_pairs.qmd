@@ -380,10 +380,22 @@ ranks <- f_tr_count_syl %>%
 cor(ranks$rank_iamb[1:100], ranks$rank_tr[1:100], method = "kendall")
 ```
 
-```{r}
+```{r, eval=F}
 rm(iamb_count, pos_transl, t, iamb_fem, iamb_masc, tr_fem, tr_masc,
    f_iamb_count_syl, f_tr_count_syl, iamb_count_syl, tr_count_syl)
 ```
+
+### network viz
+
+Network:
+
+from, to, corpus, meter, clausula(?)
+
+NOUN_2 - NOUN_3 , filter n = 1
+
+different network for different meters & periods =\> see which pos do not meet each other in rhyme & which syl numbers are more freq
+
+mb facet wrap for nkrja / c1835 + diff edges/colours for trochee/iamb
 
 ## endings
 

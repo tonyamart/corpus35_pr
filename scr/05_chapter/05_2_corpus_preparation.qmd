@@ -1045,17 +1045,7 @@ nkrja <- read.csv("../../data/ch5/rnc_rhymes.csv")
 glimpse(nkrja)
 ```
 
-to do:
-
--   extract unique words =\> accent
-
--   add accents & solve ë issues
-
--   add masc / fem + 001 annotation
-
--   create table similar to C-1835 rhymes
-
-Extract unique words for accentuation
+### Extract unique words for accentuation
 
 ```{r, eval=FALSE}
 w_vec <- unique(c(nkrja$from, nkrja$to))
@@ -1115,11 +1105,26 @@ rw_acc %>%
 nrow(rw_acc)
 ```
 
-```{r}
+```{r, eval=FALSE}
 write.csv(rw_acc, file = "nkrja_acc_words_temp.csv", row.names = F)
+
+rw_acc <- read.csv("nkrja_acc_words_temp.csv")
+glimpse(rw_acc)
 ```
 
-Binarisation
+### Binarisation
+
+```{r}
+rw_acc %>% 
+  filter(str_detect(accented, "ё")) %>% sample_n(5)
+# ru_accent_poet put no stress near ë 
+
+# add stress
+rw_acc <- rw_acc %>% 
+  mutate(accented = ifelse(str_detect(accented, "ё"),
+                           str_replace(accented, "ё", "ё'"),
+                           accented))
+```
 
 ```{r}
 b <- to_binary(rw_acc, text = "accented")
@@ -1132,23 +1137,246 @@ words <- rw_acc %>%
   left_join(b %>% select(-doc_id), by = "row_id") %>% 
   select(-row_id) %>% 
   mutate(accented = tolower(accented),
-         word = tolower(word))
+         word = tolower(word)) %>% 
+  rename(word_acc = accented)
 
 words %>% sample_n(10)
 ```
 
-Fix errors
+### Fix errors
 
-no stress
+```{r}
+# no stress words
+words %>% 
+  filter(!str_detect(stress_pattern, "1")) %>% 
+  count(stress_pattern)
+```
 
-ë stress
+```{r}
+words %>% 
+  filter(!str_detect(word_acc, "'") & stress_pattern != "0") %>% distinct()
+```
 
-one-syl words
+#### one-syl words
 
-add closure type
+```{r}
+# extract and pull words without stresses
+test_words <- words %>% 
+  filter(!str_detect(word_acc, "'") & stress_pattern == "0") %>% 
+  pull(word_acc) 
 
-add n_syl
+head(test_words)
+test_words <- tolower(test_words)
 
-add ending
+# create vowels vector 
+vowels <-  c("а", "е","ё", "у", "о", "ю", "я", "и", "ы", "э")
+vowels_vec <- paste0(vowels, collapse = "|")
 
-Attach to rhyme pairs table
+
+
+# create empty variables for a stres marking loop
+w <- NULL
+x <- NULL
+word <- NULL
+word_acc <- NULL
+
+# place a stress near every vowel
+for (j in 1:length(test_words)) {
+  # take one word
+  word <- test_words[j]
+  
+  for (i in 1:length(unlist(str_split(word, ""))) ) {
+    # split into characters
+    x <- str_split(word, "")[[1]][i]
+    # add stress if a vowel
+    if (str_detect(x, vowels_vec)) {
+      x <- paste0(x, "'")
+    } 
+    # attach with previous letters 
+    w <- append(w, x)
+  }
+  #w
+  w1 <- paste0(w, collapse = "") # merge into one string
+  w <- NULL # clean temporary variable
+  word_acc[j] <- w1 # write the word into a word vec
+  
+}
+
+head(word_acc)
+
+one_syl <- tibble(word = test_words,
+       word_acc_new = word_acc) 
+
+one_syl %>% sample_n(10)
+```
+
+Return to the main table
+
+```{r}
+# glimpse(words)
+
+words_acc <- words %>% 
+  left_join(one_syl, by = "word") %>% 
+  mutate(word_acc = ifelse(!is.na(word_acc_new),
+                           word_acc_new,
+                           word_acc)) %>% 
+  select(-word_acc_new) %>% 
+  # fix some typos
+  mutate(word_acc = str_replace(word_acc, "е'я", "ея'"),
+         stress_pattern = ifelse(word == "ея", "01", stress_pattern),
+         
+         # fix ë
+         word_acc = str_replace(word_acc, "е'\"", "ё'"),
+         
+         # make everything lowercase AGAIN
+         word = tolower(word),
+         word_acc = tolower(word_acc),
+         
+         # add stress to two two-syll unstressed words
+         word_acc = str_replace(word_acc, "^нибудь$", "нибу'дь"),
+         stress_pattern = ifelse(word == "нибудь", "01", stress_pattern),
+         
+         # fix one-syl stress pattern
+         stress_pattern = ifelse(stress_pattern == "0",
+                                 "1",
+                                 stress_pattern)
+         ) %>% 
+  select(word, word_acc, stress_pattern) %>% 
+  distinct()
+
+head(words_acc)
+```
+
+### add clausula type
+
+```{r}
+words_acc <- words_acc %>% 
+  mutate(closure_pattern = str_replace_all(stress_pattern, "^.*?(1)(0)?(0)?$", "\\1\\2\\3"),
+         closure_pattern = ifelse(closure_pattern == 0, 1, closure_pattern),
+         closure = ifelse(closure_pattern == "10", "fem", ""),
+         closure = ifelse(closure_pattern == "1", "masc", closure),
+         closure = ifelse(closure_pattern == "100", "dactylic", closure),
+         closure = ifelse(closure == "", "other", closure)) 
+
+sample_n(words_acc, 10)
+```
+
+Number of missed endings & stress patterns
+
+```{r}
+words_acc %>% 
+  filter(!str_detect(stress_pattern, "1")) %>% nrow()
+
+words_acc %>% 
+  filter(is.na(stress_pattern)) %>% nrow()
+```
+
+Overview
+
+```{r}
+words_acc %>% 
+  sample_n(10)
+```
+
+Double-stressed words issue
+
+```{r}
+length(unique(words_acc$word)) 
+nrow(words_acc)
+
+words_acc %>% 
+  count(word, sort = T) %>% filter(n > 1)
+
+words_acc %>% 
+  filter(word == "лилей")
+```
+
+```{r}
+v <- unlist(str_split(c("бела', геро'й, геро'ю, дана', каме'н, каме'ны, каще'я, ле'ни, лиле'й, лиле'ю, луга', машу', нево'й, о'ка, о'ку, паши', попо'м, семе'н, семена', силё'н, соловьё'в, хари'т, царе'ва, царё'во"), ", "))
+```
+
+```{r}
+d_words <- words_acc %>% count(word, sort = T) %>% filter(n > 1) %>% pull(word)
+
+d_slice <- words_acc %>% filter(word %in% d_words)
+head(d_slice)
+nrow(d_slice)
+
+d_fix <- d_slice %>% filter(word_acc %in% v)
+```
+
+```{r}
+words_acc <- words_acc %>% 
+  # remove doubled words
+  filter(!word %in% d_words) %>% 
+  # attach fixed version
+  rbind(d_fix)
+```
+
+```{r}
+length(unique(words_acc$word)) == nrow(words_acc)
+```
+
+### add endings
+
+```{r}
+endings <- words_acc %>% 
+   # extract the ending with the stress
+  mutate(ending_st = str_extract(word_acc, "\\w'.*?$"),
+         # add a letter if the ending is only one vowel (masc endings)
+         ending_st = ifelse(
+           str_detect(ending_st, "^\\w'$") & nchar(word_acc) > 2,
+           str_extract(word_acc, "\\w\\w'$"),
+           ending_st
+         ),
+         # column with the ending without the stress
+         ending = str_remove(ending_st, "'")) %>% 
+  select(-ending)
+
+head(endings)
+```
+
+```{r, eval = F}
+write.csv(endings, file = "../../data/ch5/nkrja_rhyme_words.csv", row.names = F)
+```
+
+### Attach to rhyme pairs table
+
+```{r}
+glimpse(nkrja)
+```
+
+```{r}
+nkrja_rhyme_pairs <- nkrja %>% 
+  select(poem_id, rhyme_alph, from, to, from_upos, to_upos, from_feats, to_feats) %>% 
+  mutate(from = tolower(from),
+         to = tolower(to)) %>% 
+  left_join(endings %>% select(-word_acc) %>% 
+                        rename(from = word,
+                               from_sp = stress_pattern,
+                               from_cp = closure_pattern,
+                               from_closure = closure,
+                               from_ending_st = ending_st
+                               ), 
+            by = "from") %>% 
+   left_join(endings %>% select(-word_acc) %>% 
+                        rename(to = word,
+                               to_sp = stress_pattern,
+                               to_cp = closure_pattern,
+                               to_closure = closure,
+                               to_ending_st = ending_st
+                               ), 
+            by = "to") %>% 
+  rename(from_pos = from_upos,
+         to_pos = to_upos) %>% 
+  filter(!is.na(from_ending_st)) %>% 
+  filter(!is.na(to_ending_st)) 
+```
+
+```{r}
+nkrja_rhyme_pairs %>% sample_n(10)
+```
+
+```{r, eval=FALSE}
+write.csv(nkrja_rhyme_pairs, file = "../../data/ch5/nkrja_rhyme_pairs.csv")
+```

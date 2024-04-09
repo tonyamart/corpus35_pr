@@ -1571,19 +1571,44 @@ iambs_rhymed
 
 rnc i3 data load
 
-```{r, eval=FALSE}
-rnc_rhymes <- read_csv("../../data/ch5/rnc_rhymes.csv")
+```{r}
+# load rhymes data
+rnc_rhymes <- read_csv("../../data/ch5/nkrja_rhyme_pairs.csv")
+glimpse(rnc_rhymes)
 
-rnc1 <- rnc_rhymes %>% select(poem_id, from, from_upos, from_feats) %>% 
+
+# load metadata to extract meters
+load("../../data/nkrja_19th_lem.Rda")
+rnc_meta <- c19 %>% 
+  filter(meter == "Я") %>% 
+  mutate(poem_id = paste0("RNC_", Unnamed..0, "_", year),
+         meter = paste0("Iamb_", feet)) %>% 
+  select(poem_id, meter)
+  
+rm(c19) # remove large c19 file
+
+# attach meters to rhyme data
+rnc_rhymes <- rnc_rhymes %>% 
+  left_join(rnc_meta, by = "poem_id") %>% 
+  filter(!is.na(meter)) # remove non-iambic poems
+
+
+# leave only feminine endings
+# collect words in one table
+rnc1 <- rnc_rhymes %>% 
+  filter(from_closure == "fem") %>% 
+  select(poem_id, from, from_pos, from_feats, meter) %>% 
   rename(text_id = poem_id,
          word = from,
-         pos = from_upos,
+         pos = from_pos,
          feats = from_feats)
 
-rnc2 <- rnc_rhymes %>% select(poem_id, to, to_upos, to_feats) %>% 
+rnc2 <- rnc_rhymes %>% 
+  filter(to_closure == "fem") %>% 
+  select(poem_id, to, to_pos, to_feats, meter) %>% 
   rename(text_id = poem_id, 
          word = to,
-         pos = to_upos,
+         pos = to_pos,
          feats = to_feats)
 
 all_rnc <- rbind(rnc1, rnc2) 
@@ -1594,37 +1619,36 @@ all_rnc <- all_rnc %>%
          pos = ifelse(str_detect(feats, "Mood=Imp"), 
                       "VERB_imp", pos))
 
-# load meters
-load("../../data/nkrja_19th_lem.Rda")
-glimpse(c19)
-glimpse(rnc_rhymes)
-
-rnc_i3_ids <- c19 %>% 
-  mutate(text_id = paste0("RNC_", Unnamed..0, "_", year)) %>% 
-  filter(meter == "Я" & feet == "3") %>% 
-  pull(text_id) 
-
-rm(c19)
-
-head(rnc_i3_ids)
-
-rnc_i3 <- all_rnc %>% filter(text_id %in% rnc_i3_ids) 
-
-head(rnc_i3)
-length(unique(rnc_i3$text_id)) # number of Iamb-3 texts with rhymes detected in rnc
+glimpse(all_rnc)
 ```
 
 Cound POS in rnc i3 -- NB these are not only fem endings
 
-```{r, eval=FALSE}
+```{r}
+rnc_i3 <- all_rnc %>% 
+  filter(str_detect(meter, "Iamb_3"))
+
 rnc_i3_total <- nrow(rnc_i3)
 
 rnc_i3_pos <- rnc_i3 %>% 
   count(pos) %>% 
   rename(rnc_i3 = n) %>% 
-  mutate(perc_rnc_i3 = round( (rnc_i3/rnc_i3_total)*100, 2 ))
+  mutate(perc_rnc_i3 = round( (rnc_i3/rnc_i3_total)*100, 1 ))
 
 rnc_i3_pos
+```
+
+All RNC fem iambs
+
+```{r}
+rnc_if_total <- nrow(all_rnc)
+
+rnc_if_pos <- all_rnc %>% 
+  count(pos) %>% 
+  rename(rnc_if = n) %>% 
+  mutate(perc_rnc_if = round( (rnc_if/rnc_if_total)*100, 1 ))
+
+rnc_if_pos
 ```
 
 i3 kulmann POS

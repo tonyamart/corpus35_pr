@@ -385,6 +385,10 @@ rm(iamb_count, pos_transl, t, iamb_fem, iamb_masc, tr_fem, tr_masc,
    f_iamb_count_syl, f_tr_count_syl, iamb_count_syl, tr_count_syl)
 ```
 
+## RNC
+
+Load RNC data and count
+
 ### network viz
 
 Network:

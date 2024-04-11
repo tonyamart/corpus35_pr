@@ -248,17 +248,17 @@ tr_count_syl %>%
 ```
 
 ```{r}
-tr_count_syl %>% 
-  left_join(iamb_count_syl, by = "pos_pair") %>% 
+iamb_count_syl %>% 
+  left_join(tr_count_syl, by = "pos_pair") %>%  
   select(pos_pair, rank_iamb, rank_tr, perc_iamb, perc_tr, n_iamb, n_tr) %>% 
   head(20)
 
-ranks <- tr_count_syl %>% 
-  left_join(iamb_count_syl, by = "pos_pair") %>% 
+ranks_masc <- iamb_count_syl %>% 
+  left_join(tr_count_syl, by = "pos_pair") %>% 
   select(pos_pair, rank_iamb, rank_tr, perc_iamb, perc_tr, n_iamb, n_tr) %>%
   drop_na() 
 
-cor(ranks$rank_iamb[1:100], ranks$rank_tr[1:100], method = "kendall")
+cor(ranks_masc$rank_iamb[1:100], ranks_masc$rank_tr[1:100], method = "kendall")
 ```
 
 ### fem
@@ -367,27 +367,22 @@ f_tr_count_syl %>%
 Syllable variation
 
 ```{r}
-f_tr_count_syl %>% 
-  left_join(f_iamb_count_syl, by = "pos_pair") %>% 
+f_iamb_count_syl %>% 
+  left_join(f_tr_count_syl, by = "pos_pair") %>% 
   select(pos_pair, rank_iamb, rank_tr, perc_iamb, perc_tr, n_iamb, n_tr) %>% 
   head(20)
 
-ranks <- f_tr_count_syl %>% 
-  left_join(f_iamb_count_syl, by = "pos_pair") %>% 
+fem_ranks <- f_iamb_count_syl %>% 
+  left_join(f_tr_count_syl, by = "pos_pair") %>% 
   select(pos_pair, rank_iamb, rank_tr, perc_iamb, perc_tr, n_iamb, n_tr) %>% 
   drop_na()
 
-cor(ranks$rank_iamb[1:100], ranks$rank_tr[1:100], method = "kendall")
-```
-
-```{r, eval=F}
-rm(iamb_count, pos_transl, t, iamb_fem, iamb_masc, tr_fem, tr_masc,
-   f_iamb_count_syl, f_tr_count_syl, iamb_count_syl, tr_count_syl)
+cor(fem_ranks$rank_iamb[1:100], fem_ranks$rank_tr[1:100], method = "kendall")
 ```
 
 ## RNC
 
-### Load RNC data 
+### Load RNC data
 
 ```{r}
 rnc_rhymes <- read.csv("../../data/ch5/nkrja_rhyme_pairs.csv") %>% select(-X)
@@ -412,11 +407,33 @@ rm(c19, rnc_ids) # remove large c19 file & iamb-id vector
 # glimpse(rnc_rhymes)
 ```
 
-Distribution of data over time
-
-mb limit up to 1830?
+Distribution of data over time - filter out rhymes after 1830
 
 ```{r}
+ids_before_1830 <- rnc_rhymes %>% 
+  select(poem_id) %>% 
+  separate(poem_id, into = c("corpus", "id", "year"), sep = "_") %>% 
+  filter(as.numeric(year) < 1811) %>% 
+  mutate(poem_id = paste0("RNC_", id, "_", year)) %>% 
+  pull(poem_id)
+
+# filter only rhymes before 1830
+rnc_rhymes <- rnc_rhymes %>% 
+  filter(poem_id %in% ids_before_1830)
+
+rm(ids_before_1830) # remove large character vector
+
+# add verb_inf & verb_imp categories
+rnc_rhymes <- rnc_rhymes %>% 
+  mutate(from_pos = ifelse(str_detect(from_feats, "VerbForm=Inf"), 
+                      "VERB_inf", from_pos),
+         from_pos = ifelse(str_detect(from_feats, "Mood=Imp"), 
+                      "VERB_imp", from_pos)) %>% 
+  mutate(to_pos = ifelse(str_detect(to_feats, "VerbForm=Inf"), 
+                      "VERB_inf", to_pos),
+         to_pos = ifelse(str_detect(to_feats, "Mood=Imp"), 
+                      "VERB_imp", to_pos))
+
 rnc_rhymes %>% 
   select(poem_id) %>% 
   separate(poem_id, into = c("corpus", "id", "year"), sep = "_") %>% 
@@ -424,7 +441,9 @@ rnc_rhymes %>%
   ggplot(aes(x = year, y = n)) + geom_col()
 ```
 
-### masc 
+### masc
+
+Filter only masculine rhymes
 
 ```{r}
 rnc_masc <- rnc_rhymes %>% 
@@ -460,9 +479,9 @@ rnc_iamb_count_syl <- rnc_iamb_masc %>%
   ungroup() %>% 
   count(pos_pair, sort = T) %>% 
   mutate(perc = round( (n/t)*100, 2 )) %>% 
-  rename(n_iamb = n,
-         perc_iamb = perc) %>% 
-  mutate(rank_iamb = row_number())
+  rename(rnc_n_iamb = n,
+         rnc_perc_iamb = perc) %>% 
+  mutate(rnc_rank_iamb = row_number())
 
 rnc_iamb_count_syl %>% 
   head(10)
@@ -493,9 +512,9 @@ rnc_tr_count_syl <- rnc_tr_masc %>%
   ungroup() %>% 
   count(pos_pair, sort = T) %>% 
   mutate(perc = round( (n/t)*100, 2 )) %>% 
-  rename(n_tr = n,
-         perc_tr = perc) %>% 
-  mutate(rank_tr = row_number())
+  rename(rnc_n_tr = n,
+         rnc_perc_tr = perc) %>% 
+  mutate(rnc_rank_tr = row_number())
 
 rnc_tr_count_syl %>% 
   head(10)
@@ -504,24 +523,162 @@ rnc_tr_count_syl %>%
 Comparison
 
 ```{r}
-rnc_tr_count_syl %>% 
-  left_join(rnc_iamb_count_syl, by = "pos_pair") %>% 
-  select(pos_pair, rank_iamb, rank_tr, perc_iamb, perc_tr, n_iamb, n_tr) %>% 
+rnc_iamb_count_syl %>% 
+  left_join(rnc_tr_count_syl, by = "pos_pair") %>% 
+  select(pos_pair, rnc_rank_iamb, rnc_rank_tr, rnc_perc_iamb, 
+         rnc_perc_tr, rnc_n_iamb, rnc_n_tr) %>% 
   head(20)
 
-ranks <- rnc_tr_count_syl %>% 
-  left_join(iamb_count_syl, by = "pos_pair") %>% 
-  select(pos_pair, rank_iamb, rank_tr, perc_iamb, perc_tr, n_iamb, n_tr) %>%
+rnc_masc_ranks <- rnc_iamb_count_syl %>% 
+  left_join(rnc_tr_count_syl, by = "pos_pair") %>% 
+  select(pos_pair, rnc_rank_iamb, rnc_rank_tr, rnc_perc_iamb, 
+         rnc_perc_tr, rnc_n_iamb, rnc_n_tr) %>%
   drop_na() 
 
-cor(ranks$rank_iamb[1:100], ranks$rank_tr[1:100], method = "kendall")
+cor(rnc_masc_ranks$rnc_rank_iamb[1:100], rnc_masc_ranks$rnc_rank_tr[1:100], method = "kendall")
 ```
 
--   limit up to 1830
+### fem rhymes
 
--   add these tables to the corpus-1835 tables
+Same steps for feminine rhymes
 
--   compare & built nets
+```{r}
+rnc_fem <- rnc_rhymes %>% 
+  filter(from_closure == "fem" & to_closure == "fem")
+
+nrow(rnc_fem)
+```
+
+Iamb
+
+```{r}
+rnc_iamb_fem <- rnc_fem %>% 
+  filter(meter == "Я")
+
+t <- nrow(rnc_iamb_fem)
+t
+
+rnc_fem_iamb_count_syl <- rnc_iamb_fem %>% 
+  mutate(# calculate number of syllables in each word
+         from_n_syl = nchar(from_sp),
+         to_n_syl = nchar(to_sp),
+         
+         # attach n_syl to pos
+         from_pos_syl = paste0(from_pos, "_", from_n_syl),
+         to_pos_syl = paste0(to_pos, "_", to_n_syl)) %>% 
+  rowwise() %>% 
+  mutate(pos_pair = paste0(sort(c(from_pos_syl, to_pos_syl)), collapse = " -- ")
+         ) %>%
+  ungroup() %>% 
+  count(pos_pair, sort = T) %>% 
+  mutate(perc = round( (n/t)*100, 2 )) %>% 
+  rename(rnc_n_iamb = n,
+         rnc_perc_iamb = perc) %>% 
+  mutate(rnc_rank_iamb = row_number())
+
+rnc_fem_iamb_count_syl %>% 
+  head(10)
+```
+
+Trochee
+
+```{r}
+rnc_tr_fem <- rnc_fem %>% 
+  filter(meter == "Х")
+
+t <- nrow(rnc_tr_fem)
+t # very small number of trochee feminine examples!
+
+rnc_fem_tr_count_syl <- rnc_tr_fem %>% 
+  mutate(# calculate number of syllables in each word
+         from_n_syl = nchar(from_sp),
+         to_n_syl = nchar(to_sp),
+         
+         # attach n_syl to pos
+         from_pos_syl = paste0(from_pos, "_", from_n_syl),
+         to_pos_syl = paste0(to_pos, "_", to_n_syl)) %>% 
+  rowwise() %>% 
+  mutate(pos_pair = paste0(sort(c(from_pos_syl, to_pos_syl)), collapse = " -- ")
+         ) %>%
+  ungroup() %>% 
+  count(pos_pair, sort = T) %>% 
+  mutate(perc = round( (n/t)*100, 2 )) %>% 
+  rename(rnc_n_tr = n,
+         rnc_perc_tr = perc) %>% 
+  mutate(rnc_rank_tr = row_number())
+
+rnc_tr_count_syl %>% 
+  head(10)
+```
+
+Comparison
+
+```{r}
+rnc_fem_iamb_count_syl %>% 
+  left_join(rnc_fem_tr_count_syl, by = "pos_pair") %>%
+  select(pos_pair, rnc_rank_iamb, rnc_rank_tr, rnc_perc_iamb, 
+         rnc_perc_tr, rnc_n_iamb, rnc_n_tr) %>% 
+  head(20)
+
+rnc_fem_ranks <- rnc_fem_iamb_count_syl %>% 
+  left_join(rnc_fem_tr_count_syl, by = "pos_pair") %>% 
+  select(pos_pair, rnc_rank_iamb, rnc_rank_tr, rnc_perc_iamb, 
+         rnc_perc_tr, rnc_n_iamb, rnc_n_tr) %>%
+  drop_na() 
+
+cor(rnc_fem_ranks$rnc_rank_iamb[1:100], rnc_fem_ranks$rnc_rank_tr[1:100], method = "kendall")
+```
+
+## compare C35 & RNC
+
+Masc rhymes
+
+```{r}
+glimpse(ranks_masc) # corpus-1835 
+glimpse(rnc_masc_ranks) # rnc
+```
+
+```{r}
+all_masc_ranks <- ranks_masc %>% 
+  left_join(rnc_masc_ranks, by = "pos_pair") %>% 
+  select(pos_pair, 
+         rank_iamb, rnc_rank_iamb, rank_tr, rnc_rank_tr,
+         perc_iamb, rnc_perc_iamb, perc_tr, rnc_perc_tr,
+         n_iamb, rnc_n_iamb, n_tr, rnc_n_tr
+         )
+
+head(all_masc_ranks, 20)
+
+# drop na for cor test
+r <- all_masc_ranks %>% drop_na()
+
+cor(r$rank_iamb[1:90], r$rnc_rank_iamb[1:90],
+    method = "kendall")
+
+cor(r$rank_tr[1:90], r$rnc_rank_tr[1:90], method = "kendall")
+```
+
+Fem rhymes
+
+```{r}
+all_fem_ranks <- fem_ranks %>% 
+  left_join(rnc_fem_ranks, by = "pos_pair") %>% 
+  select(pos_pair, 
+         rank_iamb, rnc_rank_iamb, rank_tr, rnc_rank_tr,
+         perc_iamb, rnc_perc_iamb, perc_tr, rnc_perc_tr,
+         n_iamb, rnc_n_iamb, n_tr, rnc_n_tr
+         )
+
+head(all_fem_ranks, 20)
+
+# drop na for cor test
+r <- all_fem_ranks %>% drop_na()
+
+cor(r$rank_iamb[1:90], r$rnc_rank_iamb[1:90],
+    method = "kendall")
+
+cor(r$rank_tr[1:90], r$rnc_rank_tr[1:90], method = "kendall")
+```
 
 ### network viz
 
@@ -534,6 +691,138 @@ NOUN_2 - NOUN_3 , filter n = 1
 different network for different meters & periods =\> see which pos do not meet each other in rhyme & which syl numbers are more freq
 
 mb facet wrap for nkrja / c1835 + diff edges/colours for trochee/iamb
+
+```{r}
+library(tidygraph)
+library(ggraph)
+
+glimpse(all_masc_ranks)
+summary(all_masc_ranks)
+```
+
+Nodes size - calculate pos_syl freq in the subsets
+
+```{r, eval=FALSE}
+#glimpse(rhyme_pairs)
+
+# w1 <- rhyme_pairs %>% 
+#   select(from_pos, from_sp) %>% 
+#   mutate(from_n_syl = nchar(from_sp),
+#          pos_syl = paste0(from_pos, "_", from_n_syl)) %>% 
+#   select(pos_syl)
+# 
+# w2 <- rhyme_pairs %>% 
+#   select(to_pos, to_sp) %>% 
+#   mutate(to_n_syl = nchar(to_sp),
+#          pos_syl = paste0(to_pos, "_", to_n_syl)) %>% 
+#   select(pos_syl)
+# 
+# w <- rbind(w1, w2) %>% 
+#   count(pos_syl, sort = T)
+
+```
+
+```{r}
+t <- all_masc_ranks %>% 
+  # filter(n_iamb > 5,
+  #        n_tr > 5,
+  #        rnc_n_iamb > 5,
+  #        rnc_n_tr > 5) %>%
+  filter(rank_iamb < 100,
+         rnc_rank_iamb < 100,
+         rank_tr < 100,
+         rnc_rank_tr < 100) %>% 
+  select(pos_pair, perc_iamb, perc_tr, rnc_perc_iamb, rnc_perc_tr) %>% 
+  pivot_longer(!pos_pair, names_to = "corpus", values_to = "value") %>% 
+  #filter(value > 0.3) %>% # avg freq
+  separate(pos_pair, into = c("from", "to"), sep = " -- ") %>% 
+  drop_na()
+
+# unique(t$corpus)
+
+labels <- tibble(corpus = unique(t$corpus),
+                 corpus_r = c("Корпус-1835, ямбы",
+                           "Корпус-1835, хореи",
+                           "НКРЯ до 1810, ямбы",
+                           "НКРЯ до 1810, хореи"))
+
+t <- t %>% left_join(labels, by = "corpus")
+
+edgelist <- t %>% drop_na()
+nodelist <- tibble(source = unique(c(t$from, t$to))) %>% 
+  mutate(ids = row_number()) # %>% 
+  #left_join(w %>% rename(source = pos_syl), by = "source")
+
+net_t <- tbl_graph(nodes = nodelist,
+                   edges = edgelist,
+                   directed = FALSE)
+
+net_t %>% 
+  ggraph(layout = 'linear', circular = TRUE) +
+  #ggraph(layout = "kk") + 
+  geom_edge_arc(aes(width = value, #color = corpus, 
+                     color = value,
+                     alpha = value)) + 
+  geom_node_point(#aes(size = n)
+    color = "#440154FF"
+    ) + 
+  geom_node_text(aes(label = source), vjust = -0.5) + 
+  facet_wrap(~corpus_r) + 
+  scale_edge_color_continuous(low = "#440154FF", high = "#FDE725FF") + 
+  theme(legend.position = "None",
+        text = element_text(size = 20))
+```
+
+Female
+
+```{r}
+t <- all_fem_ranks %>% 
+  # filter(n_iamb > 5,
+  #        n_tr > 5,
+  #        rnc_n_iamb > 5,
+  #        rnc_n_tr > 5) %>%
+    filter(rank_iamb < 100,
+         rnc_rank_iamb < 100,
+         rank_tr < 100,
+         rnc_rank_tr < 100) %>% 
+  select(pos_pair, perc_iamb, perc_tr, rnc_perc_iamb, rnc_perc_tr) %>% 
+  pivot_longer(!pos_pair, names_to = "corpus", values_to = "value") %>% 
+  #filter(value > 0.3) %>% # avg freq
+  separate(pos_pair, into = c("from", "to"), sep = " -- ") %>% 
+  drop_na()
+
+labels <- tibble(corpus = unique(t$corpus),
+                 corpus_r = c("Корпус-1835, ямбы",
+                           "Корпус-1835, хореи",
+                           "НКРЯ до 1810, ямбы",
+                           "НКРЯ до 1810, хореи"))
+
+t <- t %>% left_join(labels, by = "corpus")
+
+edgelist <- t %>% drop_na()
+nodelist <- tibble(source = unique(c(t$from, t$to))) %>% 
+  mutate(ids = row_number()) # %>% 
+  #left_join(w %>% rename(source = pos_syl), by = "source")
+
+net_t <- tbl_graph(nodes = nodelist,
+                   edges = edgelist,
+                   directed = FALSE)
+
+net_t %>% 
+  ggraph(layout = 'linear', circular = TRUE) +
+  #ggraph(layout = "kk") + 
+  geom_edge_arc(aes(width = value, #color = corpus, 
+                     color = value,
+                     alpha = value)) + 
+  geom_node_point(#aes(size = n)
+    color = "#440154FF"
+    ) + 
+  geom_node_text(aes(label = source), vjust = -0.5) + 
+  facet_wrap(~corpus_r) + 
+  scale_edge_color_continuous(low = "#440154FF", high = "#FDE725FF") + 
+  theme(legend.position = "None",
+        text = element_text(size = 20))
+```
 
 ## endings
 

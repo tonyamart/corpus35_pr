@@ -66,125 +66,94 @@ Load full metadata
 
 ``` r
 # load periodicals data stored separately
-per_full <- readRDS("../../data/corpus1835/periodicals/periodicals_corpus_lemm_acc.Rds")
+per_t <- readRDS("../../data/corpus1835/corpus_1835.Rds")
 
+# read texts
+per_texts <- read.csv("../../data/corpus1835/sql_db/texts_metadata.csv") %>% 
+  filter(str_detect(text_id, "^P_"))
+
+# read sources metadata
+per_sources <- read.csv("../../data/corpus1835/sql_db/sources.csv") %>% 
+  filter(type == "periodicals") %>% 
+  # remove unnecessary vars
+  select(source_id, book_title, year)
+
+# attach sources to texts
+per_full <- per_texts %>% 
+  left_join(per_sources, by = "source_id") %>% 
+  left_join(per_t %>% select(text_id, text_lemm))
+```
+
+    Joining with `by = join_by(text_id)`
+
+``` r
 glimpse(per_full)
 ```
 
     Rows: 1,905
-    Columns: 18
+    Columns: 14
     $ text_id       <chr> "P_1", "P_10", "P_100", "P_1000", "P_1001", "P_1002", "P…
-    $ A_ID          <chr> "", "A-50", "A-7", "A-41", "A-139", "A-11", "A-163", "A-…
-    $ author_text   <chr> "", "Якубович Л.А.", "Кольцов А.В.", "Глинка Ф.Н.", "Про…
-    $ author_sign   <chr> "", "Л. Якубович", "Кольцов", "Ф. Глинка", "Н. Прокопови…
+    $ source_id     <chr> "Per_1", "Per_2", "Per_3", "Per_4", "Per_4", "Per_4", "P…
+    $ A_ID          <chr> "", "A_50", "A_7", "A_41", "A_139", "A_11", "A_163", "A_…
     $ text_title    <chr> "Солдатская песня", "Молния", "Ночлег чумаков", "Утешите…
-    $ first_line    <chr> "Ох жизнь, молодецкая", "Зачем с небесной высоты", "В бл…
     $ text_subtitle <chr> "", "", "Сельские картины", "", "", "", "", "", "", "", …
-    $ PER_ID        <chr> "Сев_пч", "БдЧ", "БдЧ", "Совр", "Совр", "Совр", "Совр", …
+    $ first_line    <chr> "Ох жизнь, молодецкая", "Зачем с небесной высоты", "В бл…
+    $ text_page     <chr> "C. 46", "C. 21", "C. 9-12", "C. 172-174", "C. 175-176",…
+    $ corpus        <chr> "per", "per", "per", "per", "per", "per", "per", "per", …
+    $ meter         <chr> "Other", "Iamb", "Iamb", "Iamb", "Trochee", "Iamb", "Tro…
+    $ feet          <chr> "other", "3", "4", "4", "4", "4", "other", "4", "6", "5"…
+    $ n_lines       <int> 38, 16, 98, 77, 28, 12, 44, 25, 31, 28, 100, 16, 17, 60,…
+    $ book_title    <chr> "Сев_пч", "БдЧ", "БдЧ", "Совр", "Совр", "Совр", "Совр", …
     $ year          <int> 1835, 1835, 1836, 1838, 1838, 1838, 1838, 1838, 1838, 18…
-    $ vol           <chr> "", "Т.8. Отд. 1", "Т. 16", "Т. 10. 3-ей паг", "Т. 10. 3…
-    $ num           <chr> "12", "", "", "", "", "", "", "", "", "", "", "", "", ""…
-    $ text_pages    <chr> "46", "21", "9-12", "172-174", "175-176", "177", "178-17…
-    $ notes         <chr> "", "", "", "", "", "", "", "", "", "", "", "", "", "", …
-    $ path          <chr> "../../data/corpus1835/periodicals/per_raw//P_1.txt", ".…
-    $ text_raw      <chr> "Ох, жизнь молодецкая,\nБравая, солдатская!\nКак осенняя…
-    $ text_cln      <chr> "Ох, жизнь молодецкая,\nБравая, солдатская!\nКак осенняя…
     $ text_lemm     <chr> "ох, жизнь молодецкий,\nбравый, солдатский!\nкак осенний…
-    $ text_acc      <chr> "Ох, жизнь молоде'цкая,\nБра'вая, солда'тская!\nКак осе'…
 
 Attach authors data: check if all author’s names are complete
 
 ``` r
-# load latest ver of the corpus with authors' data cleaned
-corpus_cln <- readRDS("../../data/corpus1835/corpus_1835.Rds")
+# attach RP and gender columns from authors-meta
+# load authors-meta
+authors_meta <- read.csv("../../data/corpus1835/sql_db/authors.csv")
 
-glimpse(corpus_cln)
-```
+# glimpse(authors_meta)
 
-    Rows: 4,799
-    Columns: 20
-    $ text_id       <chr> "P_1", "P_10", "P_100", "P_1000", "P_1001", "P_1002", "P…
-    $ A_ID          <chr> "", "A-50", "A-7", "A-41", "A-139", "A-11", "A-163", "A-…
-    $ author_sign   <chr> "", "Л. Якубович", "Кольцов", "Ф. Глинка", "Н. Прокопови…
-    $ author_text   <chr> "", "Якубович Л.А.", "Кольцов А.В.", "Глинка Ф.Н.", "Про…
-    $ text_title    <chr> "Солдатская песня", "Молния", "Ночлег чумаков", "Утешите…
-    $ text_subtitle <chr> "", "", "Сельские картины", "", "", "", "", "", "", "", …
-    $ first_line    <chr> "Ох жизнь, молодецкая", "Зачем с небесной высоты", "В бл…
-    $ year          <chr> "1835", "1835", "1836", "1838", "1838", "1838", "1838", …
-    $ path_text     <chr> "../../data/corpus1835/periodicals/per_raw//P_1.txt", ".…
-    $ source_text   <chr> "Сев_пч. 1835. №12. C. 46", "БдЧ. 1835. Т.8. Отд. 1. C. …
-    $ COL_ID        <chr> "", "", "", "", "", "", "", "", "", "", "", "", "", "", …
-    $ corpus        <chr> "per", "per", "per", "per", "per", "per", "per", "per", …
-    $ text_raw      <chr> "Ох, жизнь молодецкая,\nБравая, солдатская!\nКак осенняя…
-    $ text_cln      <chr> "Ох, жизнь молодецкая,\nБравая, солдатская!\nКак осенняя…
-    $ text_lemm     <chr> "ох, жизнь молодецкий,\nбравый, солдатский!\nкак осенний…
-    $ text_acc      <chr> "Ох, жизнь молоде'цкая,\nБра'вая, солда'тская!\nКак осе'…
-    $ meter         <fct> Other?, Iamb, Iamb, Iamb, Trochee, Iamb, Trochee, Iamb, …
-    $ feet          <chr> "?", "3", "4", "4", "4", "4", "other", "4", "6", "5", "4…
-    $ formula       <chr> "Other?_?", "Iamb_3", "Iamb_4", "Iamb_4", "Trochee_4", "…
-    $ n_lines       <int> 38, 16, 98, 77, 28, 12, 44, 25, 31, 28, 100, 16, 17, 60,…
+# attach only gender by A_ID
+per <- per_full %>% 
+  left_join(authors_meta %>% 
+              select(A_ID, author_name, RP_loc, author_sex,
+                     year_birth, year_death), 
+            by = "A_ID") %>% 
+  rename(author_text = author_name)
 
-``` r
-glimpse(per_full)
+glimpse(per)
 ```
 
     Rows: 1,905
-    Columns: 18
+    Columns: 19
     $ text_id       <chr> "P_1", "P_10", "P_100", "P_1000", "P_1001", "P_1002", "P…
-    $ A_ID          <chr> "", "A-50", "A-7", "A-41", "A-139", "A-11", "A-163", "A-…
-    $ author_text   <chr> "", "Якубович Л.А.", "Кольцов А.В.", "Глинка Ф.Н.", "Про…
-    $ author_sign   <chr> "", "Л. Якубович", "Кольцов", "Ф. Глинка", "Н. Прокопови…
+    $ source_id     <chr> "Per_1", "Per_2", "Per_3", "Per_4", "Per_4", "Per_4", "P…
+    $ A_ID          <chr> "", "A_50", "A_7", "A_41", "A_139", "A_11", "A_163", "A_…
     $ text_title    <chr> "Солдатская песня", "Молния", "Ночлег чумаков", "Утешите…
-    $ first_line    <chr> "Ох жизнь, молодецкая", "Зачем с небесной высоты", "В бл…
     $ text_subtitle <chr> "", "", "Сельские картины", "", "", "", "", "", "", "", …
-    $ PER_ID        <chr> "Сев_пч", "БдЧ", "БдЧ", "Совр", "Совр", "Совр", "Совр", …
+    $ first_line    <chr> "Ох жизнь, молодецкая", "Зачем с небесной высоты", "В бл…
+    $ text_page     <chr> "C. 46", "C. 21", "C. 9-12", "C. 172-174", "C. 175-176",…
+    $ corpus        <chr> "per", "per", "per", "per", "per", "per", "per", "per", …
+    $ meter         <chr> "Other", "Iamb", "Iamb", "Iamb", "Trochee", "Iamb", "Tro…
+    $ feet          <chr> "other", "3", "4", "4", "4", "4", "other", "4", "6", "5"…
+    $ n_lines       <int> 38, 16, 98, 77, 28, 12, 44, 25, 31, 28, 100, 16, 17, 60,…
+    $ book_title    <chr> "Сев_пч", "БдЧ", "БдЧ", "Совр", "Совр", "Совр", "Совр", …
     $ year          <int> 1835, 1835, 1836, 1838, 1838, 1838, 1838, 1838, 1838, 18…
-    $ vol           <chr> "", "Т.8. Отд. 1", "Т. 16", "Т. 10. 3-ей паг", "Т. 10. 3…
-    $ num           <chr> "12", "", "", "", "", "", "", "", "", "", "", "", "", ""…
-    $ text_pages    <chr> "46", "21", "9-12", "172-174", "175-176", "177", "178-17…
-    $ notes         <chr> "", "", "", "", "", "", "", "", "", "", "", "", "", "", …
-    $ path          <chr> "../../data/corpus1835/periodicals/per_raw//P_1.txt", ".…
-    $ text_raw      <chr> "Ох, жизнь молодецкая,\nБравая, солдатская!\nКак осенняя…
-    $ text_cln      <chr> "Ох, жизнь молодецкая,\nБравая, солдатская!\nКак осенняя…
     $ text_lemm     <chr> "ох, жизнь молодецкий,\nбравый, солдатский!\nкак осенний…
-    $ text_acc      <chr> "Ох, жизнь молоде'цкая,\nБра'вая, солда'тская!\nКак осе'…
+    $ author_text   <chr> NA, "Якубович Л.А.", "Кольцов А.В.", "Глинка Ф.Н.", "Про…
+    $ RP_loc        <chr> NA, NA, "3-33", "1-578", "5-151", "5", "2-13", "1-578", …
+    $ author_sex    <chr> NA, "m", "m", "m", "m", "m", "m", "m", "m", "m", "m", "f…
+    $ year_birth    <chr> NA, "1805", "1809", "1786", "1810", "1799", "1812", "178…
+    $ year_death    <chr> NA, "1839", "1842", "1880", "1857", "1837", "1848", "188…
 
 ``` r
-per <- per_full %>% 
-  select(-author_text, -A_ID) %>% 
-  left_join(corpus_cln %>% select(text_id, A_ID, author_text), by = "text_id") 
-
-
-# attach RP and gender columns from authors-meta
-# load authors-meta
-authors_meta <- read.delim("../../meta/authors.tsv", sep = "\t")
-
-# attach only gender by A_ID
-per <- per %>% 
-  left_join(authors_meta %>% select(A_ID, RP, gender), by = "A_ID")
-
-
-# cleaning using authors-meta 
-# 
-# # create a table that checks if author's names in authors_metadata and in per_full are different
-# authors_test <- per_full %>% 
-#   select(A_ID, author_text) %>% 
-#   rename(author_existing = author_text) %>% 
-#   left_join(authors %>% select(A_ID, author, author_full_name), by = "A_ID") %>% 
-#   distinct() %>% 
-#   filter(author_existing != author)
-# 
-# # replace author_text column in per_full with more complete data
-# # also add RP column
-# per <- per_full %>% 
-#   left_join(authors %>% select(A_ID, RP, author), by = "A_ID") %>% 
-#   mutate(author_text = ifelse(A_ID %in% authors_test$A_ID, author, author_text)) %>% 
-#   select(-author)
-
-# replace NA appeared after coercion to blank
+# fill NA as empty values
 per[is.na(per)] <- ""
 
-rm(per_full, corpus_cln, authors_meta)
+rm(per_full, per_t, per_sources, per_texts, authors_meta)
 ```
 
 ## RNC comparison
@@ -206,7 +175,7 @@ head(rnc_authors)
     [6] "ПАСловцов"  
 
 ``` r
-#rm(c19)
+# rm(c19)
 ```
 
 ## 2.1. Periodicals vs RNC
@@ -226,7 +195,7 @@ per %>%
     count(author_text, sort = T) %>% nrow() 
 ```
 
-    [1] 191
+    [1] 186
 
 ``` r
 print("Number of authors with biography in RP:")
@@ -236,12 +205,12 @@ print("Number of authors with biography in RP:")
 
 ``` r
 per %>% 
-    filter(RP != "") %>% # nrow() # 1197 poems by authors known by RP
-    select(RP) %>% 
-    count(RP, sort = T) %>% nrow() 
+    filter(RP_loc != "") %>% # nrow() # 1197 poems by authors known by RP
+    select(RP_loc) %>% 
+    count(RP_loc, sort = T) %>% nrow() 
 ```
 
-    [1] 132
+    [1] 128
 
 ``` r
 print("Number of authors included in RNC")
@@ -259,10 +228,10 @@ per %>%
     mutate(author = str_remove_all(author, "[[:space:]]|[[:punct:]]")) %>% 
     distinct() %>% 
     filter(author %in% rnc_authors) %>% 
-    nrow() # 58 ? 
+    nrow() # 58 
 ```
 
-    [1] 62
+    [1] 58
 
 ### Textual intersections between RNC & periodicals
 
@@ -272,34 +241,32 @@ per %>%
 ``` r
 periodicals <- per %>% 
     mutate(doublesCheck = str_extract(text_lemm, "^.*?\n.*?\n.*?\n")) %>% 
-    mutate(doublesCheck = str_remove_all(doublesCheck, "[[:punct:]]|[[:space:]]")) %>% 
-    filter(text_raw != "") # remove empty lines
+    mutate(doublesCheck = str_remove_all(doublesCheck, "[[:punct:]]|[[:space:]]")) 
 
 glimpse(periodicals)
 ```
 
     Rows: 1,905
-    Columns: 21
+    Columns: 20
     $ text_id       <chr> "P_1", "P_10", "P_100", "P_1000", "P_1001", "P_1002", "P…
-    $ author_sign   <chr> "", "Л. Якубович", "Кольцов", "Ф. Глинка", "Н. Прокопови…
+    $ source_id     <chr> "Per_1", "Per_2", "Per_3", "Per_4", "Per_4", "Per_4", "P…
+    $ A_ID          <chr> "", "A_50", "A_7", "A_41", "A_139", "A_11", "A_163", "A_…
     $ text_title    <chr> "Солдатская песня", "Молния", "Ночлег чумаков", "Утешите…
-    $ first_line    <chr> "Ох жизнь, молодецкая", "Зачем с небесной высоты", "В бл…
     $ text_subtitle <chr> "", "", "Сельские картины", "", "", "", "", "", "", "", …
-    $ PER_ID        <chr> "Сев_пч", "БдЧ", "БдЧ", "Совр", "Совр", "Совр", "Совр", …
+    $ first_line    <chr> "Ох жизнь, молодецкая", "Зачем с небесной высоты", "В бл…
+    $ text_page     <chr> "C. 46", "C. 21", "C. 9-12", "C. 172-174", "C. 175-176",…
+    $ corpus        <chr> "per", "per", "per", "per", "per", "per", "per", "per", …
+    $ meter         <chr> "Other", "Iamb", "Iamb", "Iamb", "Trochee", "Iamb", "Tro…
+    $ feet          <chr> "other", "3", "4", "4", "4", "4", "other", "4", "6", "5"…
+    $ n_lines       <int> 38, 16, 98, 77, 28, 12, 44, 25, 31, 28, 100, 16, 17, 60,…
+    $ book_title    <chr> "Сев_пч", "БдЧ", "БдЧ", "Совр", "Совр", "Совр", "Совр", …
     $ year          <int> 1835, 1835, 1836, 1838, 1838, 1838, 1838, 1838, 1838, 18…
-    $ vol           <chr> "", "Т.8. Отд. 1", "Т. 16", "Т. 10. 3-ей паг", "Т. 10. 3…
-    $ num           <chr> "12", "", "", "", "", "", "", "", "", "", "", "", "", ""…
-    $ text_pages    <chr> "46", "21", "9-12", "172-174", "175-176", "177", "178-17…
-    $ notes         <chr> "", "", "", "", "", "", "", "", "", "", "", "", "", "", …
-    $ path          <chr> "../../data/corpus1835/periodicals/per_raw//P_1.txt", ".…
-    $ text_raw      <chr> "Ох, жизнь молодецкая,\nБравая, солдатская!\nКак осенняя…
-    $ text_cln      <chr> "Ох, жизнь молодецкая,\nБравая, солдатская!\nКак осенняя…
     $ text_lemm     <chr> "ох, жизнь молодецкий,\nбравый, солдатский!\nкак осенний…
-    $ text_acc      <chr> "Ох, жизнь молоде'цкая,\nБра'вая, солда'тская!\nКак осе'…
-    $ A_ID          <chr> "", "A-50", "A-7", "A-41", "A-139", "A-11", "A-163", "A-…
     $ author_text   <chr> "", "Якубович Л.А.", "Кольцов А.В.", "Глинка Ф.Н.", "Про…
-    $ RP            <chr> "", "", "3-33", "1-578", "5-151", "5", "2-13", "1-578", …
-    $ gender        <chr> "", "m", "m", "m", "m", "m", "m", "m", "m", "m", "m", "f…
+    $ RP_loc        <chr> "", "", "3-33", "1-578", "5-151", "5", "2-13", "1-578", …
+    $ author_sex    <chr> "", "m", "m", "m", "m", "m", "m", "m", "m", "m", "m", "f…
+    $ year_birth    <chr> "", "1805", "1809", "1786", "1810", "1799", "1812", "178…
+    $ year_death    <chr> "", "1839", "1842", "1880", "1857", "1837", "1848", "188…
     $ doublesCheck  <chr> "охжизньмолодецкийбравыйсолдатскийкакосеннийноченька", "…
 
 ``` r
@@ -322,22 +289,28 @@ glimpse(nkrja19)
 
 ``` r
 doubles_id <- periodicals %>% 
+    rename(per_text_lemm = text_lemm) %>% 
     inner_join(nkrja19, by = "doublesCheck") %>% 
-    select(index, text_id, year, A_ID, author_text, author, doublesCheck, text_raw) %>% 
+    select(index, text_id, year, A_ID, author_text, author, doublesCheck, per_text_lemm, text_lemm) %>% 
   filter(doublesCheck != "")
 
-doubles_id %>% select(-text_raw) %>% head
+doubles_id %>% select(-text_lemm, -per_text_lemm) %>% head
 ```
 
-    # A tibble: 6 × 7
-      index text_id  year A_ID  author_text   author         doublesCheck           
-      <int> <chr>   <int> <chr> <chr>         <chr>          <chr>                  
-    1  1232 P_10     1835 A-50  Якубович Л.А. Л. А. Якубович зачемснебесныйвысотаиз…
-    2  6656 P_100    1836 A-7   Кольцов А.В.  А. В. Кольцов  вблизидорогастолбовойн…
-    3 14680 P_1006   1838 A-154 Тютчев Ф.И.   Ф. И. Тютчев   ираспроститьсястревога…
-    4 14682 P_1010   1838 A-154 Тютчев Ф.И.   Ф. И. Тютчев   смотретькакзападразгор…
-    5 12483 P_1014   1838 A-11  Пушкин А.С.   А. С. Пушкин   какойночьморозтрескучи…
-    6  6729 P_1015   1838 A-7   Кольцов А.В.  А. В. Кольцов  глубокийвечностьоглаша…
+      index text_id year  A_ID   author_text         author
+    1  1232    P_10 1835  A_50 Якубович Л.А. Л. А. Якубович
+    2  6656   P_100 1836   A_7  Кольцов А.В.  А. В. Кольцов
+    3 14680  P_1006 1838 A_154   Тютчев Ф.И.   Ф. И. Тютчев
+    4 14682  P_1010 1838 A_154   Тютчев Ф.И.   Ф. И. Тютчев
+    5 12483  P_1014 1838  A_11   Пушкин А.С.   А. С. Пушкин
+    6  6729  P_1015 1838   A_7  Кольцов А.В.  А. В. Кольцов
+                                                                            doublesCheck
+    1                               зачемснебесныйвысотаизгорнийжильеналонобурямчатьсяты
+    2                      вблизидорогастолбовойночеватьтаборкочевойсынукраинапривольный
+    3 ираспроститьсястревогажитейскийикипарисныйрощазаслонясьблаженныйтеньтеньэлисейский
+    4              смотретькакзападразгоратьсявечернийзареволучвостокпомеркнутьодеваться
+    5                     какойночьморозтрескучийнанебониединыйтучакакшитьпологсинийсвод
+    6                                      глубокийвечностьоглашатьсясловомтословодабыть
 
 ``` r
 print("Total number of intersected texts:")
@@ -370,27 +343,14 @@ print("Total % of intersected texts out for all periodicals texts:")
     [1] "Total % of intersected texts out for all periodicals texts:"
 
 ``` r
-round( (nrow(doubles_id)/nrow(periodicals))*100 , 1) 
+round( (nrow(doubles_id)/nrow(periodicals))*100 , 2) 
 ```
 
-    [1] 17
+    [1] 16.96
 
 ``` r
-glimpse(doubles_id)
-```
+# glimpse(doubles_id)
 
-    Rows: 323
-    Columns: 8
-    $ index        <int> 1232, 6656, 14680, 14682, 12483, 6729, 12889, 15279, 1465…
-    $ text_id      <chr> "P_10", "P_100", "P_1006", "P_1010", "P_1014", "P_1015", …
-    $ year         <int> 1835, 1836, 1838, 1838, 1838, 1838, 1838, 1838, 1838, 183…
-    $ A_ID         <chr> "A-50", "A-7", "A-154", "A-154", "A-11", "A-7", "A-153", …
-    $ author_text  <chr> "Якубович Л.А.", "Кольцов А.В.", "Тютчев Ф.И.", "Тютчев Ф…
-    $ author       <chr> "Л. А. Якубович", "А. В. Кольцов", "Ф. И. Тютчев", "Ф. И.…
-    $ doublesCheck <chr> "зачемснебесныйвысотаизгорнийжильеналонобурямчатьсяты", "…
-    $ text_raw     <chr> "Зачем с небесной высоты, \nИз горнего жилья, \nНа лоне б…
-
-``` r
 doubles_counts <- doubles_id %>% 
     count(year) %>% 
     mutate(group = "Периодика и НКРЯ")
@@ -455,8 +415,7 @@ p2_2_1 <- counter_1835 %>%
     theme(axis.text = element_text(size = 14),
          axis.title = element_text(size = 16),
          legend.title = element_text(size = 16, face = "bold"),
-         legend.text = element_text(size = 14),
-         legend.position = "bottom") + 
+         legend.text = element_text(size = 14)) + 
     labs(x = "Год",
         y = "Количество текстов",
         fill = "Корпус")
@@ -471,6 +430,10 @@ ggsave(file = "plots/Fig_2_2_1.png", plot = p2_2_1, dpi = 300,
       width = 8, height = 6, bg = "white")
 ```
 
+``` r
+rm(c19, counter_1835, doubles_counts, doubles_id, nkrja19, p2_2_1, rnc_1835, rnc_authors)
+```
+
 ## 2.2.1. Sources statistics
 
 Analysis of poems published in different sources (journals & newspapers)
@@ -481,38 +444,143 @@ glimpse(per)
 ```
 
     Rows: 1,905
-    Columns: 20
+    Columns: 19
     $ text_id       <chr> "P_1", "P_10", "P_100", "P_1000", "P_1001", "P_1002", "P…
-    $ author_sign   <chr> "", "Л. Якубович", "Кольцов", "Ф. Глинка", "Н. Прокопови…
+    $ source_id     <chr> "Per_1", "Per_2", "Per_3", "Per_4", "Per_4", "Per_4", "P…
+    $ A_ID          <chr> "", "A_50", "A_7", "A_41", "A_139", "A_11", "A_163", "A_…
     $ text_title    <chr> "Солдатская песня", "Молния", "Ночлег чумаков", "Утешите…
-    $ first_line    <chr> "Ох жизнь, молодецкая", "Зачем с небесной высоты", "В бл…
     $ text_subtitle <chr> "", "", "Сельские картины", "", "", "", "", "", "", "", …
-    $ PER_ID        <chr> "Сев_пч", "БдЧ", "БдЧ", "Совр", "Совр", "Совр", "Совр", …
+    $ first_line    <chr> "Ох жизнь, молодецкая", "Зачем с небесной высоты", "В бл…
+    $ text_page     <chr> "C. 46", "C. 21", "C. 9-12", "C. 172-174", "C. 175-176",…
+    $ corpus        <chr> "per", "per", "per", "per", "per", "per", "per", "per", …
+    $ meter         <chr> "Other", "Iamb", "Iamb", "Iamb", "Trochee", "Iamb", "Tro…
+    $ feet          <chr> "other", "3", "4", "4", "4", "4", "other", "4", "6", "5"…
+    $ n_lines       <int> 38, 16, 98, 77, 28, 12, 44, 25, 31, 28, 100, 16, 17, 60,…
+    $ book_title    <chr> "Сев_пч", "БдЧ", "БдЧ", "Совр", "Совр", "Совр", "Совр", …
     $ year          <int> 1835, 1835, 1836, 1838, 1838, 1838, 1838, 1838, 1838, 18…
-    $ vol           <chr> "", "Т.8. Отд. 1", "Т. 16", "Т. 10. 3-ей паг", "Т. 10. 3…
-    $ num           <chr> "12", "", "", "", "", "", "", "", "", "", "", "", "", ""…
-    $ text_pages    <chr> "46", "21", "9-12", "172-174", "175-176", "177", "178-17…
-    $ notes         <chr> "", "", "", "", "", "", "", "", "", "", "", "", "", "", …
-    $ path          <chr> "../../data/corpus1835/periodicals/per_raw//P_1.txt", ".…
-    $ text_raw      <chr> "Ох, жизнь молодецкая,\nБравая, солдатская!\nКак осенняя…
-    $ text_cln      <chr> "Ох, жизнь молодецкая,\nБравая, солдатская!\nКак осенняя…
     $ text_lemm     <chr> "ох, жизнь молодецкий,\nбравый, солдатский!\nкак осенний…
-    $ text_acc      <chr> "Ох, жизнь молоде'цкая,\nБра'вая, солда'тская!\nКак осе'…
-    $ A_ID          <chr> "", "A-50", "A-7", "A-41", "A-139", "A-11", "A-163", "A-…
     $ author_text   <chr> "", "Якубович Л.А.", "Кольцов А.В.", "Глинка Ф.Н.", "Про…
-    $ RP            <chr> "", "", "3-33", "1-578", "5-151", "5", "2-13", "1-578", …
-    $ gender        <chr> "", "m", "m", "m", "m", "m", "m", "m", "m", "m", "m", "f…
+    $ RP_loc        <chr> "", "", "3-33", "1-578", "5-151", "5", "2-13", "1-578", …
+    $ author_sex    <chr> "", "m", "m", "m", "m", "m", "m", "m", "m", "m", "m", "f…
+    $ year_birth    <chr> "", "1805", "1809", "1786", "1810", "1799", "1812", "178…
+    $ year_death    <chr> "", "1839", "1842", "1880", "1857", "1837", "1848", "188…
 
 ``` r
-per %>% group_by(year, PER_ID) %>% count() %>% 
-    ggplot(aes(x = year, y = n, fill = PER_ID)) + geom_col() 
+per <- per %>% 
+  rename(PER_ID = book_title)
+
+unique(per$PER_ID)
 ```
 
-![](02_2_periodicals_overview.markdown_strict_files/figure-markdown_strict/unnamed-chunk-17-1.png)
+     [1] "Сев_пч"   "БдЧ"      "Совр"     "ОЗ"       "ЛПРИ"     "ЛГ"      
+     [7] "СО"       "МН"       "Маяк"     "Телескоп" "СОиСА"    "ПРиВЕТ"  
 
-### Plots 2.2.2
+``` r
+names <- tibble(PER_ID = unique(per$PER_ID),
+       per_name = c("СП", "БдЧ", "Современник", "ОЗ", "ЛПРИ/ЛГ", "ЛПРИ/ЛГ", "СО",
+                    "МН", "Маяк", "Телескоп", "СО", "ПРиВЕТ"))
 
-Count number total number of texts in each source
+per <- per %>% 
+  left_join(names, by = "PER_ID")
+
+rm(names)
+```
+
+``` r
+per %>% 
+  filter(!PER_ID %in% c("Молва", "Сев_пч", "Телескоп")) %>% 
+  group_by(year, per_name) %>% 
+  count() %>% 
+  ggplot(aes(x = year, y = n, fill = per_name)) + 
+  geom_col() + 
+  geom_text(aes(x = year, y = n, label = n), 
+            position = position_stack(vjust = .5), 
+            color = "white") + 
+  scale_x_continuous(breaks = 1835:1840) +
+  scale_fill_manual(values = c(met.brewer("Veronese")[1:2], 
+                               met.brewer("Veronese")[4:5],
+                               met.brewer("Veronese")[7],
+                               met.brewer("Veronese")[3],
+                               met.brewer("Johnson")[4],
+                               met.brewer("Kandinsky")[3])) + 
+  theme(axis.text = element_text(size = 14),
+         axis.title = element_text(size = 16),
+         legend.title = element_text(size = 16, face = "bold"),
+         legend.text = element_text(size = 14)) + 
+  labs(x = "Год", y = "Количество текстов", fill = "")
+```
+
+![](02_2_periodicals_overview.markdown_strict_files/figure-markdown_strict/unnamed-chunk-18-1.png)
+
+``` r
+ggsave(file = "plots/Fig_2_2_2.png", plot = last_plot(), dpi = 300,
+      width = 8, height = 6, bg = "white")
+```
+
+### Plots 2.2.
+
+Count total number of texts by different authors in each source
+
+``` r
+per %>%
+  #filter(year == "1835") %>%
+  filter(author_text != "" & !per_name %in% c("Телескоп", "СП")) %>%
+  group_by(per_name, year) %>%
+  count(author_text, sort = T) %>%
+  slice_max(order_by = n, n = 5) %>%
+  #ungroup() %>% 
+  mutate(author_text = paste0(author_text, " (", n, ")")) %>% 
+  select(-n) %>% 
+  summarise(
+    per_name = per_name,
+    year = year,
+    author_names = paste0(author_text, collapse = ", ")) %>% 
+  ungroup() %>% 
+  distinct() %>% 
+  arrange(-desc(as.numeric(year))) 
+```
+
+    Warning: Returning more (or less) than 1 row per `summarise()` group was deprecated in
+    dplyr 1.1.0.
+    ℹ Please use `reframe()` instead.
+    ℹ When switching from `summarise()` to `reframe()`, remember that `reframe()`
+      always returns an ungrouped data frame and adjust accordingly.
+
+    `summarise()` has grouped output by 'per_name', 'year'. You can override using
+    the `.groups` argument.
+
+    # A tibble: 29 × 3
+       per_name     year author_names                                               
+       <chr>       <int> <chr>                                                      
+     1 БдЧ          1835 Пушкин А.С. (16), Козлов И.И. (11), Ершов П.П. (6), Якубов…
+     2 ЛПРИ/ЛГ      1835 Глинка Ф.Н. (7), Менцов Ф.Н. (7), Галанин И.Д. (6), Демидо…
+     3 МН           1835 Ознобишин Д.П. (5), Теплова Н.С. (5), Баратынский Е.А. (4)…
+     4 СО           1835 Тимофеев А.В. (6), Шаликов П.И. (4), Булгаков А.И. (3), Во…
+     5 БдЧ          1836 Козлов И.И. (12), Тимофеев А.В. (9), Бенедиктов В.Г. (6), …
+     6 ЛПРИ/ЛГ      1836 Демидов М.А. (10), Мызников В.Я. (7), Фон-Бейер Г. (5), Гл…
+     7 МН           1836 Стромилов С.И. (4), Волконская З.А. (3), Ознобишин Д.П. (3…
+     8 СО           1836 Кони Ф.А. (3), Бороздна И.П. (2), Александров Б. (1), Крыл…
+     9 Современник  1836 Тютчев Ф.И. (24), Пушкин А.С. (4), Давыдов Д.В. (3), Якубо…
+    10 БдЧ          1837 Тимофеев А.В. (11), Бернет Е. (10), Кропоткин Д.А. (7), Ве…
+    # ℹ 19 more rows
+
+``` r
+# %>% 
+  #pivot_wider(names_from = "year", values_from = "author_names")
+
+
+# tile plot attempt
+# per %>% 
+#   #filter(year == "1835") %>% 
+#   filter(author_text != "" & !per_name %in% c("Телескоп", "СП")) %>% 
+#   group_by(per_name, year) %>% 
+#   count(author_text, sort = T) %>% 
+#   slice_max(order_by = n, n = 3) %>% 
+#   ungroup() %>% 
+#   #mutate(author_text = paste0(per_name, "_", author_text)) %>% 
+#   ggplot(aes(x = year, y = author_text, fill = n)) + 
+#   geom_tile() 
+```
 
 ``` r
 # remove incomplete sources
@@ -545,7 +613,8 @@ authors_sources <- periodicals %>%
     group_by(year, PER_ID, author_text) %>% 
     # sum poems by others
     summarise(n = sum(n)) %>% 
-    mutate(author_label = paste0(author_text, " (", n, ")"))
+    mutate(author_label = paste0(author_text, " (", n, ")")) %>% 
+    filter(author_text != "Другие")
 ```
 
     `summarise()` has grouped output by 'year', 'PER_ID'. You can override using
@@ -559,12 +628,12 @@ head(authors_sources)
     # Groups:   year, PER_ID [2]
        year PER_ID author_text       n author_label     
       <int> <chr>  <chr>         <int> <chr>            
-    1  1835 БдЧ    Другие           29 Другие (29)      
-    2  1835 БдЧ    Ершов П.П.        6 Ершов П.П. (6)   
-    3  1835 БдЧ    Козлов И.И.      11 Козлов И.И. (11) 
-    4  1835 БдЧ    Пушкин А.С.      16 Пушкин А.С. (16) 
-    5  1835 БдЧ    Якубович Л.А.     3 Якубович Л.А. (3)
-    6  1835 ЛПРИ   13 — 18.          3 13 — 18. (3)     
+    1  1835 БдЧ    Ершов П.П.        6 Ершов П.П. (6)   
+    2  1835 БдЧ    Козлов И.И.      11 Козлов И.И. (11) 
+    3  1835 БдЧ    Пушкин А.С.      16 Пушкин А.С. (16) 
+    4  1835 БдЧ    Якубович Л.А.     3 Якубович Л.А. (3)
+    5  1835 ЛПРИ   Алипанов Е.И.     3 Алипанов Е.И. (3)
+    6  1835 ЛПРИ   Бистром А.        4 Бистром А. (4)   
 
 Select colours for charts
 
@@ -582,31 +651,31 @@ MetBrewer::colorblind_palettes
 met.brewer("Archambault")
 ```
 
-![](02_2_periodicals_overview.markdown_strict_files/figure-markdown_strict/unnamed-chunk-20-1.png)
+![](02_2_periodicals_overview.markdown_strict_files/figure-markdown_strict/unnamed-chunk-23-1.png)
 
 ``` r
 met.brewer("Egypt")
 ```
 
-![](02_2_periodicals_overview.markdown_strict_files/figure-markdown_strict/unnamed-chunk-20-2.png)
+![](02_2_periodicals_overview.markdown_strict_files/figure-markdown_strict/unnamed-chunk-23-2.png)
 
 ``` r
 met.brewer("Johnson")
 ```
 
-![](02_2_periodicals_overview.markdown_strict_files/figure-markdown_strict/unnamed-chunk-20-3.png)
+![](02_2_periodicals_overview.markdown_strict_files/figure-markdown_strict/unnamed-chunk-23-3.png)
 
 ``` r
-met.brewer("Kandinsky")[3]
+met.brewer("Kandinsky")
 ```
 
-    [1] "#898e9f"
+![](02_2_periodicals_overview.markdown_strict_files/figure-markdown_strict/unnamed-chunk-23-4.png)
 
 ``` r
 met.brewer("Veronese")
 ```
 
-![](02_2_periodicals_overview.markdown_strict_files/figure-markdown_strict/unnamed-chunk-20-4.png)
+![](02_2_periodicals_overview.markdown_strict_files/figure-markdown_strict/unnamed-chunk-23-5.png)
 
 ``` r
 # treemap: https://cran.r-project.org/web/packages/treemap/treemap.pdf
@@ -643,34 +712,49 @@ met.brewer("Veronese")
 years_total
 ```
 
-    # A tibble: 6 × 3
-       year     n year_label    
-      <int> <int> <chr>         
-    1  1835   267 1835 (N = 267)
-    2  1836   232 1836 (N = 232)
-    3  1837   267 1837 (N = 267)
-    4  1838   285 1838 (N = 285)
-    5  1839   302 1839 (N = 302)
-    6  1840   461 1840 (N = 461)
+      year   n     year_label
+    1 1835 267 1835 (N = 267)
+    2 1836 232 1836 (N = 232)
+    3 1837 267 1837 (N = 267)
+    4 1838 285 1838 (N = 285)
+    5 1839 302 1839 (N = 302)
+    6 1840 461 1840 (N = 461)
 
 ``` r
 source_year_total %>% arrange(-desc(year))
 ```
 
-    # A tibble: 30 × 3
-       PER_ID    year     n
-       <chr>    <int> <int>
-     1 БдЧ       1835    66
-     2 ЛПРИ      1835   153
-     3 СОиСА     1835    28
-     4 Телескоп  1835    20
-     5 БдЧ       1836    53
-     6 ЛПРИ      1836   108
-     7 СО        1836    14
-     8 Совр      1836    50
-     9 Телескоп  1836     7
-    10 БдЧ       1837    58
-    # ℹ 20 more rows
+         PER_ID year   n
+    1       БдЧ 1835  66
+    2      ЛПРИ 1835 153
+    3     СОиСА 1835  28
+    4  Телескоп 1835  20
+    5       БдЧ 1836  53
+    6      ЛПРИ 1836 108
+    7        СО 1836  14
+    8      Совр 1836  50
+    9  Телескоп 1836   7
+    10      БдЧ 1837  58
+    11     ЛПРИ 1837  69
+    12       СО 1837  81
+    13     Совр 1837  59
+    14      БдЧ 1838  63
+    15     ЛПРИ 1838  91
+    16    СОиСА 1838  87
+    17     Совр 1838  44
+    18      БдЧ 1839  63
+    19     ЛПРИ 1839  67
+    20       ОЗ 1839  69
+    21       СО 1839  36
+    22    СОиСА 1839  19
+    23     Совр 1839  48
+    24      БдЧ 1840  49
+    25       ЛГ 1840  75
+    26     Маяк 1840  91
+    27       ОЗ 1840 100
+    28   ПРиВЕТ 1840  68
+    29       СО 1840  45
+    30     Совр 1840  33
 
 ``` r
 png("plots/treemaps/2-2-2_1835_v2.png", height = 650, width = 600)
@@ -710,15 +794,14 @@ authors_sources %>%
 
     Adding missing grouping variables: `year`
 
-    # A tibble: 5 × 2
-    # Groups:   year, PER_ID [5]
-       year PER_ID  
-      <int> <chr>   
-    1  1836 БдЧ     
-    2  1836 ЛПРИ    
-    3  1836 СО      
-    4  1836 Совр    
-    5  1836 Телескоп
+    # A tibble: 4 × 2
+    # Groups:   year, PER_ID [4]
+       year PER_ID
+      <int> <chr> 
+    1  1836 БдЧ   
+    2  1836 ЛПРИ  
+    3  1836 СО    
+    4  1836 Совр  
 
 ``` r
 tree_pal <- c(met.brewer("Veronese")[1], # BdCH
@@ -952,20 +1035,20 @@ per %>%
     Warning: Specifying the `id_cols` argument by position was deprecated in tidyr 1.3.0.
     ℹ Please explicitly name `id_cols`, like `id_cols = !n`.
 
-    # A tibble: 97 × 7
+    # A tibble: 76 × 7
        author_text    `1835` `1836` `1837` `1838` `1839` `1840`
        <chr>           <int>  <int>  <int>  <int>  <int>  <int>
-     1 Пушкин А.С.         1     NA     15     NA     NA     NA
+     1 Пушкин А.С.         1     NA     13     NA     NA     NA
      2 Губер Э.И.         NA     NA     NA     NA     NA      1
-     3 Козлов И.И.         2      1      8     NA     20     NA
-     4 Тимофеев А.В.       9      2      1      4     25     NA
+     3 Козлов И.И.         2      1      8     NA     17     NA
+     4 Тимофеев А.В.       9      2      1      4     22     NA
      5 Бернет Е.          NA     NA      2      8      4     NA
-     6 Менцов Ф.Н.        23     NA     NA      1     12     NA
-     7 Ершов П.П.          3     12     NA     18     NA      2
-     8 Кропоткин Д.А.     NA     NA      3      3      1     NA
-     9 Мейстер И.         NA     NA     NA      2     11     NA
-    10 Греков Н.П.        NA     NA     NA     15     18      3
-    # ℹ 87 more rows
+     6 Менцов Ф.Н.        22     NA     NA      1     10     NA
+     7 Кропоткин Д.А.     NA     NA      3      3      1     NA
+     8 Мейстер И.         NA     NA     NA      2      9     NA
+     9 Греков Н.П.        NA     NA     NA     13     15      2
+    10 Ершов П.П.          3     10     NA     15     NA      3
+    # ℹ 66 more rows
 
 ``` r
   #filter(year == 1835)
@@ -1099,7 +1182,7 @@ for (i in 1:length(per_names)) {
 ```
 
     [1] "БдЧ"
-    # A tibble: 97 × 8
+    # A tibble: 76 × 8
        author_text     `1835` `1836` `1837` `1838` `1839` `1840` total
        <chr>            <dbl>  <dbl>  <dbl>  <dbl>  <dbl>  <dbl> <dbl>
      1 Тимофеев А.В.        1      1      1      1      1      0     5
@@ -1107,14 +1190,14 @@ for (i in 1:length(per_names)) {
      3 Козлов И.И.          1      1      1      0      1      0     4
      4 Бенедиктов В.Г.      0      1      1      0      1      1     4
      5 Менцов Ф.Н.          1      0      0      1      1      0     3
-     6 ***                  0      1      0      1      1      0     3
-     7 Бернет Е.            0      0      1      1      1      0     3
-     8 Кропоткин Д.А.       0      0      1      1      1      0     3
-     9 Кукольник Н.В.       0      0      1      1      0      1     3
-    10 Шахова Е.Н.          0      0      1      1      1      0     3
-    # ℹ 87 more rows
+     6 Бернет Е.            0      0      1      1      1      0     3
+     7 Кропоткин Д.А.       0      0      1      1      1      0     3
+     8 Кукольник Н.В.       0      0      1      1      0      1     3
+     9 Шахова Е.Н.          0      0      1      1      1      0     3
+    10 Греков Н.П.          0      0      0      1      1      1     3
+    # ℹ 66 more rows
     [1] "ЛПРИ"
-    # A tibble: 181 × 8
+    # A tibble: 99 × 8
        author_text      `1835` `1836` `1837` `1838` `1839` `1840` total
        <chr>             <dbl>  <dbl>  <dbl>  <dbl>  <dbl>  <dbl> <dbl>
      1 Якубович Л.А.         1      0      1      1      1      1     5
@@ -1127,24 +1210,24 @@ for (i in 1:length(per_names)) {
      8 Соколовский В.И.      0      0      1      1      1      0     3
      9 Стромилов С.И.        0      0      1      1      1      0     3
     10 Айбулат К.М.          0      0      0      1      1      1     3
-    # ℹ 171 more rows
+    # ℹ 89 more rows
     [1] "СО"
-    # A tibble: 109 × 8
+    # A tibble: 65 × 8
        author_text     `1835` `1836` `1837` `1838` `1839` `1840` total
        <chr>            <dbl>  <dbl>  <dbl>  <dbl>  <dbl>  <dbl> <dbl>
      1 Гогниев И.Е.         1      0      0      1      1      1     4
      2 Кони Ф.А.            0      1      1      1      0      0     3
      3 Бенедиктов В.Г.      0      0      1      1      0      1     3
      4 Якубович Л.А.        0      0      1      1      1      0     3
-     5 Б.Б.                 0      0      0      1      1      1     3
-     6 Кольцов А.В.         0      0      0      1      1      1     3
-     7 Ростопчина Е.П.      0      0      0      1      1      1     3
-     8 Сушков Д.П.          0      0      0      1      1      1     3
-     9 Траум                0      0      0      1      1      1     3
-    10 Менцов Ф.Н.          1      0      1      0      0      0     2
-    # ℹ 99 more rows
+     5 Кольцов А.В.         0      0      0      1      1      1     3
+     6 Ростопчина Е.П.      0      0      0      1      1      1     3
+     7 Сушков Д.П.          0      0      0      1      1      1     3
+     8 Траум                0      0      0      1      1      1     3
+     9 Менцов Ф.Н.          1      0      1      0      0      0     2
+    10 Тимофеев А.В.        1      0      0      1      0      0     2
+    # ℹ 55 more rows
     [1] "Совр"
-    # A tibble: 57 × 7
+    # A tibble: 51 × 7
        author_text      `1836` `1837` `1838` `1839` `1840` total
        <chr>             <dbl>  <dbl>  <dbl>  <dbl>  <dbl> <dbl>
      1 Баратынский Е.А.      1      1      1      1      1     5
@@ -1157,9 +1240,9 @@ for (i in 1:length(per_names)) {
      8 Якубович Л.А.         1      0      1      1      0     3
      9 Гребенка Е.П.         0      1      1      1      0     3
     10 Деларю М.Д.           0      1      1      1      0     3
-    # ℹ 47 more rows
+    # ℹ 41 more rows
     [1] "ОЗ"
-    # A tibble: 38 × 4
+    # A tibble: 37 × 4
        author_text      `1839` `1840` total
        <chr>             <dbl>  <dbl> <dbl>
      1 Аксаков К.С.          1      1     2
@@ -1172,7 +1255,7 @@ for (i in 1:length(per_names)) {
      8 Кольцов А.В.          1      1     2
      9 Красов В.И.           1      1     2
     10 Лермонтов М.Ю.        1      1     2
-    # ℹ 28 more rows
+    # ℹ 27 more rows
 
 ``` r
 unique(per$year)
@@ -1226,14 +1309,14 @@ for (i in 1:length(unique(per$year))) {
 ```
 
      [1] "source: "       "БдЧ"            "year:"          "1835"          
-     [5] "total authors:" "28"             "onetimers:"     "19"            
-     [9] "perc:"          "67.9"          
+     [5] "total authors:" "25"             "onetimers:"     "16"            
+     [9] "perc:"          "64"            
      [1] "source: "       "ЛПРИ"           "year:"          "1835"          
-     [5] "total authors:" "53"             "onetimers:"     "35"            
-     [9] "perc:"          "66"            
+     [5] "total authors:" "33"             "onetimers:"     "20"            
+     [9] "perc:"          "60.6"          
      [1] "source: "       "СО"             "year:"          "1835"          
-     [5] "total authors:" "10"             "onetimers:"     "3"             
-     [9] "perc:"          "30"            
+     [5] "total authors:" "6"              "onetimers:"     "0"             
+     [9] "perc:"          "0"             
      [1] "source: "       "Совр"           "year:"          "1835"          
      [5] "total authors:" "0"              "onetimers:"     "0"             
      [9] "perc:"          "NaN"           
@@ -1241,77 +1324,77 @@ for (i in 1:length(unique(per$year))) {
      [5] "total authors:" "0"              "onetimers:"     "0"             
      [9] "perc:"          "NaN"           
      [1] "source: "       "БдЧ"            "year:"          "1836"          
-     [5] "total authors:" "24"             "onetimers:"     "19"            
-     [9] "perc:"          "79.2"          
+     [5] "total authors:" "19"             "onetimers:"     "15"            
+     [9] "perc:"          "78.9"          
      [1] "source: "       "ЛПРИ"           "year:"          "1836"          
-     [5] "total authors:" "32"             "onetimers:"     "19"            
-     [9] "perc:"          "59.4"          
+     [5] "total authors:" "25"             "onetimers:"     "13"            
+     [9] "perc:"          "52"            
      [1] "source: "       "СО"             "year:"          "1836"          
-     [5] "total authors:" "6"              "onetimers:"     "4"             
-     [9] "perc:"          "66.7"          
-     [1] "source: "       "Совр"           "year:"          "1836"          
-     [5] "total authors:" "10"             "onetimers:"     "5"             
+     [5] "total authors:" "4"              "onetimers:"     "2"             
      [9] "perc:"          "50"            
+     [1] "source: "       "Совр"           "year:"          "1836"          
+     [5] "total authors:" "9"              "onetimers:"     "4"             
+     [9] "perc:"          "44.4"          
      [1] "source: "       "ОЗ"             "year:"          "1836"          
      [5] "total authors:" "0"              "onetimers:"     "0"             
      [9] "perc:"          "NaN"           
      [1] "source: "       "БдЧ"            "year:"          "1838"          
-     [5] "total authors:" "31"             "onetimers:"     "21"            
-     [9] "perc:"          "67.7"          
+     [5] "total authors:" "23"             "onetimers:"     "13"            
+     [9] "perc:"          "56.5"          
      [1] "source: "       "ЛПРИ"           "year:"          "1838"          
-     [5] "total authors:" "39"             "onetimers:"     "21"            
-     [9] "perc:"          "53.8"          
+     [5] "total authors:" "29"             "onetimers:"     "12"            
+     [9] "perc:"          "41.4"          
      [1] "source: "       "СО"             "year:"          "1838"          
-     [5] "total authors:" "44"             "onetimers:"     "26"            
-     [9] "perc:"          "59.1"          
+     [5] "total authors:" "31"             "onetimers:"     "16"            
+     [9] "perc:"          "51.6"          
      [1] "source: "       "Совр"           "year:"          "1838"          
-     [5] "total authors:" "22"             "onetimers:"     "11"            
-     [9] "perc:"          "50"            
+     [5] "total authors:" "21"             "onetimers:"     "10"            
+     [9] "perc:"          "47.6"          
      [1] "source: "       "ОЗ"             "year:"          "1838"          
      [5] "total authors:" "0"              "onetimers:"     "0"             
      [9] "perc:"          "NaN"           
      [1] "source: "       "БдЧ"            "year:"          "1839"          
-     [5] "total authors:" "30"             "onetimers:"     "17"            
-     [9] "perc:"          "56.7"          
+     [5] "total authors:" "26"             "onetimers:"     "15"            
+     [9] "perc:"          "57.7"          
      [1] "source: "       "ЛПРИ"           "year:"          "1839"          
-     [5] "total authors:" "39"             "onetimers:"     "25"            
-     [9] "perc:"          "64.1"          
+     [5] "total authors:" "25"             "onetimers:"     "11"            
+     [9] "perc:"          "44"            
      [1] "source: "       "СО"             "year:"          "1839"          
-     [5] "total authors:" "33"             "onetimers:"     "24"            
-     [9] "perc:"          "72.7"          
-     [1] "source: "       "Совр"           "year:"          "1839"          
-     [5] "total authors:" "24"             "onetimers:"     "16"            
+     [5] "total authors:" "21"             "onetimers:"     "14"            
      [9] "perc:"          "66.7"          
+     [1] "source: "       "Совр"           "year:"          "1839"          
+     [5] "total authors:" "22"             "onetimers:"     "14"            
+     [9] "perc:"          "63.6"          
      [1] "source: "       "ОЗ"             "year:"          "1839"          
-     [5] "total authors:" "28"             "onetimers:"     "17"            
-     [9] "perc:"          "60.7"          
+     [5] "total authors:" "27"             "onetimers:"     "16"            
+     [9] "perc:"          "59.3"          
      [1] "source: "       "БдЧ"            "year:"          "1840"          
-     [5] "total authors:" "9"              "onetimers:"     "2"             
-     [9] "perc:"          "22.2"          
+     [5] "total authors:" "8"              "onetimers:"     "1"             
+     [9] "perc:"          "12.5"          
      [1] "source: "       "ЛПРИ"           "year:"          "1840"          
-     [5] "total authors:" "42"             "onetimers:"     "31"            
-     [9] "perc:"          "73.8"          
+     [5] "total authors:" "16"             "onetimers:"     "10"            
+     [9] "perc:"          "62.5"          
      [1] "source: "       "СО"             "year:"          "1840"          
-     [5] "total authors:" "22"             "onetimers:"     "18"            
-     [9] "perc:"          "81.8"          
+     [5] "total authors:" "13"             "onetimers:"     "10"            
+     [9] "perc:"          "76.9"          
      [1] "source: "       "Совр"           "year:"          "1840"          
-     [5] "total authors:" "14"             "onetimers:"     "6"             
-     [9] "perc:"          "42.9"          
+     [5] "total authors:" "13"             "onetimers:"     "5"             
+     [9] "perc:"          "38.5"          
      [1] "source: "       "ОЗ"             "year:"          "1840"          
      [5] "total authors:" "24"             "onetimers:"     "10"            
      [9] "perc:"          "41.7"          
      [1] "source: "       "БдЧ"            "year:"          "1837"          
-     [5] "total authors:" "20"             "onetimers:"     "11"            
-     [9] "perc:"          "55"            
+     [5] "total authors:" "18"             "onetimers:"     "9"             
+     [9] "perc:"          "50"            
      [1] "source: "       "ЛПРИ"           "year:"          "1837"          
-     [5] "total authors:" "34"             "onetimers:"     "22"            
-     [9] "perc:"          "64.7"          
+     [5] "total authors:" "28"             "onetimers:"     "16"            
+     [9] "perc:"          "57.1"          
      [1] "source: "       "СО"             "year:"          "1837"          
-     [5] "total authors:" "33"             "onetimers:"     "20"            
-     [9] "perc:"          "60.6"          
+     [5] "total authors:" "21"             "onetimers:"     "8"             
+     [9] "perc:"          "38.1"          
      [1] "source: "       "Совр"           "year:"          "1837"          
-     [5] "total authors:" "29"             "onetimers:"     "18"            
-     [9] "perc:"          "62.1"          
+     [5] "total authors:" "27"             "onetimers:"     "17"            
+     [9] "perc:"          "63"            
      [1] "source: "       "ОЗ"             "year:"          "1837"          
      [5] "total authors:" "0"              "onetimers:"     "0"             
      [9] "perc:"          "NaN"           
@@ -1327,11 +1410,11 @@ tibble(year = years,
     # A tibble: 5 × 7
       source `1835` `1836` `1838` `1839` `1840` `1837`
       <chr>   <dbl>  <dbl>  <dbl>  <dbl>  <dbl>  <dbl>
-    1 БдЧ      67.9   79.2   67.7   56.7   22.2   55  
-    2 ЛПРИ     66.0   59.4   53.8   64.1   73.8   64.7
-    3 СО       30     66.7   59.1   72.7   81.8   60.6
-    4 Совр    NaN     50     50     66.7   42.9   62.1
-    5 ОЗ      NaN    NaN    NaN     60.7   41.7  NaN  
+    1 БдЧ      64     79.0   56.5   57.7   12.5   50  
+    2 ЛПРИ     60.6   52     41.4   44     62.5   57.1
+    3 СО        0     50     51.6   66.7   76.9   38.1
+    4 Совр    NaN     44.4   47.6   63.6   38.5   63.0
+    5 ОЗ      NaN    NaN    NaN     59.3   41.7  NaN  
 
 ### unused plot (proportion of one-time printed authors)
 
@@ -1361,7 +1444,7 @@ tibble(year = years,
 
     Warning: Removed 5 rows containing missing values (`geom_line()`).
 
-![](02_2_periodicals_overview.markdown_strict_files/figure-markdown_strict/unnamed-chunk-35-1.png)
+![](02_2_periodicals_overview.markdown_strict_files/figure-markdown_strict/unnamed-chunk-38-1.png)
 
 ``` r
 # ggsave(filename = "plots/Fig_2-2-3-1.png", plot = last_plot(),
@@ -1425,11 +1508,11 @@ tibble(sources = sources,
     # A tibble: 5 × 6
       sources `1835 -> 1836` `1836 -> 1837` `1838 -> 1839` `1839 -> 1840`
       <chr>            <dbl>          <dbl>          <dbl>          <dbl>
-    1 БдЧ               13.5           9.09           19.7           7.69
-    2 ЛПРИ              14.1           6.06           12.8          11.1 
-    3 СО                 0             5.13           19.5          18.2 
-    4 Совр               0            12.8            23.9          23.7 
-    5 ОЗ               NaN           NaN               0            26.9 
+    1 БдЧ               15.9          10.8            22.4           8.82
+    2 ЛПРИ              20.7           7.55           18.5          19.5 
+    3 СО                 0             8              21.2          20.6 
+    4 Совр               0            13.9            25.6          25.7 
+    5 ОЗ               NaN           NaN               0            27.4 
     # ℹ 1 more variable: `1837 -> 1838` <dbl>
 
 ``` r
@@ -1459,7 +1542,7 @@ tibble(sources = sources,
         axis.title = element_text(size = 14))
 ```
 
-![](02_2_periodicals_overview.markdown_strict_files/figure-markdown_strict/unnamed-chunk-36-1.png)
+![](02_2_periodicals_overview.markdown_strict_files/figure-markdown_strict/unnamed-chunk-39-1.png)
 
 ``` r
 # ggsave(filename = "plots/Fig_2-2-3-2.png", plot = last_plot(),
@@ -1479,29 +1562,29 @@ summary(t)
 ```
 
      author_text             Совр             БдЧ              ЛПРИ       
-     Length:372         Min.   : 1.000   Min.   : 1.000   Min.   : 1.000  
+     Length:186         Min.   : 1.000   Min.   : 1.000   Min.   : 1.000  
      Class :character   1st Qu.: 1.000   1st Qu.: 1.000   1st Qu.: 1.000  
-     Mode  :character   Median : 2.000   Median : 1.000   Median : 1.000  
-                        Mean   : 3.895   Mean   : 3.474   Mean   : 2.514  
-                        3rd Qu.: 4.000   3rd Qu.: 3.000   3rd Qu.: 2.000  
+     Mode  :character   Median : 2.000   Median : 2.000   Median : 2.000  
+                        Mean   : 4.137   Mean   : 4.053   Mean   : 3.566  
+                        3rd Qu.: 4.000   3rd Qu.: 4.000   3rd Qu.: 4.000  
                         Max.   :39.000   Max.   :27.000   Max.   :26.000  
-                        NA's   :315      NA's   :275      NA's   :191     
+                        NA's   :135      NA's   :110      NA's   :87      
            ОЗ               СО              Маяк            ПРиВЕТ      
      Min.   : 1.000   Min.   : 1.000   Min.   : 1.000   Min.   : 1.000  
      1st Qu.: 1.000   1st Qu.: 1.000   1st Qu.: 1.000   1st Qu.: 1.000  
-     Median : 2.000   Median : 1.000   Median : 1.000   Median : 1.000  
-     Mean   : 4.447   Mean   : 2.716   Mean   : 2.368   Mean   : 2.032  
-     3rd Qu.: 4.000   3rd Qu.: 3.000   3rd Qu.: 2.000   3rd Qu.: 2.000  
+     Median : 2.000   Median : 2.000   Median : 2.000   Median : 1.000  
+     Mean   : 4.541   Mean   : 3.462   Mean   : 4.154   Mean   : 2.067  
+     3rd Qu.: 4.000   3rd Qu.: 5.000   3rd Qu.: 3.000   3rd Qu.: 2.000  
      Max.   :21.000   Max.   :20.000   Max.   :20.000   Max.   :11.000  
-     NA's   :334      NA's   :263      NA's   :334      NA's   :341     
-           МН           Телескоп        Сев_пч   
-     Min.   :1.000   Min.   :1.00   Min.   :1    
-     1st Qu.:1.000   1st Qu.:1.00   1st Qu.:1    
-     Median :2.000   Median :1.50   Median :1    
-     Mean   :2.679   Mean   :2.25   Mean   :1    
-     3rd Qu.:4.000   3rd Qu.:2.00   3rd Qu.:1    
-     Max.   :8.000   Max.   :7.00   Max.   :1    
-     NA's   :344     NA's   :360    NA's   :366  
+     NA's   :149      NA's   :121      NA's   :173      NA's   :156     
+           МН           Телескоп         Сев_пч   
+     Min.   :1.000   Min.   :1.000   Min.   :1    
+     1st Qu.:2.000   1st Qu.:2.000   1st Qu.:1    
+     Median :4.000   Median :2.000   Median :1    
+     Mean   :3.471   Mean   :3.333   Mean   :1    
+     3rd Qu.:5.000   3rd Qu.:5.000   3rd Qu.:1    
+     Max.   :8.000   Max.   :7.000   Max.   :1    
+     NA's   :169     NA's   :180     NA's   :182  
 
 ``` r
 per %>% 
@@ -1517,10 +1600,10 @@ per %>%
       per_cln     n
       <chr>   <int>
     1 БдЧ        21
-    2 ЛПРИ       27
+    2 ЛПРИ       26
     3 ОЗ         11
-    4 СО         25
-    5 Совр       19
+    4 СО         22
+    5 Совр       18
 
 ``` r
 x <- per %>% 
@@ -1533,7 +1616,7 @@ x <- per %>%
 x
 ```
 
-    # A tibble: 103 × 3
+    # A tibble: 98 × 3
        author_text      per_cln     n
        <chr>            <chr>   <int>
      1 Айбулат К.М.     ЛПРИ       13
@@ -1541,12 +1624,12 @@ x
      3 Айбулат К.М.     Совр       10
      4 Алексеев П.Ф.    ЛПРИ        6
      5 Алексеев П.Ф.    СО          6
-     6 Б.Б.             СО          5
-     7 Баратынский Е.А. Совр        8
-     8 Бенедиктов В.Г.  БдЧ        13
-     9 Бенедиктов В.Г.  ЛПРИ        9
-    10 Бенедиктов В.Г.  СО          6
-    # ℹ 93 more rows
+     6 Баратынский Е.А. Совр        8
+     7 Бенедиктов В.Г.  БдЧ        13
+     8 Бенедиктов В.Г.  ЛПРИ        9
+     9 Бенедиктов В.Г.  СО          6
+    10 Бернет Е.        БдЧ        15
+    # ℹ 88 more rows
 
 ``` r
 source1 <- NULL
@@ -1599,11 +1682,11 @@ tibble(sources = sources,
     # A tibble: 5 × 6
       s1      БдЧ  ЛПРИ    СО  Совр    ОЗ
       <chr> <dbl> <dbl> <dbl> <dbl> <dbl>
-    1 БдЧ   1     0.116 0.15  0.111 0.032
-    2 ЛПРИ  0.116 1     0.182 0.122 0.118
-    3 СО    0.15  0.182 1     0.128 0.059
-    4 Совр  0.111 0.122 0.128 1     0.154
-    5 ОЗ    0.032 0.118 0.059 0.154 1    
+    1 БдЧ   1     0.119 0.162 0.114 0.032
+    2 ЛПРИ  0.119 1     0.2   0.128 0.121
+    3 СО    0.162 0.2   1     0.143 0.065
+    4 Совр  0.114 0.128 0.143 1     0.16 
+    5 ОЗ    0.032 0.121 0.065 0.16  1    
 
 ``` r
 tibble(sources = sources, 
@@ -1615,7 +1698,7 @@ tibble(sources = sources,
   ggplot(aes(y = jaccard)) + geom_boxplot()
 ```
 
-![](02_2_periodicals_overview.markdown_strict_files/figure-markdown_strict/unnamed-chunk-40-1.png)
+![](02_2_periodicals_overview.markdown_strict_files/figure-markdown_strict/unnamed-chunk-43-1.png)
 
 ``` r
 x <- tibble(sources = sources, 
@@ -1630,11 +1713,11 @@ summary(x)
 
        sources             jaccard      
      Length:20          Min.   :0.0320  
-     Class :character   1st Qu.:0.1110  
-     Mode  :character   Median :0.1200  
-                        Mean   :0.1172  
-                        3rd Qu.:0.1500  
-                        Max.   :0.1820  
+     Class :character   1st Qu.:0.1140  
+     Mode  :character   Median :0.1245  
+                        Mean   :0.1244  
+                        3rd Qu.:0.1600  
+                        Max.   :0.2000  
 
 ``` r
 # x <- per %>% 
@@ -1736,12 +1819,10 @@ genres_legeres <- per %>%
 print(genres_legeres)
 ```
 
-    # A tibble: 3 × 4
-      PER_ID  year     n id        
-      <chr>  <int> <int> <chr>     
-    1 ЛПРИ    1835    48 ЛПРИ_1835 
-    2 ЛПРИ    1836    41 ЛПРИ_1836 
-    3 СОиСА   1835     1 СОиСА_1835
+      PER_ID year  n         id
+    1   ЛПРИ 1835 48  ЛПРИ_1835
+    2   ЛПРИ 1836 41  ЛПРИ_1836
+    3  СОиСА 1835  1 СОиСА_1835
 
 ``` r
 per %>% 
@@ -1751,10 +1832,8 @@ per %>%
   count(PER_ID, year)
 ```
 
-    # A tibble: 1 × 3
-      PER_ID  year     n
-      <chr>  <int> <int>
-    1 ЛПРИ    1836     7
+      PER_ID year n
+    1   ЛПРИ 1836 7
 
 ``` r
 # per %>% 
@@ -1781,11 +1860,9 @@ per %>%
   mutate(perc = round((n/total)*100, 1) )
 ```
 
-    # A tibble: 2 × 4
-      id        total     n  perc
-      <chr>     <int> <int> <dbl>
-    1 ЛПРИ_1835   153    48  31.4
-    2 ЛПРИ_1836   108    41  38  
+             id total  n perc
+    1 ЛПРИ_1835   153 48 31.4
+    2 ЛПРИ_1836   108 41 38.0
 
 ## 2.2.2 Female poetry in journals
 
@@ -1793,20 +1870,20 @@ Attach author’s gender from authors’ metadata table
 
 ``` r
 per %>% 
-  filter(gender != "") %>% 
-  count(year, gender) %>% 
+  filter(author_sex != "") %>% 
+  count(year, author_sex) %>% 
   #drop_na() %>% 
-  ggplot(aes(x = year, y = n, fill = gender)) + 
+  ggplot(aes(x = year, y = n, fill = author_sex)) + 
     geom_col(position = "dodge")
 ```
 
-![](02_2_periodicals_overview.markdown_strict_files/figure-markdown_strict/unnamed-chunk-44-1.png)
+![](02_2_periodicals_overview.markdown_strict_files/figure-markdown_strict/unnamed-chunk-47-1.png)
 
 ``` r
 per %>% 
-  filter(gender != "") %>% 
+  filter(author_sex != "") %>% 
   group_by(per_cln) %>% 
-  count(year, gender) %>% 
+  count(year, author_sex) %>% 
   drop_na() %>% 
   pivot_wider(names_from = year, values_from = n, values_fill = 0 ) %>% 
   mutate(total = rowSums(across(where(is.numeric)))) 
@@ -1814,62 +1891,59 @@ per %>%
 
     # A tibble: 19 × 9
     # Groups:   per_cln [10]
-       per_cln  gender `1835` `1836` `1837` `1838` `1839` `1840` total
-       <chr>    <chr>   <int>  <int>  <int>  <int>  <int>  <int> <dbl>
-     1 БдЧ      f           1      4      3      7      2      0    17
-     2 БдЧ      m          61     41     53     47     47     46   295
-     3 ЛПРИ     f           2      0      3      3      7      1    16
-     4 ЛПРИ     m          68     59     58     78     44     34   341
-     5 МН       f          10      4      0      0      0      0    14
-     6 МН       m          25     20      0      0      0      0    45
-     7 Маяк     f           0      0      0      0      0      3     3
-     8 Маяк     m           0      0      0      0      0     57    57
-     9 ОЗ       f           0      0      0      0     20      6    26
-    10 ОЗ       m           0      0      0      0     48     94   142
-    11 ПРиВЕТ   f           0      0      0      0      0      5     5
-    12 ПРиВЕТ   m           0      0      0      0      0     57    57
-    13 СО       m          23      7     69     61     26     31   217
-    14 СО       f           0      0      0      6      5      2    13
-    15 Сев_пч   m           1      1      0      1      0      0     3
-    16 Сев_пч   f           0      0      0      1      0      0     1
-    17 Совр     m           0     43     55     38     37     19   192
-    18 Совр     f           0      0      1      4      8     10    23
-    19 Телескоп m          17      3      0      0      0      0    20
+       per_cln  author_sex `1835` `1836` `1837` `1838` `1839` `1840` total
+       <chr>    <chr>       <int>  <int>  <int>  <int>  <int>  <int> <dbl>
+     1 БдЧ      f               1      4      2      7      2      0    16
+     2 БдЧ      m              61     40     53     47     47     44   292
+     3 ЛПРИ     f               2      0      3      3      7      1    16
+     4 ЛПРИ     m              67     58     58     77     44     33   337
+     5 МН       f              10      4      0      0      0      0    14
+     6 МН       m              25     20      0      0      0      0    45
+     7 Маяк     f               0      0      0      0      0      3     3
+     8 Маяк     m               0      0      0      0      0     51    51
+     9 ОЗ       f               0      0      0      0     20      6    26
+    10 ОЗ       m               0      0      0      0     48     94   142
+    11 ПРиВЕТ   f               0      0      0      0      0      5     5
+    12 ПРиВЕТ   m               0      0      0      0      0     57    57
+    13 СО       m              22      7     69     59     25     31   213
+    14 СО       f               0      0      0      5      5      2    12
+    15 Сев_пч   m               1      1      0      1      0      0     3
+    16 Сев_пч   f               0      0      0      1      0      0     1
+    17 Совр     m               0     40     54     38     37     19   188
+    18 Совр     f               0      0      1      4      8     10    23
+    19 Телескоп m              17      3      0      0      0      0    20
 
 ``` r
 print(c("Total number of poems written by women poets in periodicals:", 
-      per %>% filter(gender == "f") %>% nrow ) )
+      per %>% filter(author_sex == "f") %>% nrow ) )
 ```
 
     [1] "Total number of poems written by women poets in periodicals:"
-    [2] "118"                                                         
+    [2] "116"                                                         
 
 ``` r
 per %>% 
-  filter(gender == "f") %>% 
+  filter(author_sex == "f") %>% 
   count(author_text, sort = T) %>% 
   mutate(perc = round((n/118)*100, 2))
 ```
 
-    # A tibble: 19 × 3
-       author_text           n  perc
-       <chr>             <int> <dbl>
-     1 Ростопчина Е.П.      44 37.3 
-     2 Павлова К.К.         16 13.6 
-     3 Теплова Н.С.         14 11.9 
-     4 Шахова Е.Н.          13 11.0 
-     5 Волконская З.А.       5  4.24
-     6 Макшеева В.Д.         5  4.24
-     7 Аладьина Е.В.         4  3.39
-     8 Корсакова Л.          3  2.54
-     9 Афанасьева А.         2  1.69
-    10 Лисицина М.А.         2  1.69
-    11 Ростовская М.Ф.       2  1.69
-    12 Анисимова Д.А.        1  0.85
-    13 Годовниченкова Е.     1  0.85
-    14 Жукова М.С.           1  0.85
-    15 Киселева              1  0.85
-    16 М-ва Мария            1  0.85
-    17 Майкова Е.П.          1  0.85
-    18 Падерная М.           1  0.85
-    19 Языкова Л.            1  0.85
+             author_text  n  perc
+    1    Ростопчина Е.П. 44 37.29
+    2       Павлова К.К. 16 13.56
+    3       Теплова Н.С. 14 11.86
+    4        Шахова Е.Н. 13 11.02
+    5    Волконская З.А.  5  4.24
+    6      Макшеева В.Д.  5  4.24
+    7      Аладьина Е.В.  3  2.54
+    8       Корсакова Л.  3  2.54
+    9      Афанасьева А.  2  1.69
+    10     Лисицина М.А.  2  1.69
+    11   Ростовская М.Ф.  2  1.69
+    12    Анисимова Д.А.  1  0.85
+    13 Годовниченкова Е.  1  0.85
+    14       Жукова М.С.  1  0.85
+    15        М-ва Мария  1  0.85
+    16      Майкова Е.П.  1  0.85
+    17       Падерная М.  1  0.85
+    18        Языкова Л.  1  0.85

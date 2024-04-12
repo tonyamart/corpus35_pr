@@ -259,7 +259,7 @@ Fast cleaning of the data about authors
 ```{r}
 authors <- read.delim("../../meta/authors.tsv", sep = "\t")
 
-# glimpse(authors)
+glimpse(authors)
 
 authors_cln <- authors %>% 
   rename(author_name = author,
@@ -281,6 +281,7 @@ authors_cln <- authors %>%
     aristocracy,
     stratum,
     geo_location,
+    RP_loc,
     notes
   ) %>% 
   add_row(

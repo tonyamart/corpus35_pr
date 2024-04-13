@@ -7,10 +7,10 @@ editor: visual
 ```{r}
 library(tidyverse)
 
-library(treemap)
-library(ggplotify)
+# library(treemap)
+# library(ggplotify)
 theme_set(theme_minimal())
-library(wesanderson)
+# library(wesanderson)
 library(MetBrewer)
 
 # fix problems with cyrillics
@@ -259,6 +259,8 @@ per <- per %>%
 rm(names)
 ```
 
+### Plot 2.2.2
+
 ```{r}
 per %>% 
   filter(!PER_ID %in% c("Молва", "Сев_пч", "Телескоп")) %>% 
@@ -288,7 +290,11 @@ ggsave(file = "plots/Fig_2_2_2.png", plot = last_plot(), dpi = 300,
       width = 8, height = 6, bg = "white")
 ```
 
-### Plots 2.2.
+## Table 2.2.4
+
+-   count most prominent authors in a jounal (total years) to highlight table 2.2.4
+
+-   authors' age info
 
 Count total number of texts by different authors in each source
 
@@ -326,7 +332,103 @@ per %>%
 #   geom_tile() 
 ```
 
+Table 2.2.4 most prominent authors highlighting base
+
 ```{r}
+per %>% 
+  filter(author_text != "") %>% 
+  group_by(per_name) %>%
+  count(author_text, sort = T) %>% 
+  slice_max(order_by = n, n = 6) %>% 
+  arrange(-desc(per_name))
+```
+
+### authors age
+
+```{r}
+glimpse(per)
+
+per_total <- per %>% 
+  count(per_name) %>% 
+  rename(total = n)
+
+authors_known <- per %>% 
+  #filter(author_text != "") %>% 
+  mutate(age_known = ifelse(year_birth != "",
+                            1, 0)) %>% 
+  select(year, per_name, author_text, age_known) #%>% 
+  #distinct()
+
+# % of texts with authors of known age
+authors_known %>% 
+  count(per_name, age_known) %>% 
+  left_join(per_total, by = "per_name") %>% 
+  mutate(perc = round((n/total)*100, 1 ))
+
+unique(per$year_birth)
+unique(per$year_death)
+
+# mean and median age of authors for the whole period
+per %>% 
+  #filter(author_text != "") %>% 
+  mutate(age_known = ifelse(year_birth != "",
+                            1, 0)) %>% 
+  filter(age_known == 1) %>% 
+  mutate(year_birth = as.numeric(str_remove(year_birth, "^\\w+\\s")),
+         age = year - year_birth) %>% 
+  select(per_name, author_text, year_birth, year, age) %>% 
+  group_by(per_name) %>% 
+  summarise(per_name = per_name,
+            mean_age = round(mean(age), 1),
+            median_age = round(median(age), 1)
+            ) %>% distinct() %>% 
+  arrange(-desc(mean_age))
+
+# distribution of mean age over time
+per %>% 
+  #filter(author_text != "") %>% 
+  mutate(age_known = ifelse(year_birth != "",
+                            1, 0)) %>% 
+  filter(age_known == 1) %>% 
+  mutate(year_birth = as.numeric(str_remove(year_birth, "^\\w+\\s")),
+         age = year - year_birth) %>% 
+  select(per_name, author_text, year_birth, year, age) %>% 
+  group_by(per_name, year) %>% 
+  summarise(per_name = per_name,
+            year = year,
+            mean_age = round(mean(age), 1)) %>% distinct() %>% 
+  arrange(-desc(mean_age)) %>% 
+  arrange(-desc(year)) %>% 
+  pivot_wider(names_from = year, values_from = mean_age)
+
+# distribution of median age over time
+per %>% 
+  #filter(author_text != "") %>% 
+  mutate(age_known = ifelse(year_birth != "",
+                            1, 0)) %>% 
+  filter(age_known == 1) %>% 
+  mutate(year_birth = as.numeric(str_remove(year_birth, "^\\w+\\s")),
+         age = year - year_birth) %>% 
+  select(per_name, author_text, year_birth, year, age) %>% 
+  group_by(per_name, year) %>% 
+  summarise(per_name = per_name,
+            year = year,
+            mean_age = round(median(age), 1)) %>% distinct() %>% 
+  arrange(-desc(mean_age)) %>% 
+  arrange(-desc(year)) %>% 
+  pivot_wider(names_from = year, values_from = mean_age)
+```
+
+```{r}
+per %>% 
+  filter(per_name == "Маяк" & author_text != "") %>% 
+  select(author_text, year_birth) %>% 
+  distinct()
+```
+
+### treemap plots (not used)
+
+```{r, eval=FALSE}
 # remove incomplete sources
 periodicals <- per %>% 
   filter(!PER_ID %in% c("Молва", "МН", "Сев_пч"))
@@ -341,7 +443,7 @@ source_year_total <- periodicals %>%
 
 Count number of texts in each source by each author
 
-```{r}
+```{r, eval=FALSE}
 authors_sources <- periodicals %>% 
     #filter(PER_ID != "Сев_пч") %>% 
     mutate(PER_ID = ifelse(str_detect(PER_ID,"СОиСА"), "СО", PER_ID)) %>% 
@@ -365,7 +467,7 @@ head(authors_sources)
 
 Select colours for charts
 
-```{r}
+```{r, eval=FALSE}
 MetBrewer::colorblind_palettes
 
 met.brewer("Archambault")
@@ -410,15 +512,15 @@ met.brewer("Veronese")
 # }
 ```
 
-```{r}
+```{r, eval=FALSE}
 years_total
 ```
 
-```{r}
+```{r, eval=FALSE}
 source_year_total %>% arrange(-desc(year))
 ```
 
-```{r}
+```{r, eval=FALSE}
 
 png("plots/treemaps/2-2-2_1835_v2.png", height = 650, width = 600)
 
@@ -444,7 +546,7 @@ authors_sources %>%
 dev.off()
 ```
 
-```{r}
+```{r, eval=FALSE}
 png("plots/treemaps/2-2-2_1836_v2.png", height = 650, width = 600)
 
 authors_sources %>% 
@@ -474,7 +576,7 @@ authors_sources %>%
 dev.off()
 ```
 
-```{r}
+```{r, eval=FALSE}
 png("plots/treemaps/2-2-2_1837_v2.png", height = 650, width = 600)
 
 authors_sources %>% 
@@ -503,7 +605,7 @@ authors_sources %>%
 dev.off()
 ```
 
-```{r}
+```{r, eval=FALSE}
 png("plots/treemaps/2-2-2_1838_v2.png", height = 650, width = 600)
 
 authors_sources %>% 
@@ -532,7 +634,7 @@ authors_sources %>%
 dev.off()
 ```
 
-```{r}
+```{r, eval=FALSE}
 png("plots/treemaps/2-2-2_1839_v2.png", height = 650, width = 600)
 
 authors_sources %>% 
@@ -562,7 +664,7 @@ authors_sources %>%
 dev.off()
 ```
 
-```{r}
+```{r, eval=FALSE}
 png("plots/treemaps/2-2-2_1840_v2.png", height = 700, width = 650)
 
 authors_sources %>% 
@@ -622,77 +724,6 @@ per %>%
 
 # selected journals
 per_names <- c("БдЧ", "ЛПРИ", "СО", "Совр", "ОЗ")
-```
-
-```{r}
-# Kendall's ranking correlation calculation
-
-# #length(unique(per_full$year))
-# 
-# per_names <- c("БдЧ", "ЛПРИ", "СО", "Совр", "ОЗ")
-# 
-# x <- NULL
-# y <- NULL
-# year1 <- NULL
-# year2 <- NULL
-# 
-# x1 <- NULL
-# x2 <- NULL
-# k <- NULL
-# 
-# jou <- c("journal")
-# years <- c("year")
-# tau <- c("tau")
-# 
-# for (i in 1:length(per_names)) {
-#   
-#   x <- per %>%
-#     filter(per_cln == per_names[i])
-#   
-#   # print(per_names[i])
-#   
-#   for (j in 1:(length(unique(x$year))-1)) {
-#     year1 <- unique(x$year)[j]
-#     year2 <- year1 + 1
-# 
-#     # print(c(year1, year2))
-#     
-#     y <- x %>% 
-#       filter(!is.na(author)) %>% 
-#       group_by(year) %>% 
-#       count(author, sort = T) %>% 
-#       mutate(rank = row_number()) %>% 
-#       ungroup() %>% 
-#       #filter(rank < 21) %>% 
-#       filter(year %in% c(year1, year2)) %>% 
-#       mutate(year = ifelse(year == year1, "year1", "year2")) %>% 
-#       pivot_wider(id_cols = !n, names_from = year, values_from = rank) %>% 
-#       drop_na
-# 
-#     #print(y)
-#     
-#     x1 <- as.vector(y$year1)
-#     x2 <- as.vector(y$year2)
-# 
-#     print(c(per_names[i], year1, year2,  x1, "vs", x2))
-#     
-#     if (length(x1) > 0 & length(x2) > 0) {
-#       k <- cor.test(x1, x2, method = "kendall")
-#       
-#       #print(unlist(k[[4]]))
-#     
-#       jou <- c(jou, per_names[i])
-#       years <- c(years, paste0(year1, "_", year2))
-#       tau <- c(tau, unlist(k[[4]]))
-#     }
-#   }
-# }   
-# tibble(journal = jou, 
-#        year = years,
-#        tau_val = tau) %>% 
-#   filter(journal != "journal") %>% 
-#   mutate(tau_val = round(as.numeric(tau_val), 4)) %>% 
-#   pivot_wider(names_from = year, values_from = tau_val)
 ```
 
 ```{r}
@@ -770,116 +801,6 @@ tibble(year = years,
   pivot_wider(names_from = year, values_from = perc)
 ```
 
-### unused plot (proportion of one-time printed authors)
-
-```{r}
-tibble(year = years,
-       source = sources,
-       perc = perc) %>% 
-  ggplot(aes(x = year, y = perc, color = source)) + 
-  geom_point(size = 2) + 
-  geom_line(linewidth = 2, alpha = 0.7) + 
-  labs(#subtitle = "Доля авторов, опубликовавших только 1 стихотворение\nв течение года",
-       x = "Год",
-       y = "%") + 
-  scale_color_manual(values = c(met.brewer("Veronese")[1], # BdCH
-              met.brewer("Veronese")[3], # LPRI
-              met.brewer("Archambault")[2], # OZ
-              met.brewer("Veronese")[4], # SO
-              met.brewer("Veronese")[7])) + # Sovr 
-  scale_y_continuous(limits = c(0,100)) + 
-  theme(#legend.position = "None",
-        axis.text = element_text(size = 12),
-        axis.title = element_text(size = 14), 
-        plot.subtitle = element_text(size = 16))
-
-# ggsave(filename = "plots/Fig_2-2-3-1.png", plot = last_plot(),
-#         width = 8, height = 6, dpi = 300, bg = "white")
-```
-
-Another plot (not used)
-
-```{r}
-
-p <- NULL
-y <- NULL
-
-intersection <- NULL
-total <- NULL
-
-sources <- NULL
-years <- NULL
-
-for (i in 1:length(unique(per$year))) {
-  
-  y <- unique(per$year)[i]
-  
-  if (y < 1840) {
-
-    for (j in 1:length(per_names)) {
-      
-      p <- per_names[j]
-  
-      authors_y1 <- per %>% 
-        filter(per_cln == p & year == y & author_text != "") %>% 
-        count(author_text) %>% pull(author_text)
-  
-      authors_y2 <- per %>% 
-        filter(per_cln == p & year == y+1 & author_text != "") %>% 
-        count(author_text) %>% pull(author_text)
-      
-      #intersect(authors_y1, authors_y2)
-      
-      sources <- c(sources, p)
-      
-      years <- c(years, paste0(y, " -> ", y+1))
-      
-      intersection <- c(intersection, length(intersect(authors_y1, authors_y2)))
-      
-      total <- c(total, length(c(authors_y1, authors_y2)))
-      
-      }
-  } 
-} 
-
-tibble(sources = sources,
-       years = years,
-       int = intersection,
-       total = total) %>% 
-  mutate(jaccard = round((int/total)*100, 2) ) %>% 
-  #drop_na() %>% 
-  select(sources, years, jaccard) %>% 
-  pivot_wider(names_from = years, values_from = jaccard)
-
-tibble(sources = sources,
-       years = years,
-       int = intersection,
-       total = total) %>% 
-  mutate(source = paste0(sources, "_", years)) %>% 
-  filter(!source %in% c("Совр_1835 -> 1836", "ОЗ_1838 -> 1839")) %>% 
-  mutate(jaccard = round((int/total)*100, 3) ) %>% 
-  drop_na() %>% 
-  ggplot(aes(x = years, y = jaccard, color = sources, group = sources)) + 
-    geom_point(size = 2) + 
-    geom_line(linewidth = 2, alpha = 0.7) + 
-    scale_y_continuous(limits = c(0, 100)) + 
-    scale_color_manual(values = c(met.brewer("Veronese")[1], # BdCH
-              met.brewer("Veronese")[3], # LPRI
-              met.brewer("Archambault")[2], # OZ
-              met.brewer("Veronese")[4], # SO
-              met.brewer("Veronese")[7])) + 
-  labs(color = "Источник",
-       x = "Годы", 
-       y = "Доля пересечения (коэфф. Жаккарда)") + 
-  theme(legend.text = element_text(size = 12),
-        legend.title = element_text(size = 14),
-        axis.text = element_text(size = 12),
-        axis.title = element_text(size = 14))
-
-# ggsave(filename = "plots/Fig_2-2-3-2.png", plot = last_plot(),
-#        width = 8, height = 6, dpi = 300, bg = "white")
-```
-
 ### Jaccard for total top authors in each source
 
 ```{r}
@@ -911,6 +832,8 @@ x <- per %>%
 
 x
 ```
+
+### Table 2.2.3
 
 ```{r}
 
@@ -961,7 +884,7 @@ tibble(sources = sources,
   select(s1, БдЧ, ЛПРИ, СО, Совр, ОЗ)
 ```
 
-```{r}
+```{r, eval=FALSE}
 tibble(sources = sources, 
        int =  intersections, 
        total = total) %>% 
@@ -978,87 +901,6 @@ x <- tibble(sources = sources,
   filter(jaccard != 1)
 
 summary(x)
-```
-
-```{r}
-# x <- per %>% 
-#   filter(author != "" & per_cln %in% per_names) %>% 
-#   group_by(year, author, per_cln) %>% 
-#   count() %>% 
-#   ungroup() %>% 
-#   filter(n > 2)
-# 
-# k <- NULL
-# year <- NULL
-# source1 <- NULL
-# source2 <- NULL
-# a1 <- NULL
-# a2 <- NULL
-# 
-# t <- tibble(source = "NULL",
-#        int = 1,
-#        uni = 1)
-# 
-#   
-# 
-# 
-# 
-#   for (i in 1:length(per_names)) {
-#     
-#     for (j in 1:length(per_names)) {
-#       
-#       for (k in 1:length(unique(per$year))) {
-#   
-#       year <- unique(per$year)[k]
-#      
-#       source1 <- per_names[i]
-#       
-#       if (j == length(per_names)) {
-#         source2 <- per_names[1]
-#       } else {source2 <- per_names[j+1]}
-#       
-#       a1 <- x %>%
-#         filter(per_cln == source1) %>% 
-#         filter(year %in% year) %>%
-#         select(author) %>%
-#         distinct() %>%
-#         pull()
-# 
-#       a2 <- x %>%
-#         filter(per_cln == source2) %>% 
-#         filter(year %in% year) %>%
-#         select(author) %>%
-#         distinct() %>%
-#         pull()
-#        
-#   
-#       t <- t %>% 
-#         add_row(source = paste0(source1, "__", source2, "_", year), 
-#                 int = length(intersect(a1, a2)),
-#                 uni = length(union(a1, a2))
-#                 )
-#       
-#       # sources <- c(sources, paste0(source1, "__", source2, "_", year))
-#       # intersections <- c(intersections, length(intersect(a1, a2)))
-#       # union <- c(union, length(union(a1, a2)))
-#       
-#     }
-#   }
-# }
-# 
-# 
-# t
-
-# tibble(s = sources,
-#        int = intersections,
-#        union = union) #%>% 
-  #mutate(jccd = round(int/union, 4)) # %>% 
-  # select(s, jccd) %>% 
-  # separate(s, into = c("s1", "s2"), sep = "__") %>% 
-  # separate(s2, into = c("s2", "year"), sep = "_") %>% 
-  # filter(jccd != 1) %>% 
-  # filter(year == 1836) %>% 
-  # ggplot(aes(x = year, y = jccd)) + geom_point()
 ```
 
 ### LPRI genre titles

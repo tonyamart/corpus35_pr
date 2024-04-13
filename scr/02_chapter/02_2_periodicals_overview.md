@@ -20,23 +20,12 @@ library(tidyverse)
     ℹ Use the conflicted package (<http://conflicted.r-lib.org/>) to force all conflicts to become errors
 
 ``` r
-library(treemap)
-library(ggplotify)
+# library(treemap)
+# library(ggplotify)
 theme_set(theme_minimal())
-library(wesanderson)
-```
-
-    Warning: package 'wesanderson' was built under R version 4.3.1
-
-``` r
+# library(wesanderson)
 library(MetBrewer)
-```
 
-    Registered S3 method overwritten by 'MetBrewer':
-      method        from       
-      print.palette wesanderson
-
-``` r
 # fix problems with cyrillics
 # library(extrafont)
 # library(showtext)
@@ -486,6 +475,8 @@ per <- per %>%
 rm(names)
 ```
 
+### Plot 2.2.2
+
 ``` r
 per %>% 
   filter(!PER_ID %in% c("Молва", "Сев_пч", "Телескоп")) %>% 
@@ -517,7 +508,12 @@ ggsave(file = "plots/Fig_2_2_2.png", plot = last_plot(), dpi = 300,
       width = 8, height = 6, bg = "white")
 ```
 
-### Plots 2.2.
+## Table 2.2.4
+
+-   count most prominent authors in a jounal (total years) to highlight
+    table 2.2.4
+
+-   authors’ age info
 
 Count total number of texts by different authors in each source
 
@@ -582,6 +578,287 @@ per %>%
 #   geom_tile() 
 ```
 
+Table 2.2.4 most prominent authors highlighting base
+
+``` r
+per %>% 
+  filter(author_text != "") %>% 
+  group_by(per_name) %>%
+  count(author_text, sort = T) %>% 
+  slice_max(order_by = n, n = 6) %>% 
+  arrange(-desc(per_name))
+```
+
+    # A tibble: 65 × 3
+    # Groups:   per_name [10]
+       per_name author_text          n
+       <chr>    <chr>            <int>
+     1 БдЧ      Тимофеев А.В.       27
+     2 БдЧ      Козлов И.И.         26
+     3 БдЧ      Кропоткин Д.А.      19
+     4 БдЧ      Пушкин А.С.         17
+     5 БдЧ      Бернет Е.           15
+     6 БдЧ      Ершов П.П.          15
+     7 ЛПРИ/ЛГ  Якубович Л.А.       26
+     8 ЛПРИ/ЛГ  Соколовский В.И.    16
+     9 ЛПРИ/ЛГ  Стромилов С.И.      16
+    10 ЛПРИ/ЛГ  Демидов М.А.        15
+    # ℹ 55 more rows
+
+### authors age
+
+``` r
+glimpse(per)
+```
+
+    Rows: 1,905
+    Columns: 20
+    $ text_id       <chr> "P_1", "P_10", "P_100", "P_1000", "P_1001", "P_1002", "P…
+    $ source_id     <chr> "Per_1", "Per_2", "Per_3", "Per_4", "Per_4", "Per_4", "P…
+    $ A_ID          <chr> "", "A_50", "A_7", "A_41", "A_139", "A_11", "A_163", "A_…
+    $ text_title    <chr> "Солдатская песня", "Молния", "Ночлег чумаков", "Утешите…
+    $ text_subtitle <chr> "", "", "Сельские картины", "", "", "", "", "", "", "", …
+    $ first_line    <chr> "Ох жизнь, молодецкая", "Зачем с небесной высоты", "В бл…
+    $ text_page     <chr> "C. 46", "C. 21", "C. 9-12", "C. 172-174", "C. 175-176",…
+    $ corpus        <chr> "per", "per", "per", "per", "per", "per", "per", "per", …
+    $ meter         <chr> "Other", "Iamb", "Iamb", "Iamb", "Trochee", "Iamb", "Tro…
+    $ feet          <chr> "other", "3", "4", "4", "4", "4", "other", "4", "6", "5"…
+    $ n_lines       <int> 38, 16, 98, 77, 28, 12, 44, 25, 31, 28, 100, 16, 17, 60,…
+    $ PER_ID        <chr> "Сев_пч", "БдЧ", "БдЧ", "Совр", "Совр", "Совр", "Совр", …
+    $ year          <int> 1835, 1835, 1836, 1838, 1838, 1838, 1838, 1838, 1838, 18…
+    $ text_lemm     <chr> "ох, жизнь молодецкий,\nбравый, солдатский!\nкак осенний…
+    $ author_text   <chr> "", "Якубович Л.А.", "Кольцов А.В.", "Глинка Ф.Н.", "Про…
+    $ RP_loc        <chr> "", "", "3-33", "1-578", "5-151", "5", "2-13", "1-578", …
+    $ author_sex    <chr> "", "m", "m", "m", "m", "m", "m", "m", "m", "m", "m", "f…
+    $ year_birth    <chr> "", "1805", "1809", "1786", "1810", "1799", "1812", "178…
+    $ year_death    <chr> "", "1839", "1842", "1880", "1857", "1837", "1848", "188…
+    $ per_name      <chr> "СП", "БдЧ", "БдЧ", "Современник", "Современник", "Совре…
+
+``` r
+per_total <- per %>% 
+  count(per_name) %>% 
+  rename(total = n)
+
+authors_known <- per %>% 
+  #filter(author_text != "") %>% 
+  mutate(age_known = ifelse(year_birth != "",
+                            1, 0)) %>% 
+  select(year, per_name, author_text, age_known) #%>% 
+  #distinct()
+
+# % of texts with authors of known age
+authors_known %>% 
+  count(per_name, age_known) %>% 
+  left_join(per_total, by = "per_name") %>% 
+  mutate(perc = round((n/total)*100, 1 ))
+```
+
+          per_name age_known   n total perc
+    1          БдЧ         0  87   352 24.7
+    2          БдЧ         1 265   352 75.3
+    3      ЛПРИ/ЛГ         0 270   563 48.0
+    4      ЛПРИ/ЛГ         1 293   563 52.0
+    5           МН         0  19    78 24.4
+    6           МН         1  59    78 75.6
+    7         Маяк         0  40    91 44.0
+    8         Маяк         1  51    91 56.0
+    9           ОЗ         0   2   169  1.2
+    10          ОЗ         1 167   169 98.8
+    11      ПРиВЕТ         0  10    68 14.7
+    12      ПРиВЕТ         1  58    68 85.3
+    13          СО         0 126   310 40.6
+    14          СО         1 184   310 59.4
+    15          СП         0   9    13 69.2
+    16          СП         1   4    13 30.8
+    17 Современник         0  31   234 13.2
+    18 Современник         1 203   234 86.8
+    19    Телескоп         0   7    27 25.9
+    20    Телескоп         1  20    27 74.1
+
+``` r
+unique(per$year_birth)
+```
+
+     [1] ""        "1805"    "1809"    "1786"    "1810"    "1799"    "1812"   
+     [8] "1803"    "1793"    "1811"    "1817"    "1779"    "1818"    "1815"   
+    [15] "1792"    "ок 1810" "1807"    "1804"    "1822"    "1800"    "1783"   
+    [22] "1784"    "1814"    "1808"    "1813"    "1819"    "1806"    "1798"   
+    [29] "1801"    "1766"    "1788"    "1769"    "1772"    "1768"    "1795"   
+    [36] "1797"    "1789"    "1790"    "1821"    "1777"    "1816"    "1754"   
+    [43] "1776"    "1787"    "1820"    "1802"   
+
+``` r
+unique(per$year_death)
+```
+
+     [1] ""           "1839"       "1842"       "1880"       "1857"      
+     [6] "1837"       "1848"       "1873"       "после 1846" "1858"      
+    [11] "1865"       "1840"       "1875"       "1883"       "1868"      
+    [16] "1893"       "1869"       "1853"       "после 1862" "1890"      
+    [21] "ок 1846"    "1862"       "1894"       "1877"       "1887"      
+    [26] "1899"       "1844"       "1864"       "1852"       "1895"      
+    [31] "1812"       "1841"       "1860"       "1866"       "1855"      
+    [36] "1878"       "1854"       "1838"       "1898"       "1879"      
+    [41] "1882"       "1845"       "1874"       "1850"       "1831"      
+    [46] "1870"       "1886"       "1843"       "1836"       "1856"      
+    [51] "после 1837" "1888"       "после 1875" "1861"       "после 1852"
+    [56] "1846"       "1847"       "до 1885"    "1876"       "1829"      
+    [61] "1849"       "1832"       "1863"       "1896"       "после 1867"
+    [66] "1891"       "1897"       "1867"       "после 1869" "1872"      
+    [71] "1828"      
+
+``` r
+# mean and median age of authors for the whole period
+per %>% 
+  #filter(author_text != "") %>% 
+  mutate(age_known = ifelse(year_birth != "",
+                            1, 0)) %>% 
+  filter(age_known == 1) %>% 
+  mutate(year_birth = as.numeric(str_remove(year_birth, "^\\w+\\s")),
+         age = year - year_birth) %>% 
+  select(per_name, author_text, year_birth, year, age) %>% 
+  group_by(per_name) %>% 
+  summarise(per_name = per_name,
+            mean_age = round(mean(age), 1),
+            median_age = round(median(age), 1)
+            ) %>% distinct() %>% 
+  arrange(-desc(mean_age))
+```
+
+    Warning: Returning more (or less) than 1 row per `summarise()` group was deprecated in
+    dplyr 1.1.0.
+    ℹ Please use `reframe()` instead.
+    ℹ When switching from `summarise()` to `reframe()`, remember that `reframe()`
+      always returns an ungrouped data frame and adjust accordingly.
+
+    `summarise()` has grouped output by 'per_name'. You can override using the
+    `.groups` argument.
+
+    # A tibble: 10 × 3
+    # Groups:   per_name [10]
+       per_name    mean_age median_age
+       <chr>          <dbl>      <dbl>
+     1 Телескоп        24.3         25
+     2 ОЗ              30.2         30
+     3 СО              30.3         29
+     4 ЛПРИ/ЛГ         30.5         29
+     5 МН              30.6         30
+     6 ПРиВЕТ          30.9         31
+     7 БдЧ             31.1         28
+     8 Современник     32.5         33
+     9 Маяк            35           36
+    10 СП              55.2         57
+
+``` r
+# distribution of mean age over time
+per %>% 
+  #filter(author_text != "") %>% 
+  mutate(age_known = ifelse(year_birth != "",
+                            1, 0)) %>% 
+  filter(age_known == 1) %>% 
+  mutate(year_birth = as.numeric(str_remove(year_birth, "^\\w+\\s")),
+         age = year - year_birth) %>% 
+  select(per_name, author_text, year_birth, year, age) %>% 
+  group_by(per_name, year) %>% 
+  summarise(per_name = per_name,
+            year = year,
+            mean_age = round(mean(age), 1)) %>% distinct() %>% 
+  arrange(-desc(mean_age)) %>% 
+  arrange(-desc(year)) %>% 
+  pivot_wider(names_from = year, values_from = mean_age)
+```
+
+    Warning: Returning more (or less) than 1 row per `summarise()` group was deprecated in
+    dplyr 1.1.0.
+    ℹ Please use `reframe()` instead.
+    ℹ When switching from `summarise()` to `reframe()`, remember that `reframe()`
+      always returns an ungrouped data frame and adjust accordingly.
+
+    `summarise()` has grouped output by 'per_name', 'year'. You can override using
+    the `.groups` argument.
+
+    # A tibble: 10 × 7
+    # Groups:   per_name [10]
+       per_name    `1835` `1836` `1837` `1838` `1839` `1840`
+       <chr>        <dbl>  <dbl>  <dbl>  <dbl>  <dbl>  <dbl>
+     1 Телескоп      23.1   31     NA     NA     NA     NA  
+     2 МН            29.9   31.5   NA     NA     NA     NA  
+     3 ЛПРИ/ЛГ       31.9   31.5   31.7   31.2   27.6   27.5
+     4 СО            32     35.3   30.4   29.7   29.3   29.9
+     5 БдЧ           35.8   37.1   29.6   24.1   29     28.6
+     6 СП            81     68     NA     36     NA     NA  
+     7 Современник   NA     35.5   33.1   32.8   30.7   29.6
+     8 ОЗ            NA     NA     NA     NA     30.7   29.9
+     9 ПРиВЕТ        NA     NA     NA     NA     NA     30.9
+    10 Маяк          NA     NA     NA     NA     NA     35  
+
+``` r
+# distribution of median age over time
+per %>% 
+  #filter(author_text != "") %>% 
+  mutate(age_known = ifelse(year_birth != "",
+                            1, 0)) %>% 
+  filter(age_known == 1) %>% 
+  mutate(year_birth = as.numeric(str_remove(year_birth, "^\\w+\\s")),
+         age = year - year_birth) %>% 
+  select(per_name, author_text, year_birth, year, age) %>% 
+  group_by(per_name, year) %>% 
+  summarise(per_name = per_name,
+            year = year,
+            mean_age = round(median(age), 1)) %>% distinct() %>% 
+  arrange(-desc(mean_age)) %>% 
+  arrange(-desc(year)) %>% 
+  pivot_wider(names_from = year, values_from = mean_age)
+```
+
+    Warning: Returning more (or less) than 1 row per `summarise()` group was deprecated in
+    dplyr 1.1.0.
+    ℹ Please use `reframe()` instead.
+    ℹ When switching from `summarise()` to `reframe()`, remember that `reframe()`
+      always returns an ungrouped data frame and adjust accordingly.
+
+    `summarise()` has grouped output by 'per_name', 'year'. You can override using
+    the `.groups` argument.
+
+    # A tibble: 10 × 7
+    # Groups:   per_name [10]
+       per_name    `1835` `1836` `1837` `1838` `1839` `1840`
+       <chr>        <dbl>  <dbl>  <dbl>  <dbl>  <dbl>  <dbl>
+     1 СО              23   29.5     30     28     29     32
+     2 Телескоп        25   32       NA     NA     NA     NA
+     3 МН              30   30       NA     NA     NA     NA
+     4 ЛПРИ/ЛГ         31   32       29     29     26     26
+     5 БдЧ             36   29       27     23     29     26
+     6 СП              81   68       NA     36     NA     NA
+     7 Современник     NA   33       34     32     28     29
+     8 ОЗ              NA   NA       NA     NA     30     30
+     9 ПРиВЕТ          NA   NA       NA     NA     NA     31
+    10 Маяк            NA   NA       NA     NA     NA     36
+
+``` r
+per %>% 
+  filter(per_name == "Маяк" & author_text != "") %>% 
+  select(author_text, year_birth) %>% 
+  distinct()
+```
+
+                     author_text year_birth
+    1                Щеткин Я.А.       1817
+    2              Корсаков П.А.       1790
+    3              Макшеева В.Д.       1822
+    4              Бороздна И.П.       1804
+    5             Шаховской А.А.       1777
+    6                Степанов С.           
+    7                 Зотов В.Р.       1821
+    8  Афанасьев-Чужбинский А.С.       1817
+    9                Глебов А.Н.       1803
+    10           Ободовский П.Г.       1803
+    11              Корсакова Л.           
+    12              Пальмин И.Д.       1803
+    13            Кропоткин Д.А.       1818
+
+### treemap plots (not used)
+
 ``` r
 # remove incomplete sources
 periodicals <- per %>% 
@@ -615,67 +892,25 @@ authors_sources <- periodicals %>%
     summarise(n = sum(n)) %>% 
     mutate(author_label = paste0(author_text, " (", n, ")")) %>% 
     filter(author_text != "Другие")
-```
 
-    `summarise()` has grouped output by 'year', 'PER_ID'. You can override using
-    the `.groups` argument.
-
-``` r
 head(authors_sources)
 ```
-
-    # A tibble: 6 × 5
-    # Groups:   year, PER_ID [2]
-       year PER_ID author_text       n author_label     
-      <int> <chr>  <chr>         <int> <chr>            
-    1  1835 БдЧ    Ершов П.П.        6 Ершов П.П. (6)   
-    2  1835 БдЧ    Козлов И.И.      11 Козлов И.И. (11) 
-    3  1835 БдЧ    Пушкин А.С.      16 Пушкин А.С. (16) 
-    4  1835 БдЧ    Якубович Л.А.     3 Якубович Л.А. (3)
-    5  1835 ЛПРИ   Алипанов Е.И.     3 Алипанов Е.И. (3)
-    6  1835 ЛПРИ   Бистром А.        4 Бистром А. (4)   
 
 Select colours for charts
 
 ``` r
 MetBrewer::colorblind_palettes
-```
 
-     [1] "Archambault" "Cassatt1"    "Cassatt2"    "Demuth"      "Derain"     
-     [6] "Egypt"       "Greek"       "Hiroshige"   "Hokusai2"    "Hokusai3"   
-    [11] "Ingres"      "Isfahan1"    "Isfahan2"    "Java"        "Johnson"    
-    [16] "Kandinsky"   "Morgenstern" "OKeeffe1"    "OKeeffe2"    "Pillement"  
-    [21] "Tam"         "Troy"        "VanGogh3"    "Veronese"   
-
-``` r
 met.brewer("Archambault")
-```
 
-![](02_2_periodicals_overview.markdown_strict_files/figure-markdown_strict/unnamed-chunk-23-1.png)
-
-``` r
 met.brewer("Egypt")
-```
 
-![](02_2_periodicals_overview.markdown_strict_files/figure-markdown_strict/unnamed-chunk-23-2.png)
-
-``` r
 met.brewer("Johnson")
-```
 
-![](02_2_periodicals_overview.markdown_strict_files/figure-markdown_strict/unnamed-chunk-23-3.png)
-
-``` r
 met.brewer("Kandinsky")
-```
 
-![](02_2_periodicals_overview.markdown_strict_files/figure-markdown_strict/unnamed-chunk-23-4.png)
-
-``` r
 met.brewer("Veronese")
 ```
-
-![](02_2_periodicals_overview.markdown_strict_files/figure-markdown_strict/unnamed-chunk-23-5.png)
 
 ``` r
 # treemap: https://cran.r-project.org/web/packages/treemap/treemap.pdf
@@ -712,49 +947,9 @@ met.brewer("Veronese")
 years_total
 ```
 
-      year   n     year_label
-    1 1835 267 1835 (N = 267)
-    2 1836 232 1836 (N = 232)
-    3 1837 267 1837 (N = 267)
-    4 1838 285 1838 (N = 285)
-    5 1839 302 1839 (N = 302)
-    6 1840 461 1840 (N = 461)
-
 ``` r
 source_year_total %>% arrange(-desc(year))
 ```
-
-         PER_ID year   n
-    1       БдЧ 1835  66
-    2      ЛПРИ 1835 153
-    3     СОиСА 1835  28
-    4  Телескоп 1835  20
-    5       БдЧ 1836  53
-    6      ЛПРИ 1836 108
-    7        СО 1836  14
-    8      Совр 1836  50
-    9  Телескоп 1836   7
-    10      БдЧ 1837  58
-    11     ЛПРИ 1837  69
-    12       СО 1837  81
-    13     Совр 1837  59
-    14      БдЧ 1838  63
-    15     ЛПРИ 1838  91
-    16    СОиСА 1838  87
-    17     Совр 1838  44
-    18      БдЧ 1839  63
-    19     ЛПРИ 1839  67
-    20       ОЗ 1839  69
-    21       СО 1839  36
-    22    СОиСА 1839  19
-    23     Совр 1839  48
-    24      БдЧ 1840  49
-    25       ЛГ 1840  75
-    26     Маяк 1840  91
-    27       ОЗ 1840 100
-    28   ПРиВЕТ 1840  68
-    29       СО 1840  45
-    30     Совр 1840  33
 
 ``` r
 png("plots/treemaps/2-2-2_1835_v2.png", height = 650, width = 600)
@@ -781,29 +976,13 @@ authors_sources %>%
 dev.off()
 ```
 
-    quartz_off_screen 
-                    2 
-
 ``` r
 png("plots/treemaps/2-2-2_1836_v2.png", height = 650, width = 600)
 
 authors_sources %>% 
         filter(year == 1836) %>% 
         select(PER_ID) %>% distinct() %>% arrange(-desc(PER_ID))
-```
 
-    Adding missing grouping variables: `year`
-
-    # A tibble: 4 × 2
-    # Groups:   year, PER_ID [4]
-       year PER_ID
-      <int> <chr> 
-    1  1836 БдЧ   
-    2  1836 ЛПРИ  
-    3  1836 СО    
-    4  1836 Совр  
-
-``` r
 tree_pal <- c(met.brewer("Veronese")[1], # BdCH
               met.brewer("Veronese")[3], # LPRI
               met.brewer("Veronese")[4], # SO
@@ -827,29 +1006,13 @@ authors_sources %>%
 dev.off()
 ```
 
-    quartz_off_screen 
-                    2 
-
 ``` r
 png("plots/treemaps/2-2-2_1837_v2.png", height = 650, width = 600)
 
 authors_sources %>% 
         filter(year == 1837) %>% 
         select(PER_ID) %>% distinct() %>% arrange(-desc(PER_ID))
-```
 
-    Adding missing grouping variables: `year`
-
-    # A tibble: 4 × 2
-    # Groups:   year, PER_ID [4]
-       year PER_ID
-      <int> <chr> 
-    1  1837 БдЧ   
-    2  1837 ЛПРИ  
-    3  1837 СО    
-    4  1837 Совр  
-
-``` r
 tree_pal <- c(met.brewer("Veronese")[1], # BdCH
               met.brewer("Veronese")[3], # LPRI
               met.brewer("Veronese")[4], # SO
@@ -872,29 +1035,13 @@ authors_sources %>%
 dev.off()
 ```
 
-    quartz_off_screen 
-                    2 
-
 ``` r
 png("plots/treemaps/2-2-2_1838_v2.png", height = 650, width = 600)
 
 authors_sources %>% 
         filter(year == 1838) %>% 
         select(PER_ID) %>% distinct() %>% arrange(-desc(PER_ID))
-```
 
-    Adding missing grouping variables: `year`
-
-    # A tibble: 4 × 2
-    # Groups:   year, PER_ID [4]
-       year PER_ID
-      <int> <chr> 
-    1  1838 БдЧ   
-    2  1838 ЛПРИ  
-    3  1838 СО    
-    4  1838 Совр  
-
-``` r
 tree_pal <- c(met.brewer("Veronese")[1], # BdCH
               met.brewer("Veronese")[3], # LPRI
               met.brewer("Veronese")[4], # SO
@@ -917,30 +1064,13 @@ authors_sources %>%
 dev.off()
 ```
 
-    quartz_off_screen 
-                    2 
-
 ``` r
 png("plots/treemaps/2-2-2_1839_v2.png", height = 650, width = 600)
 
 authors_sources %>% 
         filter(year == 1839) %>% 
         select(PER_ID) %>% distinct() %>% arrange(-desc(PER_ID))
-```
 
-    Adding missing grouping variables: `year`
-
-    # A tibble: 5 × 2
-    # Groups:   year, PER_ID [5]
-       year PER_ID
-      <int> <chr> 
-    1  1839 БдЧ   
-    2  1839 ЛПРИ  
-    3  1839 ОЗ    
-    4  1839 СО    
-    5  1839 Совр  
-
-``` r
 tree_pal <- c(met.brewer("Veronese")[1], # BdCH
               met.brewer("Veronese")[3], # LPRI
               met.brewer("Archambault")[2], # OZ
@@ -964,32 +1094,13 @@ authors_sources %>%
 dev.off()
 ```
 
-    quartz_off_screen 
-                    2 
-
 ``` r
 png("plots/treemaps/2-2-2_1840_v2.png", height = 700, width = 650)
 
 authors_sources %>% 
         filter(year == 1840) %>% 
         select(PER_ID) %>% distinct() %>% arrange(-desc(PER_ID))
-```
 
-    Adding missing grouping variables: `year`
-
-    # A tibble: 7 × 2
-    # Groups:   year, PER_ID [7]
-       year PER_ID
-      <int> <chr> 
-    1  1840 БдЧ   
-    2  1840 ЛГ    
-    3  1840 Маяк  
-    4  1840 ОЗ    
-    5  1840 ПРиВЕТ
-    6  1840 СО    
-    7  1840 Совр  
-
-``` r
 tree_pal <- c(met.brewer("Veronese")[1], # BdCH
               met.brewer("Veronese")[3], # LG
               met.brewer("Kandinsky")[3], # Mayak
@@ -1014,9 +1125,6 @@ authors_sources %>%
 
 dev.off()
 ```
-
-    quartz_off_screen 
-                    2 
 
 ### Authors rotation in journals
 
@@ -1083,77 +1191,6 @@ per %>%
 ``` r
 # selected journals
 per_names <- c("БдЧ", "ЛПРИ", "СО", "Совр", "ОЗ")
-```
-
-``` r
-# Kendall's ranking correlation calculation
-
-# #length(unique(per_full$year))
-# 
-# per_names <- c("БдЧ", "ЛПРИ", "СО", "Совр", "ОЗ")
-# 
-# x <- NULL
-# y <- NULL
-# year1 <- NULL
-# year2 <- NULL
-# 
-# x1 <- NULL
-# x2 <- NULL
-# k <- NULL
-# 
-# jou <- c("journal")
-# years <- c("year")
-# tau <- c("tau")
-# 
-# for (i in 1:length(per_names)) {
-#   
-#   x <- per %>%
-#     filter(per_cln == per_names[i])
-#   
-#   # print(per_names[i])
-#   
-#   for (j in 1:(length(unique(x$year))-1)) {
-#     year1 <- unique(x$year)[j]
-#     year2 <- year1 + 1
-# 
-#     # print(c(year1, year2))
-#     
-#     y <- x %>% 
-#       filter(!is.na(author)) %>% 
-#       group_by(year) %>% 
-#       count(author, sort = T) %>% 
-#       mutate(rank = row_number()) %>% 
-#       ungroup() %>% 
-#       #filter(rank < 21) %>% 
-#       filter(year %in% c(year1, year2)) %>% 
-#       mutate(year = ifelse(year == year1, "year1", "year2")) %>% 
-#       pivot_wider(id_cols = !n, names_from = year, values_from = rank) %>% 
-#       drop_na
-# 
-#     #print(y)
-#     
-#     x1 <- as.vector(y$year1)
-#     x2 <- as.vector(y$year2)
-# 
-#     print(c(per_names[i], year1, year2,  x1, "vs", x2))
-#     
-#     if (length(x1) > 0 & length(x2) > 0) {
-#       k <- cor.test(x1, x2, method = "kendall")
-#       
-#       #print(unlist(k[[4]]))
-#     
-#       jou <- c(jou, per_names[i])
-#       years <- c(years, paste0(year1, "_", year2))
-#       tau <- c(tau, unlist(k[[4]]))
-#     }
-#   }
-# }   
-# tibble(journal = jou, 
-#        year = years,
-#        tau_val = tau) %>% 
-#   filter(journal != "journal") %>% 
-#   mutate(tau_val = round(as.numeric(tau_val), 4)) %>% 
-#   pivot_wider(names_from = year, values_from = tau_val)
 ```
 
 ``` r
@@ -1416,139 +1453,6 @@ tibble(year = years,
     4 Совр    NaN     44.4   47.6   63.6   38.5   63.0
     5 ОЗ      NaN    NaN    NaN     59.3   41.7  NaN  
 
-### unused plot (proportion of one-time printed authors)
-
-``` r
-tibble(year = years,
-       source = sources,
-       perc = perc) %>% 
-  ggplot(aes(x = year, y = perc, color = source)) + 
-  geom_point(size = 2) + 
-  geom_line(linewidth = 2, alpha = 0.7) + 
-  labs(#subtitle = "Доля авторов, опубликовавших только 1 стихотворение\nв течение года",
-       x = "Год",
-       y = "%") + 
-  scale_color_manual(values = c(met.brewer("Veronese")[1], # BdCH
-              met.brewer("Veronese")[3], # LPRI
-              met.brewer("Archambault")[2], # OZ
-              met.brewer("Veronese")[4], # SO
-              met.brewer("Veronese")[7])) + # Sovr 
-  scale_y_continuous(limits = c(0,100)) + 
-  theme(#legend.position = "None",
-        axis.text = element_text(size = 12),
-        axis.title = element_text(size = 14), 
-        plot.subtitle = element_text(size = 16))
-```
-
-    Warning: Removed 5 rows containing missing values (`geom_point()`).
-
-    Warning: Removed 5 rows containing missing values (`geom_line()`).
-
-![](02_2_periodicals_overview.markdown_strict_files/figure-markdown_strict/unnamed-chunk-38-1.png)
-
-``` r
-# ggsave(filename = "plots/Fig_2-2-3-1.png", plot = last_plot(),
-#         width = 8, height = 6, dpi = 300, bg = "white")
-```
-
-Another plot (not used)
-
-``` r
-p <- NULL
-y <- NULL
-
-intersection <- NULL
-total <- NULL
-
-sources <- NULL
-years <- NULL
-
-for (i in 1:length(unique(per$year))) {
-  
-  y <- unique(per$year)[i]
-  
-  if (y < 1840) {
-
-    for (j in 1:length(per_names)) {
-      
-      p <- per_names[j]
-  
-      authors_y1 <- per %>% 
-        filter(per_cln == p & year == y & author_text != "") %>% 
-        count(author_text) %>% pull(author_text)
-  
-      authors_y2 <- per %>% 
-        filter(per_cln == p & year == y+1 & author_text != "") %>% 
-        count(author_text) %>% pull(author_text)
-      
-      #intersect(authors_y1, authors_y2)
-      
-      sources <- c(sources, p)
-      
-      years <- c(years, paste0(y, " -> ", y+1))
-      
-      intersection <- c(intersection, length(intersect(authors_y1, authors_y2)))
-      
-      total <- c(total, length(c(authors_y1, authors_y2)))
-      
-      }
-  } 
-} 
-
-tibble(sources = sources,
-       years = years,
-       int = intersection,
-       total = total) %>% 
-  mutate(jaccard = round((int/total)*100, 2) ) %>% 
-  #drop_na() %>% 
-  select(sources, years, jaccard) %>% 
-  pivot_wider(names_from = years, values_from = jaccard)
-```
-
-    # A tibble: 5 × 6
-      sources `1835 -> 1836` `1836 -> 1837` `1838 -> 1839` `1839 -> 1840`
-      <chr>            <dbl>          <dbl>          <dbl>          <dbl>
-    1 БдЧ               15.9          10.8            22.4           8.82
-    2 ЛПРИ              20.7           7.55           18.5          19.5 
-    3 СО                 0             8              21.2          20.6 
-    4 Совр               0            13.9            25.6          25.7 
-    5 ОЗ               NaN           NaN               0            27.4 
-    # ℹ 1 more variable: `1837 -> 1838` <dbl>
-
-``` r
-tibble(sources = sources,
-       years = years,
-       int = intersection,
-       total = total) %>% 
-  mutate(source = paste0(sources, "_", years)) %>% 
-  filter(!source %in% c("Совр_1835 -> 1836", "ОЗ_1838 -> 1839")) %>% 
-  mutate(jaccard = round((int/total)*100, 3) ) %>% 
-  drop_na() %>% 
-  ggplot(aes(x = years, y = jaccard, color = sources, group = sources)) + 
-    geom_point(size = 2) + 
-    geom_line(linewidth = 2, alpha = 0.7) + 
-    scale_y_continuous(limits = c(0, 100)) + 
-    scale_color_manual(values = c(met.brewer("Veronese")[1], # BdCH
-              met.brewer("Veronese")[3], # LPRI
-              met.brewer("Archambault")[2], # OZ
-              met.brewer("Veronese")[4], # SO
-              met.brewer("Veronese")[7])) + 
-  labs(color = "Источник",
-       x = "Годы", 
-       y = "Доля пересечения (коэфф. Жаккарда)") + 
-  theme(legend.text = element_text(size = 12),
-        legend.title = element_text(size = 14),
-        axis.text = element_text(size = 12),
-        axis.title = element_text(size = 14))
-```
-
-![](02_2_periodicals_overview.markdown_strict_files/figure-markdown_strict/unnamed-chunk-39-1.png)
-
-``` r
-# ggsave(filename = "plots/Fig_2-2-3-2.png", plot = last_plot(),
-#        width = 8, height = 6, dpi = 300, bg = "white")
-```
-
 ### Jaccard for total top authors in each source
 
 ``` r
@@ -1631,6 +1535,8 @@ x
     10 Бернет Е.        БдЧ        15
     # ℹ 88 more rows
 
+### Table 2.2.3
+
 ``` r
 source1 <- NULL
 source2 <- NULL
@@ -1696,11 +1602,7 @@ tibble(sources = sources,
   select(sources, jaccard) %>% 
   filter(jaccard != 1) %>% 
   ggplot(aes(y = jaccard)) + geom_boxplot()
-```
 
-![](02_2_periodicals_overview.markdown_strict_files/figure-markdown_strict/unnamed-chunk-43-1.png)
-
-``` r
 x <- tibble(sources = sources, 
        int =  intersections, 
        total = total) %>% 
@@ -1709,95 +1611,6 @@ x <- tibble(sources = sources,
   filter(jaccard != 1)
 
 summary(x)
-```
-
-       sources             jaccard      
-     Length:20          Min.   :0.0320  
-     Class :character   1st Qu.:0.1140  
-     Mode  :character   Median :0.1245  
-                        Mean   :0.1244  
-                        3rd Qu.:0.1600  
-                        Max.   :0.2000  
-
-``` r
-# x <- per %>% 
-#   filter(author != "" & per_cln %in% per_names) %>% 
-#   group_by(year, author, per_cln) %>% 
-#   count() %>% 
-#   ungroup() %>% 
-#   filter(n > 2)
-# 
-# k <- NULL
-# year <- NULL
-# source1 <- NULL
-# source2 <- NULL
-# a1 <- NULL
-# a2 <- NULL
-# 
-# t <- tibble(source = "NULL",
-#        int = 1,
-#        uni = 1)
-# 
-#   
-# 
-# 
-# 
-#   for (i in 1:length(per_names)) {
-#     
-#     for (j in 1:length(per_names)) {
-#       
-#       for (k in 1:length(unique(per$year))) {
-#   
-#       year <- unique(per$year)[k]
-#      
-#       source1 <- per_names[i]
-#       
-#       if (j == length(per_names)) {
-#         source2 <- per_names[1]
-#       } else {source2 <- per_names[j+1]}
-#       
-#       a1 <- x %>%
-#         filter(per_cln == source1) %>% 
-#         filter(year %in% year) %>%
-#         select(author) %>%
-#         distinct() %>%
-#         pull()
-# 
-#       a2 <- x %>%
-#         filter(per_cln == source2) %>% 
-#         filter(year %in% year) %>%
-#         select(author) %>%
-#         distinct() %>%
-#         pull()
-#        
-#   
-#       t <- t %>% 
-#         add_row(source = paste0(source1, "__", source2, "_", year), 
-#                 int = length(intersect(a1, a2)),
-#                 uni = length(union(a1, a2))
-#                 )
-#       
-#       # sources <- c(sources, paste0(source1, "__", source2, "_", year))
-#       # intersections <- c(intersections, length(intersect(a1, a2)))
-#       # union <- c(union, length(union(a1, a2)))
-#       
-#     }
-#   }
-# }
-# 
-# 
-# t
-
-# tibble(s = sources,
-#        int = intersections,
-#        union = union) #%>% 
-  #mutate(jccd = round(int/union, 4)) # %>% 
-  # select(s, jccd) %>% 
-  # separate(s, into = c("s1", "s2"), sep = "__") %>% 
-  # separate(s2, into = c("s2", "year"), sep = "_") %>% 
-  # filter(jccd != 1) %>% 
-  # filter(year == 1836) %>% 
-  # ggplot(aes(x = year, y = jccd)) + geom_point()
 ```
 
 ### LPRI genre titles
@@ -1877,7 +1690,7 @@ per %>%
     geom_col(position = "dodge")
 ```
 
-![](02_2_periodicals_overview.markdown_strict_files/figure-markdown_strict/unnamed-chunk-47-1.png)
+![](02_2_periodicals_overview.markdown_strict_files/figure-markdown_strict/unnamed-chunk-46-1.png)
 
 ``` r
 per %>% 

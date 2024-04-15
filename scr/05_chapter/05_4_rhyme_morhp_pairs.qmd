@@ -24,11 +24,9 @@ Metadata
 ```{r}
 meta <- read.csv("../../data/corpus1835/sql_db/texts_metadata.csv")
 # glimpse(meta)
-```
 
-Meter lables
+# Meter lables
 
-```{r}
 table(meta$meter)
 
 meter_lables <- meta %>% 
@@ -407,7 +405,7 @@ rm(c19, rnc_ids) # remove large c19 file & iamb-id vector
 # glimpse(rnc_rhymes)
 ```
 
-Distribution of data over time - filter out rhymes after 1830
+Distribution of data over time - filter out rhymes after 1810
 
 ```{r}
 ids_before_1830 <- rnc_rhymes %>% 
@@ -438,7 +436,8 @@ rnc_rhymes %>%
   select(poem_id) %>% 
   separate(poem_id, into = c("corpus", "id", "year"), sep = "_") %>% 
   count(year) %>% 
-  ggplot(aes(x = year, y = n)) + geom_col()
+  ggplot(aes(x = year, y = n)) + geom_col() + 
+  theme(axis.text.x = element_text(angle = 90))
 ```
 
 ### masc
@@ -700,26 +699,26 @@ glimpse(all_masc_ranks)
 summary(all_masc_ranks)
 ```
 
-Nodes size - calculate pos_syl freq in the subsets
+Rename nodes
 
 ```{r, eval=FALSE}
-#glimpse(rhyme_pairs)
-
-# w1 <- rhyme_pairs %>% 
-#   select(from_pos, from_sp) %>% 
-#   mutate(from_n_syl = nchar(from_sp),
-#          pos_syl = paste0(from_pos, "_", from_n_syl)) %>% 
-#   select(pos_syl)
-# 
-# w2 <- rhyme_pairs %>% 
-#   select(to_pos, to_sp) %>% 
-#   mutate(to_n_syl = nchar(to_sp),
-#          pos_syl = paste0(to_pos, "_", to_n_syl)) %>% 
-#   select(pos_syl)
-# 
-# w <- rbind(w1, w2) %>% 
-#   count(pos_syl, sort = T)
-
+all_fem_ranks %>% 
+  select(pos_pair) %>% 
+  mutate(pos_pair = ifelse(str_detect(pos_pair, "NOUN"), 
+                           str_replace_all(pos_pair, "NOUN", "СУЩ"),
+                           pos_pair),
+         pos_pair = ifelse(str_detect(pos_pair, "VERB"), 
+                           str_replace_all(pos_pair, "VERB", "ГЛ"),
+                           pos_pair),
+         pos_pair = ifelse(str_detect(pos_pair, "ADJ"), 
+                           str_replace_all(pos_pair, "ADJ", "ПРИЛ"),
+                           pos_pair),
+         pos_pair = ifelse(str_detect(pos_pair, "PRON"), 
+                           str_replace_all(pos_pair, "PRON", "МЕСТ"),
+                           pos_pair), 
+         pos_pair = ifelse(str_detect(pos_pair, "ADV"), 
+                           str_replace_all(pos_pair, "ADV", "НАР"),
+                           pos_pair))
 ```
 
 ```{r}
@@ -728,10 +727,32 @@ t <- all_masc_ranks %>%
   #        n_tr > 5,
   #        rnc_n_iamb > 5,
   #        rnc_n_tr > 5) %>%
-  filter(rank_iamb < 100,
-         rnc_rank_iamb < 100,
-         rank_tr < 100,
-         rnc_rank_tr < 100) %>% 
+  
+  # rewrite labels
+  
+  mutate(pos_pair = ifelse(str_detect(pos_pair, "NOUN"), 
+                           str_replace_all(pos_pair, "NOUN", "СУЩ"),
+                           pos_pair),
+         pos_pair = ifelse(str_detect(pos_pair, "VERB_inf"), 
+                           str_replace_all(pos_pair, "VERB_inf", "ИНФ"),
+                           pos_pair),
+         pos_pair = ifelse(str_detect(pos_pair, "VERB"), 
+                           str_replace_all(pos_pair, "VERB", "ГЛ"),
+                           pos_pair),
+         pos_pair = ifelse(str_detect(pos_pair, "ADJ"), 
+                           str_replace_all(pos_pair, "ADJ", "ПРИЛ"),
+                           pos_pair),
+         pos_pair = ifelse(str_detect(pos_pair, "PRON"), 
+                           str_replace_all(pos_pair, "PRON", "МЕСТ"),
+                           pos_pair), 
+         pos_pair = ifelse(str_detect(pos_pair, "ADV"), 
+                           str_replace_all(pos_pair, "ADV", "НАР"),
+                           pos_pair)) %>% 
+  
+  filter(rank_iamb < 50,
+         rnc_rank_iamb < 50,
+         rank_tr < 50,
+         rnc_rank_tr < 50) %>% 
   select(pos_pair, perc_iamb, perc_tr, rnc_perc_iamb, rnc_perc_tr) %>% 
   pivot_longer(!pos_pair, names_to = "corpus", values_to = "value") %>% 
   #filter(value > 0.3) %>% # avg freq
@@ -763,28 +784,63 @@ net_t %>%
   geom_edge_arc(aes(width = value, #color = corpus, 
                      color = value,
                      alpha = value)) + 
-  geom_node_point(#aes(size = n)
+  geom_edge_loop(aes(width = value, #color = corpus, 
+                     color = value,
+                     alpha = value)) + 
+   geom_node_point(
+    size = 4,
     color = "#440154FF"
     ) + 
-  geom_node_text(aes(label = source), vjust = -0.5) + 
+  geom_node_text(aes(label = source), vjust = -0.5, size = 6, fontface = "bold") + 
   facet_wrap(~corpus_r) + 
   scale_edge_color_continuous(low = "#440154FF", high = "#FDE725FF") + 
   theme(legend.position = "None",
-        text = element_text(size = 20))
+        text = element_text(size = 28),
+        panel.spacing.y = unit(4, "lines"))
+
+
+```
+
+```{r, eval=FALSE}
+ggsave("plots/fig_5-2-1_masc.png", plot = last_plot(), dpi = 300, 
+       bg = "white", width = 16, height = 14)
 ```
 
 Female
 
 ```{r}
 t <- all_fem_ranks %>% 
+  
+    # rewrite labels
+  
+  mutate(pos_pair = ifelse(str_detect(pos_pair, "NOUN"), 
+                           str_replace_all(pos_pair, "NOUN", "СУЩ"),
+                           pos_pair),
+         pos_pair = ifelse(str_detect(pos_pair, "VERB_inf"), 
+                           str_replace_all(pos_pair, "VERB_inf", "ИНФ"),
+                           pos_pair),
+         pos_pair = ifelse(str_detect(pos_pair, "VERB"), 
+                           str_replace_all(pos_pair, "VERB", "ГЛ"),
+                           pos_pair),
+         pos_pair = ifelse(str_detect(pos_pair, "ADJ"), 
+                           str_replace_all(pos_pair, "ADJ", "ПРИЛ"),
+                           pos_pair),
+         pos_pair = ifelse(str_detect(pos_pair, "PRON"), 
+                           str_replace_all(pos_pair, "PRON", "МЕСТ"),
+                           pos_pair), 
+         pos_pair = ifelse(str_detect(pos_pair, "ADV"), 
+                           str_replace_all(pos_pair, "ADV", "НАР"),
+                           pos_pair)) %>% 
+  
+  
   # filter(n_iamb > 5,
   #        n_tr > 5,
   #        rnc_n_iamb > 5,
   #        rnc_n_tr > 5) %>%
-    filter(rank_iamb < 100,
-         rnc_rank_iamb < 100,
-         rank_tr < 100,
-         rnc_rank_tr < 100) %>% 
+    filter(rank_iamb < 50,
+         rnc_rank_iamb < 50,
+         rank_tr < 50,
+         rnc_rank_tr < 50) %>% 
   select(pos_pair, perc_iamb, perc_tr, rnc_perc_iamb, rnc_perc_tr) %>% 
   pivot_longer(!pos_pair, names_to = "corpus", values_to = "value") %>% 
   #filter(value > 0.3) %>% # avg freq
@@ -814,14 +870,30 @@ net_t %>%
   geom_edge_arc(aes(width = value, #color = corpus, 
                      color = value,
                      alpha = value)) + 
-  geom_node_point(#aes(size = n)
+  geom_edge_loop(aes(width = value, #color = corpus, 
+                     color = value,
+                     alpha = value)) + 
+  geom_node_point(
+    size = 4,
     color = "#440154FF"
     ) + 
-  geom_node_text(aes(label = source), vjust = -0.5) + 
+  geom_node_text(aes(label = source), vjust = -0.5, size = 6, fontface = "bold") + 
   facet_wrap(~corpus_r) + 
   scale_edge_color_continuous(low = "#440154FF", high = "#FDE725FF") + 
   theme(legend.position = "None",
-        text = element_text(size = 20))
+        text = element_text(size = 28),
+        panel.spacing.y = unit(6, "lines"))
+```
+
+```{r, eval=FALSE}
+ggsave("plots/fig_5-2-1.png", plot = last_plot(), dpi = 300, 
+       bg = "white", width = 16, height = 14)
+```
+
+```{r}
+iamb_masc %>% 
+  filter(from_pos == "NOUN" & to_pos == "PRON") %>% 
+  count(from, to, sort = T)
 ```
 
 ## endings
@@ -869,8 +941,9 @@ head(m_ranked_pos, 15)
 summary(m_ranked_pos$n) # 9.25 is 3rd Qu. if 100 first ranks taken
 
 # plot
-m_ranked_pos %>% 
-  filter(rank < 51) %>% 
+p1_m <- m_ranked_pos %>% 
+  filter(rank <= 21) %>% 
+  filter(rank != 22) %>% 
   ggplot(aes(x = rank, y = n, fill = group)) + geom_col(alpha = 0.7) + 
   #scale_x_continuous(breaks = im_rank_feat$rank, labels = im_rank_feat$label) + 
   #theme(axis.text.x = element_text(angle = 270)) + 
@@ -879,6 +952,8 @@ m_ranked_pos %>%
                      labels = m_ranked_pos$label) + 
   scale_fill_manual(values = c(met.brewer("Veronese")[6],
                                met.brewer("Veronese")[3]))
+
+p1_m
 ```
 
 Analysis of the less variate pairs

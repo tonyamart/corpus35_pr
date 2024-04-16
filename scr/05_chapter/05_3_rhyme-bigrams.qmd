@@ -161,6 +161,177 @@ rhymes_1835 %>%
   filter(n >= 10) %>% nrow()
 ```
 
+### Number of only masc / only fem rhymes poems
+
+Separate words from pairs
+
+```{r}
+w1 <- rhymes_1835 %>% 
+  select(text_id, from) %>% 
+  rename(word = from)
+
+w2 <- rhymes_1835 %>% 
+  select(text_id, to) %>% 
+  rename(word = to)
+
+rhyme_words <- rbind(w1, w2)
+```
+
+Attach data about rhyme words endings
+
+```{r}
+rhyme_words_meta <- read_csv("../../data/corpus1835/sql_db/rhyme_words_upd.csv")
+
+rhyme_words <- rhyme_words %>% 
+  left_join(rhyme_words_meta %>% select(word, closure), by = "word") 
+
+rm(rhyme_words_meta, w1, w2)
+```
+
+Count percent of pairs in each poem
+
+```{r}
+# calculate total number of FOUND rhymes in each poem
+
+total_id <- rhyme_words %>% 
+  group_by(text_id) %>% 
+  count() %>% ungroup() %>% rename(n_lines = n)
+
+rhyme_words %>% 
+  filter(!is.na(closure) & closure != "other") %>% 
+  # attach total number of lines in the poem
+  left_join(total_id, by = "text_id") %>% 
+  group_by(text_id) %>% 
+  count(closure, n_lines) %>% 
+  ungroup() %>% 
+  mutate(perc_closure = round((n/n_lines)*100, 1)) %>% 
+  #filter(perc_closure < 100) %>% 
+  ggplot(aes(x = perc_closure, fill = closure)) + geom_boxplot()
+
+
+# find statistics for the most of the mass 
+rhyme_words %>% 
+  filter(!is.na(closure) & closure != "other") %>% 
+  # attach total number of lines in the poem
+  left_join(total_id, by = "text_id") %>% 
+  group_by(text_id) %>% 
+  count(closure, n_lines) %>% 
+  ungroup() %>% 
+  mutate(perc_closure = round((n/n_lines)*100, 1)) %>% 
+  
+  # control for non-rhymed texts:
+  left_join(corpus_1835 %>% 
+              select(text_id, text_raw, n_lines) %>% 
+              rename(n_lines_total = n_lines), by = "text_id") %>% 
+  mutate(perc_rhymed = round((n_lines / n_lines_total) * 100, 1)) %>%
+  
+  filter(closure == "masc" & perc_rhymed > 50) %>% 
+  summary()
+
+rhyme_words %>% 
+  filter(!is.na(closure) & closure != "other") %>% 
+  # attach total number of lines in the poem
+  left_join(total_id, by = "text_id") %>% 
+  group_by(text_id) %>% 
+  count(closure, n_lines) %>% 
+  ungroup() %>% 
+  mutate(perc_closure = round((n/n_lines)*100, 1)) %>% 
+  # control for non-rhymed texts:
+  left_join(corpus_1835 %>% 
+              select(text_id, text_raw, n_lines) %>% 
+              rename(n_lines_total = n_lines), by = "text_id") %>% 
+  mutate(perc_rhymed = round((n_lines / n_lines_total) * 100, 1)) %>%
+  
+  filter(closure == "fem" & perc_rhymed > 50) %>% 
+  summary()
+```
+
+Text ids for mostly feminine rhymes
+
+```{r}
+rhyme_words %>% 
+  filter(!is.na(closure) & closure != "other") %>% 
+  # attach total number of lines in the poem
+  left_join(total_id, by = "text_id") %>% 
+  group_by(text_id) %>% 
+  count(closure, n_lines) %>% 
+  ungroup() %>% 
+  mutate(perc_closure = round((n/n_lines)*100, 1)) %>% 
+  filter(closure == "fem" & perc_closure > 85) %>% 
+  # control for non-rhymed texts:
+  left_join(corpus_1835 %>% 
+              select(text_id, text_raw, n_lines) %>% 
+              rename(n_lines_total = n_lines), by = "text_id") %>% 
+  mutate(perc_rhymed = round((n_lines / n_lines_total) * 100, 1)) %>%
+  filter(perc_rhymed > 50) %>% 
+  select(text_id) %>% distinct() %>% 
+  nrow() # number of potentionally only-fem rhyme poems?
+
+# sample
+s <- rhyme_words %>% 
+  filter(!is.na(closure) & closure != "other") %>% 
+  # attach total number of lines in the poem
+  left_join(total_id, by = "text_id") %>% 
+  group_by(text_id) %>% 
+  count(closure, n_lines) %>% 
+  ungroup() %>% 
+  mutate(perc_closure = round((n/n_lines)*100, 1)) %>% 
+  filter(closure == "fem" & perc_closure > 85) %>% 
+  # control for non-rhymed texts:
+  left_join(corpus_1835 %>% 
+              select(text_id, text_raw, n_lines) %>% 
+              rename(n_lines_total = n_lines), by = "text_id") %>% 
+  mutate(perc_rhymed = round((n_lines / n_lines_total) * 100, 1)) %>%
+  filter(perc_rhymed > 50) %>% 
+  select(text_id, text_raw) %>% distinct() #%>% 
+  #sample_n(20)
+
+write.csv(s, file = "test1.csv")
+```
+
+Mostly masculine rhymes
+
+```{r}
+rhyme_words %>% 
+  filter(!is.na(closure) & closure != "other") %>% 
+  # attach total number of lines in the poem
+  left_join(total_id, by = "text_id") %>% 
+  group_by(text_id) %>% 
+  count(closure, n_lines) %>% 
+  ungroup() %>% 
+  mutate(perc_closure = round((n/n_lines)*100, 1)) %>% 
+  filter(closure == "masc" & perc_closure > 85) %>% 
+  # control for non-rhymed texts:
+  left_join(corpus_1835 %>% 
+              select(text_id, text_raw, n_lines) %>% 
+              rename(n_lines_total = n_lines), by = "text_id") %>% 
+  mutate(perc_rhymed = round((n_lines / n_lines_total) * 100, 1)) %>%
+  filter(perc_rhymed > 50) %>%  # select only at least halfly rhyme-detected texts
+  select(text_id) %>% distinct() %>% 
+  nrow() # number of potentionally only-masc rhyme poems?
+
+# sample
+s <- rhyme_words %>% 
+  filter(!is.na(closure) & closure != "other") %>% 
+  # attach total number of lines in the poem
+  left_join(total_id, by = "text_id") %>% 
+  group_by(text_id) %>% 
+  count(closure, n_lines) %>% 
+  ungroup() %>% 
+  mutate(perc_closure = round((n/n_lines)*100, 1)) %>% 
+  filter(closure == "masc" & perc_closure > 85) %>% 
+  # control for non-rhymed texts:
+  left_join(corpus_1835 %>% 
+              select(text_id, text_raw, n_lines) %>% 
+              rename(n_lines_total = n_lines), by = "text_id") %>% 
+  mutate(perc_rhymed = round((n_lines / n_lines_total) * 100, 1)) %>%
+  filter(perc_rhymed > 50) %>% 
+  select(text_id, text_raw) %>% distinct() #%>% 
+  #sample_n(20)
+
+write.csv(s, file = "test2.csv")
+```
+
 ## Fig. 5-1-1. Bigram freq
 
 Count frequencies in Corpus-1835 in general
@@ -229,9 +400,110 @@ ggsave("plots/fig_5-1-1.png", plot = last_plot(), dpi = 300,
        width = 8, height = 6, bg = "white")
 ```
 
-Q: would it be feasible to try to fit the zipfR model ?
+### Coefficient of variation
 
-<https://zipfr.r-forge.r-project.org>
+Rhyme words
+
+```{r}
+all_ranks <- rhyme_words %>% 
+  count(word, sort = T) %>% 
+  mutate(rel_freq_total = n / nrow(rhyme_words))
+
+all_ranks
+
+v <- NULL
+
+for (i in 1:10) {
+  sample_rhymes <- rhyme_words %>% 
+    sample_n(20000) %>% 
+    count(word) %>% 
+    mutate(rel_freq = n / 20000) %>% 
+    select(-n) 
+  
+  x <- all_ranks %>% 
+    left_join(sample_rhymes, by = "word") %>% 
+    mutate(rel_freq = ifelse(is.na(rel_freq), 0, rel_freq)) %>% 
+    pull(rel_freq)
+  
+  v[[i]] <- x
+  
+}
+
+res <- as.data.frame(do.call(cbind, v)) %>% 
+  cbind(all_ranks$word) %>% 
+  rename(word = `all_ranks$word`) %>% 
+  head(4000) %>% # top 1000 ranked words
+  rowwise() %>% 
+  mutate(Mean = mean(c_across(V1:V10)),
+         SD = sd(c_across(V1:V10)),
+         CV = SD/Mean)  %>% 
+  ungroup() %>% 
+  mutate(rank = row_number())
+
+head(res)
+
+res %>% 
+  ggplot(aes(x = rank, y = CV)) + 
+  geom_point(shape = 1) + 
+  geom_vline(xintercept = 300, lty = 3)
+```
+
+Inline words
+
+```{r}
+total_ranks <- corpus_1835 %>% 
+  unnest_tokens(input = text_raw, output = word, token = "words") %>% 
+  group_by(word) %>% 
+  count(sort = T)
+
+head(total_ranks)
+
+v <- NULL
+
+for (i in 1:10) {
+  sample_words <- corpus_1835 %>% 
+    unnest_tokens(input = text_raw, output = word, token = "words") %>% 
+    sample_n(20000) %>% 
+    count(word) %>% 
+    mutate(rel_freq = n / 20000) %>% 
+    select(-n) 
+  
+  x <- total_ranks %>% 
+    left_join(sample_words, by = "word") %>% 
+    mutate(rel_freq = ifelse(is.na(rel_freq), 0, rel_freq)) %>% 
+    pull(rel_freq)
+  
+  v[[i]] <- x
+  
+}
+
+res_all <- as.data.frame(do.call(cbind, v)) %>% 
+  cbind(total_ranks$word) %>% 
+  rename(word = `total_ranks$word`) %>% 
+  head(4000) %>% # top 1000 ranked words
+  rowwise() %>% 
+  mutate(Mean = mean(c_across(V1:V10)),
+         SD = sd(c_across(V1:V10)),
+         CV = SD/Mean)  %>% 
+  ungroup() %>% 
+  mutate(rank = row_number())
+
+head(res_all)
+
+res_all %>% 
+  ggplot(aes(x = rank, y = CV)) + 
+  geom_point(shape = 1) + 
+  geom_vline(xintercept = 300, lty = 3)
+
+res_all %>% 
+  filter(rank < 1001) %>% 
+  ggplot(aes(x = rank, y = CV)) + 
+  geom_point(shape = 1) + 
+  geom_vline(xintercept = 300, lty = 3)
+```
+
+```{r}
+```
 
 Number of rhymes found in the two corpora is very different (considerbly more texts in corpus-1835 for the respective years)
 

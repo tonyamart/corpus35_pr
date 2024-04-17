@@ -11,6 +11,7 @@ library(tidyverse)
 library(tidytext)
 
 library(MetBrewer)
+library(patchwork)
 theme_set(theme_minimal())
 ```
 
@@ -81,6 +82,8 @@ rm(rhymes_t)
 ```
 
 #### RNC
+
+Load RNC rhymes data
 
 ```{r}
 # load already parsed data
@@ -286,7 +289,7 @@ s <- rhyme_words %>%
   select(text_id, text_raw) %>% distinct() #%>% 
   #sample_n(20)
 
-write.csv(s, file = "test1.csv")
+write.csv(s, file = "mostly_fem_clausula.csv")
 ```
 
 Mostly masculine rhymes
@@ -329,7 +332,7 @@ s <- rhyme_words %>%
   select(text_id, text_raw) %>% distinct() #%>% 
   #sample_n(20)
 
-write.csv(s, file = "test2.csv")
+write.csv(s, file = "mostly_masc_clausula.csv")
 ```
 
 ## Fig. 5-1-1. Bigram freq
@@ -342,14 +345,14 @@ unigram_freq_full <- corpus_1835 %>%
   unnest_tokens(input = text_raw, output = word, token = "words") %>% 
   group_by(word) %>% 
   count(sort = T) %>% 
-  mutate(group = "Корпус-1835: отд. слова")
+  mutate(group = "Корпус-1835: отд. слова (все)")
 
 # count bigram frequencies
 bigram_freq_full <- corpus_1835 %>% 
   unnest_tokens(input = text_raw, output = bigram, token = "ngrams", n = 2) %>% 
   group_by(bigram) %>% 
   count(sort = T) %>% 
-  mutate(group = "Корпус-1835: словосочетания")
+  mutate(group = "Корпус-1835: словосочетания (все)")
 ```
 
 Count unigram & bigram freq in rhyme data
@@ -371,7 +374,7 @@ bigram_freq_rhymes <- rhymes_1835 %>%
 Plot
 
 ```{r}
-rbind(unigram_freq_full, unigram_freq_rhymes,
+w_freq <- rbind(unigram_freq_full, unigram_freq_rhymes,
       bigram_freq_full, bigram_freq_rhymes) %>% 
   group_by(group) %>% 
   mutate(rank = row_number()) %>% 
@@ -380,7 +383,9 @@ rbind(unigram_freq_full, unigram_freq_rhymes,
   geom_line() + 
   facet_wrap(~group, scales = "free") + 
   theme(legend.position = "None") + 
-  labs(x = "Ранг", y = "Частотность") + 
+  labs(x = "Ранг", y = "Частотность", 
+       title = "A. Распределение абсолютных частот") + 
+  scale_x_continuous(breaks = c(1, seq(250, 1000, 250))) + 
   scale_color_manual(values = c(met.brewer(name = "Veronese")[1],
                                 met.brewer(name = "Veronese")[2],
                                 met.brewer(name = "Veronese")[4],
@@ -393,11 +398,8 @@ rbind(unigram_freq_full, unigram_freq_rhymes,
                                 met.brewer(name = "Veronese")[4],
                                 met.brewer(name = "Veronese")[6])) + 
   theme(text = element_text(size = 12))
-```
 
-```{r, eval=FALSE}
-ggsave("plots/fig_5-1-1.png", plot = last_plot(), dpi = 300,
-       width = 8, height = 6, bg = "white")
+w_freq
 ```
 
 ### Coefficient of variation
@@ -413,10 +415,10 @@ all_ranks
 
 v <- NULL
 
-for (i in 1:10) {
+for (i in 1:100) {
   sample_rhymes <- rhyme_words %>% 
     sample_n(20000) %>% 
-    count(word) %>% 
+    count(word, sort = T) %>% 
     mutate(rel_freq = n / 20000) %>% 
     select(-n) 
   
@@ -440,17 +442,30 @@ res <- as.data.frame(do.call(cbind, v)) %>%
   ungroup() %>% 
   mutate(rank = row_number())
 
-head(res)
-
 res %>% 
-  ggplot(aes(x = rank, y = CV)) + 
-  geom_point(shape = 1) + 
-  geom_vline(xintercept = 300, lty = 3)
+  select(V1:V5, word, Mean, SD, CV) %>% head()
+
+# cv_rhyme <- res %>% 
+#   #filter(rank < 2001) %>% 
+#   ggplot(aes(x = rank, y = CV)) + 
+#   geom_point(shape = 1, colour = met.brewer("Veronese")[6], alpha = 0.6) + 
+#   geom_vline(xintercept = 300, lty = 3) + 
+#   geom_smooth(colour = met.brewer("Veronese")[3]) + 
+#   labs(x = "", y = "Коэффициент вариации") + 
+#   scale_x_continuous(breaks = c(1, seq(1000, 4000, 1000))) + 
+#   theme(axis.line.x.bottom = element_line(colour = "black"),
+#         axis.line.y.left = element_line(colour = "black"), 
+#         text = element_text(size = 12))
+
+# subset for plot
+cv_rhymes <- res %>% 
+  select(rank, CV) %>% 
+  mutate(corpus = "Рифмы: отд. слова")
 ```
 
 Inline words
 
-```{r}
+```{r, warning=FALSE}
 total_ranks <- corpus_1835 %>% 
   unnest_tokens(input = text_raw, output = word, token = "words") %>% 
   group_by(word) %>% 
@@ -460,7 +475,7 @@ head(total_ranks)
 
 v <- NULL
 
-for (i in 1:10) {
+for (i in 1:100) {
   sample_words <- corpus_1835 %>% 
     unnest_tokens(input = text_raw, output = word, token = "words") %>% 
     sample_n(20000) %>% 
@@ -488,24 +503,53 @@ res_all <- as.data.frame(do.call(cbind, v)) %>%
   ungroup() %>% 
   mutate(rank = row_number())
 
-head(res_all)
+res_all %>%  
+  select(V1:V5, word, Mean, SD, CV) %>% head()
 
-res_all %>% 
-  ggplot(aes(x = rank, y = CV)) + 
-  geom_point(shape = 1) + 
-  geom_vline(xintercept = 300, lty = 3)
+# subset for plot & merge with rhymes CV data
+cv_all <- res_all %>% 
+  select(rank, CV) %>% 
+  mutate(corpus = "Корпус-1835: отд. слова (все)") 
+  
+  
+cv_plt <- rbind(cv_rhymes, cv_all) %>% 
+  ggplot(aes(x = rank, y = CV, color = corpus)) + 
+  geom_point(shape = 1, alpha = 0.6) + 
+  geom_vline(xintercept = 300, lty = 3) + 
+  geom_smooth(color = met.brewer("Veronese")[3]) + 
+  labs(x = "Ранг", y = "Коэффициент вариации",
+       title = "Б. Коэффициент вариации") + 
+  facet_wrap(~corpus, scales = "free", ncol = 1) + 
+  scale_x_continuous(breaks = c(1, seq(1000, 4000, 1000))) + 
+  scale_color_manual(values = c(met.brewer("Veronese")[1],
+                                met.brewer("Veronese")[5])) + 
+  theme(axis.line.x.bottom = element_line(colour = "black"),
+        axis.line.y.left = element_line(colour = "black"), 
+        text = element_text(size = 12), 
+        legend.position = "None")
 
-res_all %>% 
-  filter(rank < 1001) %>% 
-  ggplot(aes(x = rank, y = CV)) + 
-  geom_point(shape = 1) + 
-  geom_vline(xintercept = 300, lty = 3)
+cv_plt
 ```
 
 ```{r}
+layout <- "
+AAAAAAA#BBBB
+AAAAAAA#BBBB
+AAAAAAA#BBBB
+AAAAAAA#BBBB
+"
+
+w_freq + cv_plt + plot_layout(design = layout)
 ```
 
-Number of rhymes found in the two corpora is very different (considerbly more texts in corpus-1835 for the respective years)
+```{r, eval=FALSE}
+ggsave("plots/fig_5-1-1.png", plot = last_plot(), dpi = 300,
+       width = 10, height = 6, bg = "white")
+```
+
+### C-1835 vs RNC comparison
+
+Number of rhymes found in the RNC & Corpus-1835 is very different (considerbly more texts in corpus-1835 for the respective years)
 
 ```{r}
 rhymes %>% 

@@ -930,28 +930,46 @@ m_ranked_pos <- masc_pairs %>%
          pos_pair = paste0(from_pos, " -- ", to_pos)) %>% 
   #filter(ending_pair %in% rankss$ending_pair) %>% 
   group_by(ending_pair) %>% 
-  count(pos_pair, sort = F) %>% 
-  count(ending_pair, sort = T) %>% 
+  summarise(pos_pair = paste0(pos_pair, collapse = " -- ")) %>% 
+  ungroup() %>% rowwise() %>% 
+  mutate(pos_var = length(
+                      unique(unlist(str_split(pos_pair, " -- "))))) %>% 
+  ungroup() %>% 
   left_join(m_ranks, by = "ending_pair") %>% 
   filter(rank < 101) %>% 
-  mutate(label = paste0(rank, " ", ending_pair),
-         group = ifelse(n < 9, "less variation", "more variation")) 
+  arrange(-desc(rank))
+  #mutate(label = paste0(rank, " ", ending_pair),
+  #       group = ifelse(n < 9, "less variation", "more variation")) 
 
-head(m_ranked_pos, 15)
-summary(m_ranked_pos$n) # 9.25 is 3rd Qu. if 100 first ranks taken
+head(m_ranked_pos, 10)
+summary(m_ranked_pos$pos_var) # 4 is 3rd Qu. if 100 first ranks taken
+
+m_ranked_pos <- m_ranked_pos %>% 
+  mutate(label = paste0(rank, " ", ending_pair),
+  group = ifelse(pos_var < 4, "less variation", "more variation")) 
+
 
 # plot
 p1_m <- m_ranked_pos %>% 
-  filter(rank <= 21) %>% 
-  filter(rank != 22) %>% 
-  ggplot(aes(x = rank, y = n, fill = group)) + geom_col(alpha = 0.7) + 
+  ungroup() %>% 
+  filter(rank <= 20) %>% 
+  ggplot(aes(x = rank, y = pos_var, fill = group)) + geom_col(alpha = 0.7) + 
   #scale_x_continuous(breaks = im_rank_feat$rank, labels = im_rank_feat$label) + 
   #theme(axis.text.x = element_text(angle = 270)) + 
   coord_flip() + 
   scale_x_reverse(breaks = m_ranked_pos$rank, 
                      labels = m_ranked_pos$label) + 
-  scale_fill_manual(values = c(met.brewer("Veronese")[6],
-                               met.brewer("Veronese")[3]))
+  scale_fill_manual(values = c(met.brewer("Veronese")[7],
+                               met.brewer("Veronese")[4])) + 
+  labs(x = "", 
+       y = "Количество частей речи", 
+       
+       subtitle = "Наиболее частотные\nмужские окончания") + 
+  theme(legend.position = "None", 
+        axis.text = element_text(size = 11),
+        axis.title = element_text(size = 11),
+        #title = element_text(size = 16),
+        plot.subtitle = element_text(size = 14))
 
 p1_m
 ```
@@ -964,24 +982,30 @@ m_ranked_pos %>%
   summary(n) # look into less than 1st quatrain, ie less than 4 pos pairs
 
 less_var_pos <- m_ranked_pos %>% 
-  filter(rank < 51 & n < 5
+  filter(rank < 51 & pos_var < 3
            #group == "less variation"
            ) %>% 
   arrange(-desc(rank)) %>% pull(ending_pair)
 
 length(less_var_pos)
 
+# endings & pos pairs inside
 masc_pairs %>% 
   mutate(ending_pair = paste0("-", from_ending, " -- -", to_ending), 
          pos_pair = paste0(from_pos, " -- ", to_pos)) %>% 
   filter(ending_pair %in% less_var_pos) %>% 
   group_by(ending_pair) %>% 
-  count(pos_pair, sort = F) %>% 
-  select(-n) %>% 
-  summarise(n_var = n(),
-    pos_list = paste0(pos_pair, collapse = ", ")) %>% 
-  arrange(-desc(n_var)) %>% 
-  head(length(less_var_pos))
+  summarise(pos_pair = paste0(pos_pair, collapse = " -- ")) %>% 
+  ungroup() %>% rowwise() %>% 
+  mutate(pos_var = length(
+                      unique(
+                        unlist(
+                          str_split(pos_pair, " -- ")))
+                      ),
+         pos_pair = paste0(
+                      unique(unlist(str_split(pos_pair, " -- "))), collapse = ", ")) %>% 
+  ungroup() %>% 
+  arrange(-desc(pos_var)) 
 ```
 
 #### fem
@@ -1012,24 +1036,41 @@ f_ranked_pos <- fem_pairs %>%
          pos_pair = paste0(from_pos, " -- ", to_pos)) %>% 
   #filter(ending_pair %in% rankss$ending_pair) %>% 
   group_by(ending_pair) %>% 
-  count(pos_pair, sort = F) %>% 
-  count(ending_pair, sort = T) %>% 
+  summarise(pos_pair = paste0(pos_pair, collapse = " -- ")) %>% 
+  ungroup() %>% rowwise() %>% 
+  mutate(pos_var = length(
+                      unique(unlist(str_split(pos_pair, " -- "))))) %>% 
+  ungroup() %>% 
   left_join(f_ranks, by = "ending_pair") %>% 
-  filter(rank < 101) %>% 
-  mutate(label = paste0(rank, " ", ending_pair),
-         group = ifelse(n < 4, "less variation", "more variation"))
+  filter(rank < 101) 
 
-head(f_ranked_pos, 15) 
-summary(f_ranked_pos$n) # 4 is 3rd qu.
+head(f_ranked_pos %>% select(-pos_pair), 15) 
+summary(f_ranked_pos$pos_var) # 4 is 3rd qu.
+
+
+f_ranked_pos <- f_ranked_pos %>% 
+  mutate(label = paste0(rank, " ", ending_pair),
+         group = ifelse(pos_var < 3, "less variation", "more variation")) %>% 
+  select(-pos_pair) %>% 
+  arrange(-desc(rank))
 
 # plot
-f_ranked_pos  %>% 
-  filter(rank < 51) %>% 
-  ggplot(aes(x = rank, y = n, fill = group)) + geom_col(alpha = 0.7) + 
+p1_f <- f_ranked_pos  %>% 
+  filter(rank < 21) %>% 
+  ggplot(aes(x = rank, y = pos_var, fill = group)) + geom_col(alpha = 0.7) + 
   coord_flip() + 
   scale_x_reverse(breaks = f_ranked_pos$rank, labels = f_ranked_pos$label) + 
-  scale_fill_manual(values = c(met.brewer("Veronese")[6],
-                               met.brewer("Veronese")[3]))
+  scale_fill_manual(values = c(met.brewer("Veronese")[1],
+                               met.brewer("Veronese")[3])) + 
+  labs(x = "", y = "Количество частей речи", 
+       title = "В",
+       subtitle = "Наиболее частотные\nженские окончания") + 
+  theme(legend.position = "None", 
+        axis.text = element_text(size = 11),
+        plot.title = element_text(size = 18),
+        plot.subtitle = element_text(size = 14))
+
+p1_f
 ```
 
 Analysis of the less variate pairs
@@ -1037,32 +1078,38 @@ Analysis of the less variate pairs
 ```{r}
 f_ranked_pos %>% 
   filter(rank < 51) %>% 
-  summary(n) # look into less than 1st quatrain, ie less than 2 pos pairs (much lower than in masc rhymes)
+  summary() # look into less than 1st quatrain, ie less than 2 pos pairs (much lower than in masc rhymes)
 
 less_var_pos_f <- f_ranked_pos %>% 
-  filter(rank < 51 & n < 2
+  filter(rank < 51 & pos_var < 2
            #group == "less variation"
            ) %>% 
   arrange(-desc(rank)) %>% pull(ending_pair)
 
 length(less_var_pos_f) # 25 endings with ONLY ONE POS combination
 
+# pos pairs inside non-variative endings
 fem_pairs %>% 
   mutate(ending_pair = paste0("-", from_ending, " -- -", to_ending), 
          pos_pair = paste0(from_pos, " -- ", to_pos)) %>% 
   filter(ending_pair %in% less_var_pos_f) %>% 
   group_by(ending_pair) %>% 
-  count(pos_pair, sort = F) %>% 
-  select(-n) %>% 
-  summarise(n_var = n(),
-    pos_list = paste0(pos_pair, collapse = ", ")) %>% 
-  arrange(-desc(n_var)) %>% 
-  head(length(less_var_pos_f))
+  summarise(pos_pair = paste0(pos_pair, collapse = " -- ")) %>% 
+  ungroup() %>% rowwise() %>% 
+  mutate(pos_var = length(
+                      unique(
+                        unlist(
+                          str_split(pos_pair, " -- ")))
+                      ),
+         pos_pair = paste0(
+                      unique(unlist(str_split(pos_pair, " -- "))), collapse = ", ")) %>% 
+  ungroup() %>% 
+  arrange(-desc(pos_var)) 
 ```
 
-noun-noun, verb-verb, inf-inf
-
 #### kendall cor
+
+Correlation between ending frequency and its POS variability (how many POS are found inside an ending)
 
 ```{r}
 glimpse(m_ranked_pos)
@@ -1070,9 +1117,12 @@ glimpse(m_ranked_pos)
 
 rank_list <- m_ranked_pos %>% 
   ungroup() %>% 
+  select(-pos_pair) %>% 
   rename(rank_ending = rank) %>% 
-  mutate(rank_variation = row_number()) %>% 
-  select(-n, -label, -group)
+  arrange(desc(pos_var)) %>% 
+  mutate(rank_variation = row_number()) 
+
+head(rank_list)
 
 # masculine ranks lists correlation
 cor.test(rank_list$rank_ending, rank_list$rank_variation, 
@@ -1083,15 +1133,15 @@ cor.test(rank_list$rank_ending, rank_list$rank_variation,
 rank_list <- f_ranked_pos %>% 
   ungroup() %>% 
   rename(rank_ending = rank) %>% 
-  mutate(rank_variation = row_number()) %>% 
-  select(-n, -label, -group)
+  arrange(desc(pos_var)) %>% 
+  mutate(rank_variation = row_number()) 
 
 # masculine ranks lists correlation
 cor.test(rank_list$rank_ending, rank_list$rank_variation, 
          method = "kendall")
 ```
 
-#### lineplot
+#### point plot
 
 Curves: Correlation btw ending frequency & grammatical variation
 
@@ -1102,40 +1152,59 @@ m_ranked_long <- masc_pairs %>%
          pos_pair = paste0(from_pos, " -- ", to_pos)) %>% 
   #filter(ending_pair %in% rankss$ending_pair) %>% 
   group_by(ending_pair) %>% 
-  count(pos_pair, sort = F) %>% 
-  count(ending_pair, sort = T) %>% 
-  left_join(m_ranks, by = "ending_pair") %>% 
-  filter(rank < 1001)
+  summarise(pos_pair = paste0(pos_pair, collapse = " -- ")) %>% 
+  ungroup() %>% rowwise() %>% 
+  mutate(pos_var = length(
+                      unique(unlist(str_split(pos_pair, " -- "))))) %>% 
+  ungroup() %>% 
+  left_join(m_ranks, by = "ending_pair") #%>% 
+  #filter(rank < 1001)
 
 f_ranked_long <- fem_pairs %>% 
   mutate(ending_pair = paste0("-", from_ending, " -- -", to_ending), 
          pos_pair = paste0(from_pos, " -- ", to_pos)) %>% 
   #filter(ending_pair %in% rankss$ending_pair) %>% 
   group_by(ending_pair) %>% 
-  count(pos_pair, sort = F) %>% 
-  count(ending_pair, sort = T) %>% 
-  left_join(f_ranks, by = "ending_pair") %>% 
-  filter(rank < 1001)
+  summarise(pos_pair = paste0(pos_pair, collapse = " -- ")) %>% 
+  ungroup() %>% rowwise() %>% 
+  mutate(pos_var = length(
+                      unique(unlist(str_split(pos_pair, " -- "))))) %>% 
+  ungroup() %>% 
+  left_join(f_ranks, by = "ending_pair") #%>% 
+  #filter(rank < 1001)
 
 glimpse(m_ranked_long)
 
+#pos_plot <- 
 m_ranked_long %>% 
   ungroup() %>% 
-  select(rank, n) %>% 
-  mutate(group = "masc") %>% 
+  select(rank, pos_var) %>% 
+  mutate(group = "Мужские рифмы") %>% 
   rbind(f_ranked_long %>%
           ungroup() %>%
-          select(rank, n) %>%
-          mutate(group = "fem")
+          select(rank, pos_var) %>%
+          mutate(group = "Женские рифмы")
         ) %>%
-  filter(rank < 1001) %>% 
-  ggplot(aes(x = rank, y = n, color = group)) + 
-  geom_point(alpha = 0.5, size = 0.9) + 
-  geom_line(alpha = 0.6, linewidth = 0.5) + 
-  geom_smooth(alpha = 0.7) + 
+  filter(rank < 1500) %>% 
+  ggplot(aes(x = rank, y = pos_var, color = group)) + 
+  geom_point(alpha = 0.5, size = 0.9, shape = 1) + 
+  #geom_line(alpha = 0.6, linewidth = 0.5) + 
+  geom_smooth(alpha = 0.7, lty = 5, linewidth = 0.7, 
+              color = met.brewer("Veronese")[1]) + 
   facet_wrap(~group) + 
   scale_color_manual(values = c(met.brewer("Veronese")[3],
-                                met.brewer("Veronese")[5]))
+                                met.brewer("Veronese")[5])) + 
+  labs(x = "Ранг",
+       y = "Количество частей речи",
+       title = "A",
+       subtitle = "Части речи") + 
+  theme(legend.position = "None",
+        axis.title = element_text(size = 12), 
+        strip.text = element_text(size = 12),
+        plot.title = element_text(size = 18), 
+        plot.subtitle = element_text(size = 14))
+
+# pos_plot
 ```
 
 ### feats variability
@@ -1147,8 +1216,12 @@ m_ranked_feats <- masc_pairs %>%
          feats_pair = paste0(from_feats, " -- ", to_feats)) %>% 
   #filter(ending_pair %in% rankss$ending_pair) %>% 
   group_by(ending_pair) %>% 
-  count(feats_pair, sort = F) %>% 
-  count(ending_pair, sort = T) %>% 
+  summarise(feats_pair = paste0(feats_pair, collapse = " -- ")) %>% 
+  ungroup() %>% rowwise() %>% 
+  mutate(feats_var = length(
+                      unique(unlist(str_split(feats_pair, " -- "))))) %>% 
+  ungroup() %>% 
+  select(-feats_pair) %>% 
   left_join(m_ranks, by = "ending_pair") %>% 
   filter(rank < 1001)
 
@@ -1157,42 +1230,150 @@ f_ranked_feats <- fem_pairs %>%
          feats_pair = paste0(from_feats, " -- ", to_feats)) %>% 
   #filter(ending_pair %in% rankss$ending_pair) %>% 
   group_by(ending_pair) %>% 
-  count(feats_pair, sort = F) %>% 
-  count(ending_pair, sort = T) %>% 
+  summarise(feats_pair = paste0(feats_pair, collapse = " -- ")) %>% 
+  ungroup() %>% rowwise() %>% 
+  mutate(feats_var = length(
+                      unique(unlist(str_split(feats_pair, " -- "))))) %>% 
+  ungroup() %>% 
+  select(-feats_pair) %>% 
   left_join(f_ranks, by = "ending_pair") %>% 
   filter(rank < 1001)
 
 
-m_ranked_feats %>% 
+feats_plot <- m_ranked_feats %>% 
   ungroup() %>% 
-  select(rank, n) %>% 
-  mutate(group = "masc") %>% 
+  select(rank, feats_var) %>% 
+  mutate(group = "Мужские рифмы") %>% 
   rbind(f_ranked_feats %>%
           ungroup() %>%
-          select(rank, n) %>%
-          mutate(group = "fem")
+          select(rank, feats_var) %>%
+          mutate(group = "Женские рифмы")
         ) %>%
   filter(rank < 1001) %>% 
-  ggplot(aes(x = rank, y = n, color = group)) + 
-  geom_point(alpha = 0.5, size = 0.9) + 
-  geom_line(alpha = 0.6, linewidth = 0.5) + 
-  geom_smooth(alpha = 0.7) + 
+  ggplot(aes(x = rank, y = feats_var, color = group)) + 
+  geom_point(alpha = 0.5, size = 0.9, shape = 1) + 
+  #geom_line(alpha = 0.6, linewidth = 0.5) + 
+  geom_smooth(alpha = 0.7, lty = 5, linewidth = 0.7, 
+              color = met.brewer("Veronese")[1]) + 
   facet_wrap(~group) + 
   scale_color_manual(values = c(met.brewer("Veronese")[3],
-                                met.brewer("Veronese")[5]))
+                                met.brewer("Veronese")[5])) + 
+  labs(x = "Ранг",
+       y = "Количество гр. форм",
+       title = "Б", 
+       subtitle = "Грамматрические формы") + 
+  theme(legend.position = "None",
+        axis.title = element_text(size = 12), 
+        strip.text = element_text(size = 12),
+        plot.title = element_text(size = 18), 
+        plot.subtitle = element_text(size = 14))
+
+feats_plot
 ```
 
-#### kendall
+### fem / masc endings separately
+
+Fem endings
+
+```{r}
+head(f_ranked_feats)
+
+f <- f_ranked_feats %>% 
+  mutate(group = "Грамматич. признаки") %>% 
+  rename(n = feats_var)
+
+head(f)
+
+f_plot <- f_ranked_long %>% 
+  select(-pos_pair) %>% 
+  mutate(group = " Части речи") %>% 
+  rename(n = pos_var) %>% 
+  rbind(f) %>% 
+  filter(rank < 1001) %>% 
+  ggplot(aes(x = rank, y = n, color = group)) + 
+  geom_point(alpha = 0.5, size = 0.9, shape = 1) + 
+  #geom_line(alpha = 0.6, linewidth = 0.5) + 
+  geom_smooth(alpha = 0.7, lty = 5, linewidth = 0.7, 
+              color = met.brewer("Veronese")[1]) + 
+  facet_wrap(~group, scales = "free") + 
+  scale_color_manual(values = c(met.brewer("Veronese")[2],
+                                met.brewer("Veronese")[3])) + 
+  labs(x = "Ранг",
+       y = "",
+       title = "А", 
+       subtitle = "Женские рифмы") + 
+  theme(legend.position = "None",
+        axis.title = element_text(size = 12), 
+        strip.text = element_text(size = 12),
+        plot.title = element_text(size = 18), 
+        plot.subtitle = element_text(size = 14))
+
+f_plot
+```
+
+```{r}
+m <- m_ranked_feats %>% 
+  mutate(group = "Грамматич. признаки") %>% 
+  rename(n = feats_var)
+
+m_plot <- m_ranked_long %>% 
+  select(-pos_pair) %>% 
+  mutate(group = " Части речи") %>% 
+  rename(n = pos_var) %>% 
+  rbind(m) %>% 
+  filter(rank < 1001) %>% 
+  ggplot(aes(x = rank, y = n, color = group)) + 
+  geom_point(alpha = 0.5, size = 0.9, shape = 1) + 
+  #geom_line(alpha = 0.6, linewidth = 0.5) + 
+  geom_smooth(alpha = 0.7, lty = 5, linewidth = 0.7, 
+              color = met.brewer("Veronese")[1]) + 
+  facet_wrap(~group, scales = "free") + 
+  scale_color_manual(values = c(met.brewer("Veronese")[5],
+                                met.brewer("Veronese")[4])) + 
+  labs(x = "Ранг",
+       y = "",
+       title = "Б", 
+       subtitle = "Мужские рифмы") + 
+  theme(legend.position = "None",
+        axis.title = element_text(size = 12), 
+        strip.text = element_text(size = 12),
+        plot.title = element_text(size = 18), 
+        plot.subtitle = element_text(size = 14))
+
+m_plot
+```
+
+### fig. 5.2.2
+
+```{r}
+layout <- "
+AAAAAA#CCCC
+AAAAAA#CCCC
+BBBBBB#DDDD
+BBBBBB#DDDD
+"
+
+#pos_plot + feats_plot + p1_m + p1_f + plot_layout(design = layout)
+
+f_plot + m_plot + p1_f + p1_m + plot_layout(design = layout)
+
+ggsave(filename = "plots/fig_5-2-2.png", plot = last_plot(), dpi = 300,
+       bg = "white", width = 12, height = 10)
+```
+
+#### feats - kendall cor
 
 ```{r}
 # glimpse(m_ranked_feats)
 
 rank_list <- m_ranked_feats %>% 
   ungroup() %>% 
-  #filter(rank < 101) %>% 
+  filter(rank < 101) %>% 
   rename(rank_ending = rank) %>% 
-  mutate(rank_variation = row_number()) %>% 
-  select(-n)
+  arrange(desc(feats_var)) %>% 
+  mutate(rank_variation = row_number()) 
+
+head(rank_list)
 
 # masculine ranks lists correlation
 cor.test(rank_list$rank_ending, rank_list$rank_variation, 
@@ -1202,10 +1383,12 @@ cor.test(rank_list$rank_ending, rank_list$rank_variation,
 # fem
 rank_list <- f_ranked_feats %>% 
   ungroup() %>% 
-  filter(rank < 101) %>%
+  filter(rank < 101) %>% 
   rename(rank_ending = rank) %>% 
-  mutate(rank_variation = row_number()) %>% 
-  select(-n)
+  arrange(desc(feats_var)) %>% 
+  mutate(rank_variation = row_number()) 
+
+head(rank_list)
 
 # masculine ranks lists correlation
 cor.test(rank_list$rank_ending, rank_list$rank_variation, 
@@ -1217,27 +1400,13 @@ Look into less variable endings
 ```{r}
 m_ranked_feats %>% 
   filter(rank < 51) %>% 
-  summary() # 25.25 1st Qu
+  summary() # 8.25 1st Qu
 
 less_var_feats <- m_ranked_feats %>% 
-  filter(rank < 51 & n < 25.25) %>% 
+  filter(rank < 51 & feats_var < 8.25) %>% 
   pull(ending_pair)
 
 length(less_var_feats)
-
-x <- masc_pairs %>% 
-  mutate(ending_pair = paste0("-", from_ending, " -- -", to_ending), 
-         feats_pair = paste0(from_feats, " -- ", to_feats)) %>% 
-  filter(ending_pair %in% less_var_feats) %>% 
-  group_by(ending_pair) %>% 
-  count(feats_pair, sort = F) %>% 
-  select(-n) %>% 
-  summarise(n_var = n(),
-            feats_list = paste0(feats_pair, collapse = " \n ")) %>% 
-  arrange(-desc(n_var)) %>% 
-  head(length(less_var_feats))
-
-# write.csv(x, "feats_masc.csv")
 ```
 
 Examples
@@ -1263,36 +1432,20 @@ FEM rhymes feats analysis
 ```{r}
 f_ranked_feats %>% 
   filter(rank < 51) %>% 
-  summary() # 8.25 1st qu. (vs masc 25.25 1st Qu)
+  summary() # 4.0 1st qu. (vs masc 8.25 1st Qu)
 
 less_var_feats_f <- f_ranked_feats %>% 
-  filter(rank < 51 & n < 8.25) %>% 
+  filter(rank < 51 & feats_var < 4.1) %>% 
   pull(ending_pair)
 
 length(less_var_feats_f) # 13
-
-x <- fem_pairs %>% 
-  mutate(ending_pair = paste0("-", from_ending, " -- -", to_ending), 
-         feats_pair = paste0(from_feats, " -- ", to_feats)) %>% 
-  filter(ending_pair %in% less_var_feats_f) %>% 
-  group_by(ending_pair) %>% 
-  count(feats_pair, sort = F) %>% 
-  select(-n) %>% 
-  summarise(n_var = n(),
-            feats_list = paste0(feats_pair, collapse = " \n ")) %>% 
-  arrange(-desc(n_var)) %>% 
-  head(length(less_var_feats_f))
-
-x
-
-#write.csv(x, "feats_fem.csv")
 ```
 
 ## words inside endings
 
 ```{r}
 glimpse(m_ranks)
-glimpse(masc_pairs)
+# glimpse(masc_pairs)
 ```
 
 ```{r}
@@ -1337,25 +1490,25 @@ fem_words_p <- fem_words %>%
 
 
 # glimpse(masc_words)
-
-masc_words %>% 
-  group_by(ending_pair) %>% 
-  count(word, sort = T) %>% 
-  ungroup() %>% 
-  count(ending_pair, sort = T) %>% 
-  left_join(m_ranks, by = "ending_pair") %>% 
-  filter(rank < 1001) %>% 
-  mutate(group = "masc") %>% 
-  rbind(fem_words_p) %>% 
-  
-  ggplot(aes( x = rank, y = n, color = group)) + 
-  geom_point(alpha = 0.5, size = 0.9) + 
-  geom_line(alpha = 0.6, linewidth = 0.5) + 
- 
-  facet_wrap(~group) +
-    geom_smooth(alpha = 0.7) +
-  scale_color_manual(values = c(met.brewer("Veronese")[3],
-                                met.brewer("Veronese")[5]))
+# 
+# masc_words %>% 
+#   group_by(ending_pair) %>% 
+#   count(word, sort = T) %>% 
+#   ungroup() %>% 
+#   count(ending_pair, sort = T) %>% 
+#   left_join(m_ranks, by = "ending_pair") %>% 
+#   filter(rank < 1001) %>% 
+#   mutate(group = "masc") %>% 
+#   rbind(fem_words_p) %>% 
+#   
+#   ggplot(aes( x = rank, y = n, color = group)) + 
+#   geom_point(alpha = 0.5, size = 0.9) + 
+#   geom_line(alpha = 0.6, linewidth = 0.5) + 
+#  
+#   facet_wrap(~group) +
+#     geom_smooth(alpha = 0.7) +
+#   scale_color_manual(values = c(met.brewer("Veronese")[3],
+#                                 met.brewer("Veronese")[5]))
 ```
 
 ```{r}
@@ -1412,6 +1565,7 @@ masc_words %>%
   summarise(n_var = n(),
             word_list = paste0(word, collapse = ", ")) %>% 
   arrange(-desc(n_var)) 
+
 ```
 
 Most monotonous feats-wise
@@ -1555,3 +1709,188 @@ NB both for masc & fem rhymes it seems that THE most freq ending is also the mos
 however, some of the endings have very low N of pos/feats combinations (-ить) but can generate very large number of words, these are mostly verbal endings =\> seeming refusal to use this kind of rhymes
 
 the most redundant / monotonous are though NOUN endings and rhyme pairs, which are less plausible to include many words for non-freq endings (such as -ец / -ца) though they include a small number of very symbolic poetic words (венец, певец... любовь кровь... пир мир...)
+
+## percentage of less variable rhyme endings
+
+### masc rhymes
+
+Count percentage by corpus
+
+```{r}
+m_ranked_pos %>% select(-pos_pair) %>% head
+
+corpus_totals <- masc_pairs %>% 
+  mutate(corpus = str_extract(text_id, "^\\w")) %>% 
+  count(corpus) %>% 
+  rename(total = n)
+
+masc_pairs %>% 
+  mutate(ending_pair = paste0("-", from_ending, " -- -", to_ending)) %>% 
+  select(text_id, ending_pair) %>% 
+  left_join(m_ranked_pos %>% select(ending_pair, pos_var, group),
+            by = "ending_pair") %>% 
+  mutate(group = ifelse(is.na(group), "non-freq", group),
+         corpus = str_extract(text_id, "^\\w")) %>% 
+  group_by(corpus) %>% 
+  count(group) %>% 
+  ungroup() %>% 
+  left_join(corpus_totals, by = "corpus") %>% 
+  mutate(perc = round((n / total)*100, 1)) %>% 
+  select(-n, -total) %>% 
+  pivot_wider(names_from = group, values_from = perc)
+  
+```
+
+Load metadata about authors
+
+```{r}
+meta <- read.csv("../../data/corpus1835/sql_db/texts_metadata.csv")
+authors <- read.csv("../../data/corpus1835/sql_db/authors.csv")
+
+meta <- meta %>% 
+  select(text_id, A_ID) %>% 
+  left_join(authors %>% select(A_ID, author_name), by = "A_ID")
+
+masc_pairs_authors <- masc_pairs %>% 
+  left_join(meta, by = "text_id")
+
+masc_pairs_authors %>% 
+  count(author_name, sort = T) %>% head()
+```
+
+Count perc of less / more variative rhymes by different authors
+
+```{r}
+# select authors
+a <- c("Баратынский Е.А.", "Бенедиктов В.Г.", "Мейснер А.", "Тимофеев А.В.",
+      "Шахова Е.Н.", "Некрасов Н.А.", "Суханов М.Д.", "Ростопчина Е.П.", 
+      "Козлов И.И.")
+
+a_totals <- masc_pairs_authors %>% 
+  filter(author_name %in% a) %>% 
+  count(author_name, sort = T) %>% 
+  rename(total = n)
+
+min(a_totals$total)
+m_ranked_pos %>% 
+  filter(group == "less variation") %>% 
+  select(ending_pair) %>% 
+  distinct() %>% pull()
+
+samples <- NULL
+
+for (i in 1:100) {
+  x <- masc_pairs_authors %>% 
+    filter(author_name %in% a) %>% 
+    group_by(author_name) %>% 
+    sample_n(100) %>% 
+    mutate(ending_pair = paste0("-", from_ending, " -- -", to_ending)) %>% 
+    select(text_id, author_name, ending_pair) %>% 
+    left_join(m_ranked_pos %>% select(ending_pair, pos_var, group),
+              by = "ending_pair") %>% 
+    mutate(group = ifelse(is.na(group), "non-freq rhymes (not top-100)", group)) %>% 
+    group_by(author_name) %>% 
+    count(group) %>% 
+    ungroup() %>% 
+    #left_join(a_totals, by = "author_name") %>% 
+    mutate(perc = round((n / 100)*100, 1)) %>% 
+    select(-n#, -total
+           ) #%>% 
+    #pivot_wider(names_from = group, values_from = perc) %>% 
+    #arrange(desc(`less variation`))
+
+  samples <- rbind(samples, x)
+}
+
+
+samples %>% 
+  ggplot(aes(x = author_name, y = perc, color = group)) + 
+  geom_boxplot(width = 0.5)
+```
+
+### fem rhymes
+
+```{r}
+f_ranked_pos %>% head
+
+f_ranked_pos %>% 
+  filter(group == "less variation") %>% 
+  select(ending_pair) %>% 
+  distinct() %>% pull()
+
+corpus_totals <- fem_pairs %>% 
+  mutate(corpus = str_extract(text_id, "^\\w")) %>% 
+  count(corpus) %>% 
+  rename(total = n)
+
+fem_pairs %>% 
+  mutate(ending_pair = paste0("-", from_ending, " -- -", to_ending)) %>% 
+  select(text_id, ending_pair) %>% 
+  left_join(f_ranked_pos %>% select(ending_pair, pos_var, group),
+            by = "ending_pair") %>% 
+  mutate(group = ifelse(is.na(group), "non-freq", group),
+         corpus = str_extract(text_id, "^\\w")) %>% 
+  group_by(corpus) %>% 
+  count(group) %>% 
+  ungroup() %>% 
+  left_join(corpus_totals, by = "corpus") %>% 
+  mutate(perc = round((n / total)*100, 1)) %>% 
+  select(-n, -total) %>% 
+  pivot_wider(names_from = group, values_from = perc)
+  
+```
+
+Authors
+
+```{r}
+fem_pairs_authors <- fem_pairs %>% 
+  left_join(meta, by = "text_id")
+
+fem_pairs_authors %>% 
+  count(author_name, sort = T) %>% head()
+```
+
+```{r}
+# select authors
+a <- c("Баратынский Е.А.", "Бенедиктов В.Г.", "Мейснер А.", "Тимофеев А.В.",
+      "Шахова Е.Н.", "Некрасов Н.А.", "Суханов М.Д.", "Ростопчина Е.П.", 
+      "Козлов И.И.")
+
+a_totals <- fem_pairs_authors %>% 
+  filter(author_name %in% a) %>% 
+  count(author_name, sort = T) %>% 
+  rename(total = n)
+
+min(a_totals$total)
+
+samples <- NULL
+
+for (i in 1:100) {
+  x <- fem_pairs_authors %>% 
+    filter(author_name %in% a) %>% 
+    group_by(author_name) %>% 
+    sample_n(100) %>% 
+    mutate(ending_pair = paste0("-", from_ending, " -- -", to_ending)) %>% 
+    select(text_id, author_name, ending_pair) %>% 
+    left_join(f_ranked_pos %>% select(ending_pair, pos_var, group),
+              by = "ending_pair") %>% 
+    mutate(group = ifelse(is.na(group), "non-freq rhymes (not top-100)", group)) %>% 
+    group_by(author_name) %>% 
+    count(group) %>% 
+    ungroup() %>% 
+    #left_join(a_totals, by = "author_name") %>% 
+    mutate(perc = round((n / 100)*100, 1)) %>% 
+    select(-n#, -total
+           ) #%>% 
+    #pivot_wider(names_from = group, values_from = perc) %>% 
+    #arrange(desc(`less variation`))
+
+  samples <- rbind(samples, x)
+}
+
+
+samples %>% 
+  filter(group != "non-freq rhymes (not top-100)") %>% 
+  ggplot(aes(x = author_name, y = perc, color = group)) + 
+  geom_boxplot(width = 0.5)
+```

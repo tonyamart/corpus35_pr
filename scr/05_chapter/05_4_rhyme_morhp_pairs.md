@@ -2906,6 +2906,72 @@ m_ranked_long %>%
 # pos_plot
 ```
 
+### POS - rank kendall cor
+
+Longer lists
+
+``` r
+rank_list <- m_ranked_long %>% 
+  ungroup() %>% 
+  filter(rank < 1001) %>% 
+  select(-pos_pair) %>% 
+  rename(rank_ending = rank) %>% 
+  arrange(desc(pos_var)) %>% 
+  mutate(rank_variation = row_number()) 
+
+head(rank_list)
+```
+
+    # A tibble: 6 × 4
+      ending_pair      pos_var rank_ending rank_variation
+      <chr>              <int>       <int>          <int>
+    1 -о'й -- -о'й           8           1              1
+    2 -е'м -- -ё'м           7         174              2
+    3 -о'м -- -ё'м           7         232              3
+    4 -ё'м -- -е'м           7         157              4
+    5 -е'й -- -е'й           6           2              5
+    6 -е'сть -- -е'сть       6          75              6
+
+``` r
+# masculine ranks lists correlation
+cor.test(rank_list$rank_ending, rank_list$rank_variation, 
+         method = "kendall")
+```
+
+
+        Kendall's rank correlation tau
+
+    data:  rank_list$rank_ending and rank_list$rank_variation
+    z = 11.324, p-value < 2.2e-16
+    alternative hypothesis: true tau is not equal to 0
+    sample estimates:
+          tau 
+    0.2391391 
+
+``` r
+# fem
+rank_list <- f_ranked_long %>% 
+  ungroup() %>% 
+  filter(rank < 1001) %>% 
+  rename(rank_ending = rank) %>% 
+  arrange(desc(pos_var)) %>% 
+  mutate(rank_variation = row_number()) 
+
+# masculine ranks lists correlation
+cor.test(rank_list$rank_ending, rank_list$rank_variation, 
+         method = "kendall")
+```
+
+
+        Kendall's rank correlation tau
+
+    data:  rank_list$rank_ending and rank_list$rank_variation
+    z = 4.5429, p-value = 5.549e-06
+    alternative hypothesis: true tau is not equal to 0
+    sample estimates:
+           tau 
+    0.09593994 
+
 ### feats variability
 
 ``` r
@@ -2972,7 +3038,7 @@ feats_plot
 
     `geom_smooth()` using method = 'gam' and formula = 'y ~ s(x, bs = "cs")'
 
-![](05_4_rhyme_morhp_pairs.markdown_strict_files/figure-markdown_strict/unnamed-chunk-50-1.png)
+![](05_4_rhyme_morhp_pairs.markdown_strict_files/figure-markdown_strict/unnamed-chunk-51-1.png)
 
 ### fem / masc endings separately
 
@@ -3040,7 +3106,7 @@ f_plot
 
     `geom_smooth()` using method = 'gam' and formula = 'y ~ s(x, bs = "cs")'
 
-![](05_4_rhyme_morhp_pairs.markdown_strict_files/figure-markdown_strict/unnamed-chunk-51-1.png)
+![](05_4_rhyme_morhp_pairs.markdown_strict_files/figure-markdown_strict/unnamed-chunk-52-1.png)
 
 ``` r
 m <- m_ranked_feats %>% 
@@ -3076,7 +3142,7 @@ m_plot
 
     `geom_smooth()` using method = 'gam' and formula = 'y ~ s(x, bs = "cs")'
 
-![](05_4_rhyme_morhp_pairs.markdown_strict_files/figure-markdown_strict/unnamed-chunk-52-1.png)
+![](05_4_rhyme_morhp_pairs.markdown_strict_files/figure-markdown_strict/unnamed-chunk-53-1.png)
 
 ### fig. 5.2.2
 
@@ -3096,7 +3162,7 @@ f_plot + m_plot + p1_f + p1_m + plot_layout(design = layout)
     `geom_smooth()` using method = 'gam' and formula = 'y ~ s(x, bs = "cs")'
     `geom_smooth()` using method = 'gam' and formula = 'y ~ s(x, bs = "cs")'
 
-![](05_4_rhyme_morhp_pairs.markdown_strict_files/figure-markdown_strict/unnamed-chunk-53-1.png)
+![](05_4_rhyme_morhp_pairs.markdown_strict_files/figure-markdown_strict/unnamed-chunk-54-1.png)
 
 ``` r
 ggsave(filename = "plots/fig_5-2-2.png", plot = last_plot(), dpi = 300,
@@ -3113,7 +3179,7 @@ ggsave(filename = "plots/fig_5-2-2.png", plot = last_plot(), dpi = 300,
 
 rank_list <- m_ranked_feats %>% 
   ungroup() %>% 
-  filter(rank < 101) %>% 
+  filter(rank < 1001) %>% 
   rename(rank_ending = rank) %>% 
   arrange(desc(feats_var)) %>% 
   mutate(rank_variation = row_number()) 
@@ -3129,7 +3195,7 @@ head(rank_list)
     3 -и'л -- -и'л          25           8              3
     4 -а'л -- -а'л          24           3              4
     5 -а'ть -- -а'ть        24           7              5
-    6 -и'т -- -и'т          22           5              6
+    6 -ла' -- -на'          23         144              6
 
 ``` r
 # masculine ranks lists correlation
@@ -3141,17 +3207,17 @@ cor.test(rank_list$rank_ending, rank_list$rank_variation,
         Kendall's rank correlation tau
 
     data:  rank_list$rank_ending and rank_list$rank_variation
-    z = 4.6518, p-value = 3.29e-06
+    z = 25.795, p-value < 2.2e-16
     alternative hypothesis: true tau is not equal to 0
     sample estimates:
           tau 
-    0.3155556 
+    0.5447568 
 
 ``` r
 # fem
 rank_list <- f_ranked_feats %>% 
   ungroup() %>% 
-  filter(rank < 101) %>% 
+  filter(rank < 1001) %>% 
   rename(rank_ending = rank) %>% 
   arrange(desc(feats_var)) %>% 
   mutate(rank_variation = row_number()) 
@@ -3179,11 +3245,11 @@ cor.test(rank_list$rank_ending, rank_list$rank_variation,
         Kendall's rank correlation tau
 
     data:  rank_list$rank_ending and rank_list$rank_variation
-    z = 2.9781, p-value = 0.0029
+    z = 11.805, p-value < 2.2e-16
     alternative hypothesis: true tau is not equal to 0
     sample estimates:
           tau 
-    0.2020202 
+    0.2493093 
 
 Look into less variable endings
 
@@ -3242,20 +3308,20 @@ masc_pairs %>%
   distinct(rhyme_alph, .keep_all = TRUE)
 ```
 
-    # A tibble: 95 × 7
+    # A tibble: 92 × 7
        ending_pair    rhyme_alph      from     to       from_pos to_pos feats_pair  
        <chr>          <chr>           <chr>    <chr>    <chr>    <chr>  <chr>       
      1 -а'ль -- -а'ль печаль скрыжаль скрыжаль печаль   ADV      NOUN   ADV,вводн= …
      2 -а'ль -- -а'ль жаль печаль     жаль     печаль   ADV      NOUN   ADV,прдк= -…
      3 -а'ль -- -а'ль жаль хрусталь   жаль     хрусталь ADV      NOUN   ADV,прдк= -…
      4 -а'ль -- -а'ль вдаль жаль      вдаль    жаль     ADV      ADV    ADV= -- ADV…
-     5 -а'ль -- -а'ль вдаль вуаль     вдаль    вуаль    ADV      NOUN   ADV= -- S,ж…
-     6 -а'ль -- -а'ль вдаль скрижаль  скрижаль вдаль    NOUN     ADV    S,жен,неод=…
-     7 -а'ль -- -а'ль печаль скрижаль скрижаль печаль   NOUN     NOUN   S,жен,неод=…
-     8 -а'ль -- -а'ль миндаль шаль    шаль     миндаль  NOUN     NOUN   S,жен,неод=…
-     9 -а'ль -- -а'ль даль миндаль    миндаль  даль     NOUN     NOUN   S,муж,неод=…
+     5 -а'ль -- -а'ль вдаль печаль    вдаль    печаль   ADV      NOUN   ADV= -- S,ж…
+     6 -а'ль -- -а'ль даль жаль       даль     жаль     NOUN     ADV    S,жен,неод=…
+     7 -а'ль -- -а'ль даль эмаль      даль     эмаль    NOUN     NOUN   S,жен,неод=…
+     8 -а'ль -- -а'ль даль хрусталь   даль     хрусталь NOUN     NOUN   S,жен,неод=…
+     9 -а'ль -- -а'ль сталь хрусталь  хрусталь сталь    NOUN     NOUN   S,муж,неод=…
     10 -а'ль -- -а'ль враль жаль      враль    жаль     NOUN     ADV    S,муж,од=им…
-    # ℹ 85 more rows
+    # ℹ 82 more rows
 
 FEM rhymes feats analysis
 
@@ -3920,7 +3986,7 @@ samples %>%
   geom_boxplot(width = 0.5)
 ```
 
-![](05_4_rhyme_morhp_pairs.markdown_strict_files/figure-markdown_strict/unnamed-chunk-72-1.png)
+![](05_4_rhyme_morhp_pairs.markdown_strict_files/figure-markdown_strict/unnamed-chunk-73-1.png)
 
 ### fem rhymes
 
@@ -4065,4 +4131,4 @@ samples %>%
   geom_boxplot(width = 0.5)
 ```
 
-![](05_4_rhyme_morhp_pairs.markdown_strict_files/figure-markdown_strict/unnamed-chunk-75-1.png)
+![](05_4_rhyme_morhp_pairs.markdown_strict_files/figure-markdown_strict/unnamed-chunk-76-1.png)

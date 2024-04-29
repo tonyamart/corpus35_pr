@@ -1,0 +1,168 @@
+---
+title: "05_5_abstractness"
+format: md
+editor: visual
+---
+
+## Abstract nouns & adj in rhyme
+
+Load packages & data
+
+```{r}
+library(tidyverse)
+```
+
+Dictionaries for abstractness / concreteness
+
+```{r}
+dict_adj <- read.delim("../../data/ch5/dicts/adj_concreteness.csv", sep = ";") %>% 
+  mutate(word = str_remove_all(word, "[[:punct:]]|[[:space:]]"), 
+         index_c_a = str_replace_all(index_c_a, ",", "\\.")) %>% 
+  mutate(index_c_a = as.numeric(index_c_a))
+
+dict_noun <- read.delim("../../data/ch5/dicts/nouns_concreteness.csv", sep = ";") %>% 
+  mutate(word = str_remove_all(word, "[[:punct:]]|[[:space:]]"), 
+         index_c_a = str_replace_all(index_c_a, ",", "\\.")) %>% 
+  mutate(index_c_a = as.numeric(index_c_a))
+
+glimpse(dict_adj)
+glimpse(dict_noun)
+
+dictionaries <- rbind(dict_adj, dict_noun) %>% rename(lemma = word) %>% select(-score)
+
+head(dictionaries)
+dictionaries %>% arrange(-desc(index_c_a)) %>% head()
+```
+
+Rhymes data
+
+Words
+
+```{r}
+rhyme_words <- read.csv("../../data/corpus1835/sql_db/rhyme_words_upd.csv", 
+                        
+                        # DON'T LET R EAT IAMBS AND DO INTEGER 01 => 1
+                        colClasses = c("stress_pattern" = "character",
+                                       "closure_pattern" = "character")) 
+
+#glimpse(rhyme_words)
+
+# write.csv(rhyme_words %>% select(word), file = "../../data/ch5/rhyme_words_lemmas.csv")
+
+lemm <- read.csv("../../data/ch5/rhyme_words_lemmas.csv") %>% select(-X)
+
+rhyme_words <- rhyme_words %>% 
+  left_join(lemm, by = "word")
+
+head(rhyme_words)
+```
+
+Pairs
+
+```{r}
+# load pairs
+rhyme_pairs <- read.csv("../../data/corpus1835/sql_db/rhyme_pairs.csv") %>% 
+  rename(text_id = poem_id) %>% 
+  # remove Kulman texts
+  filter(!str_detect(text_id, "C_264"))
+
+# separate and rebind
+w1 <- rhyme_pairs %>% 
+  select(text_id, from) %>% 
+  rename(word = from)
+
+w2 <- rhyme_pairs %>% 
+  select(text_id, to) %>% 
+  rename(word = to)
+
+w <- rbind(w1, w2)
+
+
+# attach words characteristics
+rw <- w %>% 
+  left_join(rhyme_words, by = "word") 
+```
+
+Metadata: book/periodicals, authors
+
+```{r}
+meta <- read.csv("../../data/corpus1835/sql_db/texts_metadata.csv")
+
+# glimpse(meta)
+
+authors_meta <- read_csv("../../data/corpus1835/sql_db/authors.csv") %>% 
+  select(A_ID, author_name)
+
+meta <- meta %>% 
+  left_join(authors_meta, by = "A_ID") %>% 
+  mutate(corpus = str_extract(text_id, "^\\w")) %>% 
+  select(text_id, corpus, meter, author_name)
+```
+
+Attach metadata to rhyme data & select columns
+
+```{r}
+c35_rw <- rw %>% 
+  left_join(meta, by = "text_id") %>% 
+  select(text_id, corpus, meter, author_name, pos,
+         word, lemma, closure) 
+
+sample_n(c35_rw, 5)
+
+# total number of nouns and adj
+table(c35_rw$pos)
+```
+
+Attach abstractness / concreteness index
+
+```{r}
+c35_rw %>% 
+  left_join(dictionaries, by = "lemma") %>% 
+  filter(!is.na(index_c_a)) %>% 
+  filter(pos == "S" | pos == "A") %>% 
+  count(pos)
+```
+
+```{r}
+c35_rw <- c35_rw %>% 
+  left_join(dictionaries, by = "lemma") %>% 
+  filter(!is.na(index_c_a)) %>% 
+  filter(pos == "S" | pos == "A")  ### many-to-many x-y problem
+
+sample_n(c35_rw, 5)
+```
+
+## canon / archive
+
+Random samples from collections vs periodicals
+
+```{r}
+
+x <- NULL
+y <- NULL
+
+
+for (i in 1:1000) {
+
+  x <- c35_rw %>% 
+    group_by(corpus) %>% 
+    sample_n(1000) %>% 
+    summarise(ica = mean(index_c_a))
+  
+  y <- rbind(x,y)
+}
+
+
+y %>% 
+  ggplot(aes(x = corpus, y = ica)) + geom_boxplot()
+```
+
+Random samples from RNC before 1830 and Corpus-1835
+
+Random samples from RNC before 1810 and Corpus-1835
+
+## authors
+
+Random samples from canonical vs unknown authors (only Corpus-1835)
+
+Random samples from NKRJA authors vs Corpus-1835 authors

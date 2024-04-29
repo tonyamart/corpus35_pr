@@ -1207,6 +1207,39 @@ m_ranked_long %>%
 # pos_plot
 ```
 
+### POS - rank kendall cor 
+
+Longer lists
+
+```{r}
+rank_list <- m_ranked_long %>% 
+  ungroup() %>% 
+  filter(rank < 1001) %>% 
+  select(-pos_pair) %>% 
+  rename(rank_ending = rank) %>% 
+  arrange(desc(pos_var)) %>% 
+  mutate(rank_variation = row_number()) 
+
+head(rank_list)
+
+# masculine ranks lists correlation
+cor.test(rank_list$rank_ending, rank_list$rank_variation, 
+         method = "kendall")
+
+
+# fem
+rank_list <- f_ranked_long %>% 
+  ungroup() %>% 
+  filter(rank < 1001) %>% 
+  rename(rank_ending = rank) %>% 
+  arrange(desc(pos_var)) %>% 
+  mutate(rank_variation = row_number()) 
+
+# masculine ranks lists correlation
+cor.test(rank_list$rank_ending, rank_list$rank_variation, 
+         method = "kendall")
+```
+
 ### feats variability
 
 ```{r}
@@ -1368,7 +1401,7 @@ ggsave(filename = "plots/fig_5-2-2.png", plot = last_plot(), dpi = 300,
 
 rank_list <- m_ranked_feats %>% 
   ungroup() %>% 
-  filter(rank < 101) %>% 
+  filter(rank < 1001) %>% 
   rename(rank_ending = rank) %>% 
   arrange(desc(feats_var)) %>% 
   mutate(rank_variation = row_number()) 
@@ -1383,7 +1416,7 @@ cor.test(rank_list$rank_ending, rank_list$rank_variation,
 # fem
 rank_list <- f_ranked_feats %>% 
   ungroup() %>% 
-  filter(rank < 101) %>% 
+  filter(rank < 1001) %>% 
   rename(rank_ending = rank) %>% 
   arrange(desc(feats_var)) %>% 
   mutate(rank_variation = row_number()) 

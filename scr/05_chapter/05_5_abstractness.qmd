@@ -10,6 +10,9 @@ Load packages & data
 
 ```{r}
 library(tidyverse)
+
+library(MetBrewer)
+theme_set(theme_minimal())
 ```
 
 Dictionaries for abstractness / concreteness
@@ -34,7 +37,7 @@ head(dictionaries)
 dictionaries %>% arrange(-desc(index_c_a)) %>% head()
 ```
 
-Rhymes data
+## Corpus-1835 - Rhymes data
 
 Words
 
@@ -53,6 +56,20 @@ lemm <- read.csv("../../data/ch5/rhyme_words_lemmas.csv") %>% select(-X)
 
 rhyme_words <- rhyme_words %>% 
   left_join(lemm, by = "word")
+
+
+# rewrite pos tags
+pos_transl <- tibble(old_tag = c("S", "V", "APRO", "SPRO", 
+                   "A", "ADV", "NUM", "ADVPRO",
+                   "INTJ", "PART", "PR", "ANUM", "CONJ"),
+       pos = c("NOUN", "VERB", "PRON", "PRON", 
+               "ADJ", "ADV", "NUM", "PRON",
+               "INTJ", "PART", "ADP", "NUM", "CONJ")) # upos
+
+# attach to the table with all words
+rhyme_words <- rhyme_words %>% 
+  rename(old_tag = pos) %>% 
+  left_join(pos_transl, by = "old_tag")
 
 head(rhyme_words)
 ```
@@ -105,9 +122,10 @@ Attach metadata to rhyme data & select columns
 c35_rw <- rw %>% 
   left_join(meta, by = "text_id") %>% 
   select(text_id, corpus, meter, author_name, pos,
-         word, lemma, closure) 
+         word, lemma, closure) %>% 
+  mutate(corpus = paste0("c1835_", corpus))
 
-sample_n(c35_rw, 5)
+# sample_n(c35_rw, 5)
 
 # total number of nouns and adj
 table(c35_rw$pos)
@@ -116,53 +134,409 @@ table(c35_rw$pos)
 Attach abstractness / concreteness index
 
 ```{r}
+# number of ADJ & Nouns supplied by index
 c35_rw %>% 
   left_join(dictionaries, by = "lemma") %>% 
   filter(!is.na(index_c_a)) %>% 
-  filter(pos == "S" | pos == "A") %>% 
+  filter(pos == "NOUN" | pos == "ADJ") %>% 
   count(pos)
 ```
 
 ```{r}
 c35_rw <- c35_rw %>% 
-  left_join(dictionaries, by = "lemma") %>% 
-  filter(!is.na(index_c_a)) %>% 
-  filter(pos == "S" | pos == "A")  ### many-to-many x-y problem
+  left_join(dictionaries, by = "lemma") 
 
 sample_n(c35_rw, 5)
 ```
 
-## canon / archive
-
-Random samples from collections vs periodicals
+Remove obsolete variables
 
 ```{r}
+rm(authors_meta, lemm, meta, pos_transl, w, w1, w2, rhyme_pairs, rhyme_words, rw)
+```
 
+## RNC rhymes
+
+Load data
+
+```{r}
+rnc_rhymes <- read.csv("../../data/ch5/nkrja_rhyme_pairs.csv") %>% select(-X)
+# glimpse(rnc_rhymes)
+
+######## metadata #########
+# attach authors & meters
+# load metadata to extract meters
+load("../../data/nkrja_19th_lem.Rda")
+rnc_ids <- c19 %>% 
+  #filter(meter %in% c("Я", "Х")) %>% 
+  mutate(poem_id = paste0("RNC_", Unnamed..0, "_", year), 
+         meter = meter) %>% 
+  select(poem_id, meter, author)
+
+# attach to rhyme data
+rnc_rhymes <- rnc_rhymes %>% 
+  left_join(rnc_ids, by = "poem_id") %>% 
+  rename(#text_id = poem_id, 
+         author_name = author) %>% 
+  separate(poem_id, into = c("corpus", "text_id", "year"), sep = "_") %>% 
+  mutate(year = as.numeric(year),
+         corpus = ifelse(year < 1810, "RNC_before 1810", corpus),
+         corpus = ifelse(year > 1810 & year < 1830, "RNC_1810-1830", corpus),
+         corpus = ifelse(year > 1840, "RNC_after 1840", corpus)) %>% 
+  filter(corpus != "RNC")  ########## NB remove texts of 1830s
+
+######## rhyme data preparation ##########
+# separate rhyme pairs to just words
+w1 <- rnc_rhymes %>% 
+  select(text_id, corpus, from_pos, from, from_closure, meter, author_name) %>% 
+  rename(pos = from_pos,
+         word = from,
+         closure = from_closure)
+
+w2 <- rnc_rhymes %>% 
+  select(text_id, corpus, to_pos, to, to_closure, meter, author_name) %>% 
+  rename(pos = to_pos,
+         word = to,
+         closure = to_closure)
+
+w <- rbind(w1, w2)
+
+# glimpse(w)
+
+####### lemma ##########
+# add lemmata (preprocessed)
+lemm <- read.csv("../../data/ch5/rnc_rhyme_words_lemmas.csv") %>% select(-X)
+
+# glimpse(lemm)
+
+rnc_rw <- cbind(w, lemm %>% select(lemma)) %>% 
+  # reorder columns similarly as in c35_rw
+  select(text_id, corpus, meter, author_name, pos, word, lemma, closure)
+
+######## abstractness indexes #########
+# attach c/a indexes by lemma
+rnc_rw <- rnc_rw %>% 
+  left_join(dictionaries, by = "lemma")
+
+glimpse(rnc_rw) # final table
+
+# remove obsolete vars
+rm(c19, lemm, rnc_ids, rnc_rhymes, w, w1, w2)
+```
+
+Merge RNC & Corpus-1835 data
+
+```{r}
+colnames(rnc_rw) == colnames(c35_rw) # check
+
+rhyme_words <- rbind(rnc_rw, c35_rw)
+
+sample_n(rhyme_words, 10)
+
+# number of words in each sub-corpus
+rhyme_words %>% count(corpus)
+```
+
+```{r}
+unique(rhyme_words$corpus)
+r <- tibble(corpus = unique(rhyme_words$corpus),
+            corpus_nl = c("RNC_before 1810"))
+```
+
+## canon / archive
+
+Random samples from different subcorpora
+
+Collections VS periodicals
+
+### avg abstractness / concreteness 
+
+```{r, warning=FALSE, message=FALSE}
 x <- NULL
 y <- NULL
 
+for (i in 1:100) {
 
-for (i in 1:1000) {
-
-  x <- c35_rw %>% 
-    group_by(corpus) %>% 
+  x <- rhyme_words %>% 
+    filter(!is.na(index_c_a)) %>% 
+    filter(pos == "NOUN" | pos == "ADJ") %>% 
+    group_by(corpus, pos) %>% 
     sample_n(1000) %>% 
     summarise(ica = mean(index_c_a))
   
   y <- rbind(x,y)
 }
 
+n <- factor(y$corpus, levels = c("RNC_before 1810", 
+                                 "RNC_1810-1830",
+                                 "c1835_C",
+                                 "c1835_P",
+                                 "RNC_after 1840"
+                                 ))
+
+y$corpus <- n
 
 y %>% 
-  ggplot(aes(x = corpus, y = ica)) + geom_boxplot()
+  ggplot(aes(x = corpus, y = ica, fill = pos)) + 
+  geom_boxplot() + 
+  geom_hline(yintercept = 0, lty = 2)
 ```
 
-Random samples from RNC before 1830 and Corpus-1835
+Examples of less abstract ADJ in Corpus-1835
 
-Random samples from RNC before 1810 and Corpus-1835
+```{r}
+rhyme_words %>% 
+  filter(corpus == "c1835_P" & pos == "ADJ") %>% 
+  filter(!is.na(index_c_a) & index_c_a > 0.15) %>% 
+  select(word, index_c_a) %>% 
+  sample_n(20)
+```
+
+### abstr / rel freq of the pos
+
+```{r, warning=FALSE, message=FALSE}
+# select n rhyme words for 1 iteration
+sample_size <- 1000
+
+s <- NULL  # sample
+ind <- NULL  # temp var for indexes
+x <- NULL  # storage
+nr <- NULL # controll number of indexed rows
+
+for (i in 1:100) {
+  # take a sample of rhyme words 
+  s <- rhyme_words %>% 
+    group_by(corpus) %>% 
+    sample_n(sample_size) 
+  
+  # count POS
+  # s %>% 
+  #  count(pos) %>% 
+  #   mutate(perc = round((n/sample_size) * 100, 1))
+  
+  # count mean index
+  ind <- s %>% 
+    filter(!is.na(index_c_a)) %>% 
+    filter(pos %in% c("ADJ", "NOUN")) %>% 
+    group_by(pos, corpus) %>% 
+    summarise(ica = mean(index_c_a))
+  
+  nr <- s %>% 
+    filter(!is.na(index_c_a)) %>% 
+    filter(pos %in% c("ADJ", "NOUN")) %>% 
+    mutate(corpus_pos = paste0(corpus, "_", pos)) %>% 
+    count(corpus_pos) %>% 
+    rename(n_indexed = n) %>% 
+    ungroup() %>% 
+    select(-corpus)
+  
+  # nr
+  # ind
+  
+  ind <- ind %>% 
+    ungroup() %>% 
+    # add column for joining
+    mutate(corpus_pos = paste0(corpus, "_", pos)) %>% 
+    
+    # attach counter (rel freq) of all POS in the samples
+    left_join(s %>% count(pos) %>% 
+          mutate(perc = round((n/sample_size) * 100, 1),
+             corpus_pos = paste0(corpus, "_", pos)) %>% 
+          ungroup() %>% 
+          select(-corpus, -pos),
+      by = "corpus_pos"
+    ) %>% 
+    
+    # add number of indexed words
+    left_join(nr, by = "corpus_pos") %>% 
+    
+    mutate(itr = i, # add iteration counter
+           perc_ind = round((n_indexed / n) * 100, 2)
+           ) 
+  
+  
+  x <- rbind(x, ind)
+}
+
+sample_n(x, 10)
+```
+
+Check if number of indexed words is different in subcorpora
+
+```{r}
+x %>% 
+  ggplot(aes(x = corpus, y = perc_ind)) + 
+  geom_boxplot(color = met.brewer("Veronese")[7]) + 
+  geom_jitter(alpha = 0.3, color = met.brewer("Veronese")[7]) +
+  facet_wrap(~pos)
+```
+
+```{r}
+x %>% 
+  filter(!corpus %in% c(
+    #"RNC_1810-1830", 
+    "RNC_after 1840")) %>% 
+  ggplot(aes(x = perc, y = ica, color = corpus, shape = pos)) + 
+  geom_point(alpha = 0.8) + 
+  geom_hline(yintercept = 0, linewidth = 0.1) + 
+  #facet_wrap(~pos) + 
+  labs(x = "POS relative frequency",
+       y = "Mean conctreteness index",
+       title = "More nouns -- more abstractions?",
+       subtitle = "Each dot is a random sample of 1000 rhyme words") + 
+  scale_color_manual(values = c(met.brewer("Veronese")[3],
+                                met.brewer("Veronese")[1],
+                                met.brewer("Veronese")[4],
+                                met.brewer("Veronese")[7]))
+```
+
+```{r}
+x %>% 
+  filter(!corpus %in% c(
+    #"RNC_1810-1830", 
+    "RNC_after 1840")) %>% 
+  ggplot(aes(x = perc, y = ica, color = corpus, shape = pos)) + 
+  geom_jitter(alpha = 0.3) + 
+  #geom_point(alpha = 0.8) + 
+  geom_boxplot() + 
+  geom_hline(yintercept = 0, linewidth = 0.1) + 
+  #facet_wrap(~pos) + 
+  labs(x = "POS relative frequency",
+       y = "Mean conctreteness index",
+       title = "More nouns -- more abstractions?",
+       subtitle = "Each dot is a random sample of 1000 rhyme words") + 
+  scale_color_manual(values = c(met.brewer("Veronese")[3],
+                                met.brewer("Veronese")[1],
+                                met.brewer("Veronese")[4],
+                                met.brewer("Veronese")[7]))
+```
+
+Random samples from RNC 1810-1830 and Corpus-1835
+
+```{r}
+x %>% 
+  filter(!corpus %in% c(
+    #"RNC_1810-1830" 
+    "RNC_after 1840", "RNC_before 1810"
+    )) %>% 
+  ggplot(aes(x = perc, y = ica, color = corpus, shape = pos)) + 
+  geom_point(alpha = 0.8) + 
+  geom_hline(yintercept = 0, linewidth = 0.1) + 
+  #facet_wrap(~pos) + 
+  labs(x = "POS relative frequency",
+       y = "Mean conctreteness index",
+       title = "More nouns -- more abstractions?",
+       subtitle = "Each dot is a random sample of 1000 rhyme words") + 
+  scale_color_manual(values = c(met.brewer("Veronese")[3],
+                                met.brewer("Veronese")[1],
+                                met.brewer("Veronese")[4],
+                                met.brewer("Veronese")[7]))
+```
 
 ## authors
 
-Random samples from canonical vs unknown authors (only Corpus-1835)
+Same authors as in 5.2, only Corpus-1835 data
 
-Random samples from NKRJA authors vs Corpus-1835 authors
+```{r}
+author_v <- c("Баратынский Е.А.", "Козлов И.И.", "Ростопчина Е.П.",
+              "Бенедиктов В.Г.", "Бернет Е.", "Шахова Е.Н.",
+              "Слепушкин Ф.Н.",  "Мейснер А.", "Некрасов Н.А."
+             )
+
+rhyme_words %>% 
+  filter(author_name %in% author_v) %>% 
+  count(author_name, sort = T) 
+```
+
+```{r, warning=FALSE, message=FALSE}
+sample_size <- 100
+
+s <- NULL
+ind <- NULL
+x <- NULL
+nr <- NULL
+
+for (i in 1:100) {
+  s <- rhyme_words %>% 
+    filter(author_name %in% author_v) %>% 
+    group_by(author_name) %>% 
+    sample_n(sample_size) %>% 
+    ungroup()
+
+  # count mean index
+  ind <- s %>% 
+    filter(!is.na(index_c_a)) %>% 
+    filter(pos %in% c("ADJ", "NOUN")) %>% 
+    group_by(pos, author_name) %>% 
+    summarise(ica = mean(index_c_a))
+  
+  nr <- s %>% 
+    filter(!is.na(index_c_a)) %>% 
+    filter(pos %in% c("ADJ", "NOUN")) %>% 
+    mutate(author_pos = paste0(author_name, "_", pos)) %>% 
+    count(author_pos) %>% 
+    rename(n_indexed = n)
+  
+  
+  ind <- ind %>% 
+    ungroup() %>% 
+    # add column for joining
+    mutate(author_pos = paste0(author_name, "_", pos)) %>% 
+    
+    # attach counter (rel freq) of all POS in the samples
+    left_join(s %>% group_by(author_name) %>% count(pos) %>% 
+          mutate(perc = round((n/sample_size) * 100, 1),
+             author_pos = paste0(author_name, "_", pos)) %>% 
+          ungroup() %>% 
+          select(-author_name, -pos),
+      by = "author_pos"
+    ) %>% 
+    
+    # attach number of nouns & adj counted
+    left_join(nr, by = "author_pos") %>% 
+    
+    mutate(itr = i, # add iteration counter
+           perc_ind = round((n_indexed / n) * 100, 2)
+           ) # iteration counter 
+  
+    x <- rbind(x, ind)
+}
+
+sample_n(x, 10)
+```
+
+```{r}
+x %>% 
+  ggplot(aes(x = author_name, y = perc_ind)) + 
+  geom_boxplot(color = met.brewer("Veronese")[7]) + 
+  geom_jitter(alpha = 0.3, color = met.brewer("Veronese")[7]) +
+  facet_wrap(~pos) + 
+  theme(axis.text.x = element_text(angle = 90))
+```
+
+```{r}
+x %>% 
+  ggplot(aes(x = author_name, y = ica, color = author_name, shape = pos)) + 
+  geom_boxplot() +
+  facet_wrap(~pos)
+```
+
+```{r}
+x %>% 
+  filter(author_name %in% c("Баратынский Е.А.", "Ростопчина Е.П.",
+              "Бенедиктов В.Г.", 
+              "Слепушкин Ф.Н.")) %>% 
+  ggplot(aes(x = perc, y = ica, color = author_name, shape = pos)) + 
+  geom_point(alpha = 0.8) + 
+  geom_hline(yintercept = 0, linewidth = 0.1) + 
+  #facet_wrap(~pos) + 
+  labs(x = "POS relative frequency",
+       y = "Mean conctreteness index",
+       title = "More nouns -- more abstractions?",
+       subtitle = "Each dot is a random sample of 100 rhyme words, 100 iterations",
+       color = "Автор", 
+       shape = "Часть речи") + 
+  scale_color_manual(values = c(met.brewer("Veronese")[1],
+                                met.brewer("Veronese")[3:4],
+                                met.brewer("Veronese")[7]))
+```

@@ -1207,7 +1207,7 @@ m_ranked_long %>%
 # pos_plot
 ```
 
-### POS - rank kendall cor 
+### POS - rank kendall cor
 
 Longer lists
 

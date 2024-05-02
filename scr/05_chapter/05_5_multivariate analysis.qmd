@@ -11,6 +11,7 @@ library(tidyverse)
 library(umap)
 
 library(MetBrewer)
+library(ggrepel)
 theme_set(theme_minimal())
 ```
 
@@ -216,7 +217,7 @@ rnc_rw %>%
   head(40)
 ```
 
-## Features 
+## Features
 
 ### MFW in rhyme
 
@@ -291,8 +292,8 @@ fem_possyl_25 <- fem_rhymes %>%
   head(25) %>% 
   mutate(rank = row_number())
 
-head(masc_possyl_50)
-head(fem_possyl_50)
+head(masc_possyl_25)
+head(fem_possyl_25)
 ```
 
 ```{r, eval=FALSE}
@@ -308,7 +309,7 @@ dim(mf_possyl)
 
 MDS table
 
-```{r}
+```{r, eval=FALSE}
 
 x <- NULL
 
@@ -330,7 +331,7 @@ for (i in 1:100) {
     filter(ending_st %in% masc_ending_50$ending_st | 
              ending_st %in% fem_ending_50$ending_st) %>% 
     count(ending_st) %>% 
-    pivot_wider(names_from = ending_st, values_from = n, , values_fill = 0)
+    pivot_wider(names_from = ending_st, values_from = n, values_fill = 0)
   
   mf_possyl <- s %>% 
     filter(pos_syl %in% masc_possyl_50$pos_syl | 
@@ -408,17 +409,22 @@ simple 10 authors selection
 authors_slctd <- tibble(
   author_name = c("Бенедиктов В.Г.", "Бернет Е.", "Тимофеев А.В.", 
                "Некрасов Н.А.", "Суханов М.Д.", "Бороздна И.П.", 
-               "Быстроглазов А.", "Мейснер А.", "Шахова Е.Н.",
+               "Ростопчина Е.П.", "Мейснер А.", "Шахова Е.Н.", "Тепляков В.Г.",
+               
+              # "Быстроглазов А.", "Демидов М.А.", "Башкатов А.", 
+              # "Зилов А.М.", "Меркли М.М.",
                
                "Г. Р. Державин", "К. Н. Батюшков", "А. С. Пушкин",
                "А. А. Дельвиг", "А. Ф. Мерзляков", "И. И. Дмитриев",
-               "П. А. Вяземский", "И. И. Хемницер", "К. Ф. Рылеев"
+               "Д. И. Хвостов", "И. И. Хемницер", "К. Ф. Рылеев", "И. А. Крылов"
                ),
-  corpus = c(rep("Корпус-1835", 9), rep("НКРЯ", 9))
+  corpus = c(rep("Корпус-1835", 10), rep("НКРЯ", 10))
 )
 
 authors_slctd
 ```
+
+### MFW50 + MF endings 50 + MF pos-syl 25 
 
 ```{r}
 x <- NULL
@@ -427,6 +433,10 @@ for (i in 1:3) {
   # take a sample
   s <- rhyme_words %>% 
     filter(author_name %in% authors_slctd$author_name) %>% 
+    mutate(author_name = str_replace(author_name, 
+                                     "(^\\w\\. \\w\\. )(\\w+)$",
+                                     "\\2 \\1"
+                                     )) %>% 
     group_by(author_name) %>% 
     sample_n(1000)
 
@@ -476,19 +486,40 @@ xxx <- x
 # matrix
 mtrx <- xxx %>% 
   ungroup() %>% 
-  select(-author_name, -smpl) 
+  select(-author_name, -smpl) %>% 
+  scale()
 
 u <- umap(mtrx)
 
 tibble(x = u$layout[,1],
        y = u$layout[,2],
        author_name = xxx$author_name) %>%
-  left_join(authors_slctd, by = "author_name") %>% 
+  left_join(authors_slctd %>% mutate(author_name = str_replace(author_name, 
+                                     "(^\\w\\. \\w\\. )(\\w+)$",
+                                     "\\2 \\1"
+                                     )), 
+            by = "author_name") %>% 
   ggplot(aes(x, y, color = corpus)) + 
   #geom_point() + 
-  geom_text(aes(label = author_name), size = 3) + 
-  theme_bw() 
+  geom_text(aes(label = author_name), 
+            size = 4) + 
+  theme_bw() + 
+  scale_color_manual(values = c(met.brewer("Veronese")[5], 
+                                met.brewer("Veronese")[3])) + 
+  labs(x = "", y = "", color = "") + 
+  theme(legend.position = "bottom",
+        axis.title.x = element_blank(), 
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        legend.text = element_text(size = 12))
 ```
+
+```{r, eval=FALSE}
+ggsave("plots/fig_5-3-1_mfw-gr.png", plot = last_plot(), dpi = 300,
+       bg = "white", width = 11, height = 7)
+```
+
+### Grammar: MF endings 50 + MF syl-pos 25
 
 Same without words
 
@@ -499,6 +530,10 @@ for (i in 1:3) {
   # take a sample
   s <- rhyme_words %>% 
     filter(author_name %in% authors_slctd$author_name) %>% 
+    mutate(author_name = str_replace(author_name, 
+                                     "(^\\w\\. \\w\\. )(\\w+)$",
+                                     "\\2 \\1"
+                                     )) %>% 
     group_by(author_name) %>% 
     sample_n(1000)
 
@@ -541,6 +576,427 @@ for (i in 1:3) {
   x <- rbind(x, f)
 }  
   
+#x
+# dim(x)
+
+xxx <- x
+  
+# matrix
+mtrx <- xxx %>% 
+  ungroup() %>% 
+  select(-author_name, -smpl) #%>% 
+  #scale()
+
+u <- umap(mtrx)
+
+tibble(x = u$layout[,1],
+       y = u$layout[,2],
+       author_name = xxx$author_name) %>%
+  left_join(authors_slctd %>% mutate(author_name = str_replace(author_name, 
+                                     "(^\\w\\. \\w\\. )(\\w+)$",
+                                     "\\2 \\1"
+                                     )), 
+            by = "author_name") %>% 
+  ggplot(aes(x, y, color = corpus)) + 
+  geom_text(aes(label = author_name), 
+            size = 4) + 
+  theme_bw() + 
+  scale_color_manual(values = c(met.brewer("Veronese")[5], 
+                                met.brewer("Veronese")[3])) + 
+  labs(x = "", y = "", color = "") + 
+  theme(legend.position = "bottom",
+        axis.title.x = element_blank(), 
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        legend.text = element_text(size = 12)) 
+```
+
+```{r, eval=FALSE}
+ggsave("plots/fig_5-3-1_gr_nsc_fin.png", plot = last_plot(), dpi = 300, bg = "white",
+       width = 10, height = 7)
+```
+
+### MFW 200
+
+```{r}
+masc_MFW_200 <- masc_rhymes %>%  
+  count(lemma, sort = T) %>%  # here I count lemmas
+  head(200) %>% 
+  mutate(rank = row_number())
+
+fem_MFW_200 <- fem_rhymes %>% 
+  count(lemma, sort = T) %>% 
+  head(200) %>% 
+  mutate(rank = row_number())
+
+head(masc_MFW_200)
+head(fem_MFW_200)
+```
+
+```{r}
+x <- NULL
+
+for (i in 1:3) {
+  # take a sample
+  s <- rhyme_words %>% 
+    filter(author_name %in% authors_slctd$author_name) %>% 
+    mutate(author_name = str_replace(author_name, 
+                                     "(^\\w\\. \\w\\. )(\\w+)$",
+                                     "\\2 \\1"
+                                     )) %>% 
+    group_by(author_name) %>% 
+    sample_n(1000)
+
+  #calculate inside the sample:
+  mfw <- s %>%
+     filter(lemma %in% masc_MFW_200$lemma | lemma %in% fem_MFW_200$lemma) %>%
+     count(lemma) %>%
+     pivot_wider(names_from = lemma, values_from = n, values_fill = 0)
+  
+  
+  # mfw <- s %>%
+  #   filter(word %in% masc_MFW_100$word | word %in% fem_MFW_100$word) %>%
+  #   count(word) %>%
+  #   pivot_wider(names_from = word, values_from = n, values_fill = 0)
+
+  # mf_endings <- s %>% 
+  #   filter(ending_st %in% masc_ending_50$ending_st | 
+  #            ending_st %in% fem_ending_50$ending_st) %>% 
+  #   count(ending_st) %>% 
+  #   pivot_wider(names_from = ending_st, values_from = n, values_fill = 0)
+  # 
+  # mf_possyl_masc <- s %>% 
+  #   filter(closure == "masc") %>% 
+  #   mutate(pos_syl = paste0(pos_syl, "_masc")) %>% 
+  #   filter(pos_syl %in% masc_possyl_25$pos_syl) %>% 
+  #   count(pos_syl) %>% 
+  #   pivot_wider(names_from = pos_syl, values_from = n, values_fill = 0)
+  # 
+  # mf_possyl_fem <- s %>% 
+  #   filter(closure == "fem") %>% 
+  #   mutate(pos_syl = paste0(pos_syl, "_fem")) %>% 
+  #   filter(pos_syl %in% fem_possyl_25$pos_syl) %>% 
+  #   count(pos_syl) %>% 
+  #   pivot_wider(names_from = pos_syl, values_from = n, values_fill = 0)
+  
+  
+  # bind together
+  # f <- cbind(#mfw, 
+  #   mf_endings, mf_possyl_masc[, -1], mf_possyl_fem[, -1])
+  
+  
+  f <- mfw %>% 
+    mutate(smpl = i)
+  
+  f[is.na(f)] <- 0 # remove na
+  
+  x <- rbind(x, f)
+}  
+  
+x[is.na(x)] <- 0
+dim(x)
+
+
+xxx <- x
+  
+# matrix
+mtrx <- xxx %>% 
+  ungroup() %>% 
+  select(-author_name, -smpl) #%>% 
+  #scale()
+
+u <- umap(mtrx)
+
+tibble(x = u$layout[,1],
+       y = u$layout[,2],
+       author_name = xxx$author_name) %>%
+  left_join(authors_slctd %>% mutate(author_name = str_replace(author_name, 
+                                     "(^\\w\\. \\w\\. )(\\w+)$",
+                                     "\\2 \\1"
+                                     )) , by = "author_name") %>% 
+  ggplot(aes(x, y, color = corpus)) + 
+  geom_text(aes(label = author_name), 
+            size = 4) + 
+  theme_bw() + 
+  scale_color_manual(values = c(met.brewer("Veronese")[5], 
+                                met.brewer("Veronese")[3])) + 
+  labs(x = "", y = "", color = "") + 
+  theme(legend.position = "bottom",
+        axis.title.x = element_blank(), 
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        legend.text = element_text(size = 12)) 
+```
+
+```{r, eval=FALSE}
+ggsave("plots/fig_5-3-1_lemmata_nsc_fin.png", plot = last_plot(), dpi = 300, bg = "white",
+       width = 10, height = 7)
+```
+
+### 
+
+## Larger set of authors
+
+Take all 1830s authors with 2k rhymes + multiple samples from unknown authors
+
+```{r}
+authors_slctd <- c35_rw %>% 
+  mutate(author_name = ifelse(is.na(author_name), "Анонимы", author_name)) %>% 
+  group_by(author_name) %>% 
+  count(sort = T) %>% 
+  filter(n > 1500 & !author_name %in% c("Жуковский В.А.", 
+                                        "Крылов И.А.", 
+                                        "Смирнова А.")) %>% 
+  select(author_name) %>% 
+  mutate(corpus = ifelse(author_name == "Бенедиктов В.Г.", "Бенедиктов", "Другие"))
+
+authors_slctd
+
+```
+
+Grammar
+
+```{r}
+x <- NULL
+
+for (i in 1:2) {
+  # take a sample
+  s <- rhyme_words %>% 
+    mutate(author_name = ifelse(is.na(author_name), "Анонимы", author_name)) %>% 
+    filter(author_name %in% authors_slctd$author_name) %>% 
+    # mutate(author_name = str_replace(author_name, 
+    #                                  "(^\\w\\. \\w\\. )(\\w+)$",
+    #                                  "\\2 \\1"
+    #                                  )) %>% 
+    group_by(author_name) %>% 
+    sample_n(1000)
+
+  # calculate inside the sample:
+  # mfw <- s %>% 
+  #   filter(lemma %in% masc_MFW_50$lemma | lemma %in% fem_MFW_50$lemma) %>% 
+  #   count(lemma) %>% 
+  #   pivot_wider(names_from = lemma, values_from = n, values_fill = 0)
+  # 
+  mf_endings <- s %>% 
+    filter(ending_st %in% masc_ending_50$ending_st | 
+             ending_st %in% fem_ending_50$ending_st) %>% 
+    count(ending_st) %>% 
+    pivot_wider(names_from = ending_st, values_from = n, values_fill = 0)
+  
+  mf_possyl_masc <- s %>% 
+    filter(closure == "masc") %>% 
+    mutate(pos_syl = paste0(pos_syl, "_masc")) %>% 
+    filter(pos_syl %in% masc_possyl_25$pos_syl) %>% 
+    count(pos_syl) %>% 
+    pivot_wider(names_from = pos_syl, values_from = n, values_fill = 0)
+  
+  mf_possyl_fem <- s %>% 
+    filter(closure == "fem") %>% 
+    mutate(pos_syl = paste0(pos_syl, "_fem")) %>% 
+    filter(pos_syl %in% fem_possyl_25$pos_syl) %>% 
+    count(pos_syl) %>% 
+    pivot_wider(names_from = pos_syl, values_from = n, values_fill = 0)
+  
+  
+  # bind together
+  f <- cbind(#mfw, 
+    mf_endings, mf_possyl_masc[, -1], mf_possyl_fem[, -1])
+  
+  f <- f %>% 
+    mutate(smpl = i)
+  
+  f[is.na(f)] <- 0 # remove na
+  
+  x <- rbind(x, f)
+}  
+  
+#x
+# dim(x)
+
+xxx <- x
+
+xxx[is.na(xxx)] <- 0
+
+# matrix
+mtrx <- xxx %>% 
+  ungroup() %>% 
+  select(-author_name, -smpl) #%>% 
+  #scale()
+
+u <- umap(mtrx)
+
+tibble(x = u$layout[,1],
+       y = u$layout[,2],
+       author_name = xxx$author_name) %>%
+  left_join(authors_slctd #%>% mutate(author_name = str_replace(author_name, 
+                                     #"(^\\w\\. \\w\\. )(\\w+)$",
+                                     #"\\2 \\1"
+                                     #))
+            , 
+            by = "author_name") %>% 
+  ggplot(aes(x, y, color = author_name)) + 
+  geom_text(aes(label = author_name), 
+            size = 4) + 
+  theme_bw() + 
+  # scale_color_manual(values = c(met.brewer("Veronese")[2], 
+  #                               met.brewer("Veronese")[5])) + 
+  labs(x = "", y = "", color = "") + 
+  theme(legend.position = "bottom",
+        axis.title.x = element_blank(), 
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        legend.text = element_text(size = 12)) 
+```
+
+Words
+
+```{r}
+x <- NULL
+
+for (i in 1:2) {
+  # take a sample
+  s <- rhyme_words %>% 
+    mutate(author_name = ifelse(is.na(author_name), "Анонимы", author_name)) %>% 
+    filter(author_name %in% authors_slctd$author_name) %>% 
+    # mutate(author_name = str_replace(author_name, 
+    #                                  "(^\\w\\. \\w\\. )(\\w+)$",
+    #                                  "\\2 \\1"
+    #                                  )) %>% 
+    group_by(author_name) %>% 
+    sample_n(1000)
+
+  # calculate inside the sample:
+  mfw <- s %>%
+    filter(lemma %in% masc_MFW_200$lemma | lemma %in% fem_MFW_200$lemma) %>%
+    count(lemma) %>%
+    pivot_wider(names_from = lemma, values_from = n, values_fill = 0)
+
+  # mf_endings <- s %>% 
+  #   filter(ending_st %in% masc_ending_50$ending_st | 
+  #            ending_st %in% fem_ending_50$ending_st) %>% 
+  #   count(ending_st) %>% 
+  #   pivot_wider(names_from = ending_st, values_from = n, values_fill = 0)
+  # 
+  # mf_possyl_masc <- s %>% 
+  #   filter(closure == "masc") %>% 
+  #   mutate(pos_syl = paste0(pos_syl, "_masc")) %>% 
+  #   filter(pos_syl %in% masc_possyl_25$pos_syl) %>% 
+  #   count(pos_syl) %>% 
+  #   pivot_wider(names_from = pos_syl, values_from = n, values_fill = 0)
+  # 
+  # mf_possyl_fem <- s %>% 
+  #   filter(closure == "fem") %>% 
+  #   mutate(pos_syl = paste0(pos_syl, "_fem")) %>% 
+  #   filter(pos_syl %in% fem_possyl_25$pos_syl) %>% 
+  #   count(pos_syl) %>% 
+  #   pivot_wider(names_from = pos_syl, values_from = n, values_fill = 0)
+  
+  
+  # bind together
+  f <- cbind(#mfw, 
+    mf_endings, mf_possyl_masc[, -1], mf_possyl_fem[, -1])
+  
+  f <- f %>% 
+    mutate(smpl = i)
+  
+  f[is.na(f)] <- 0 # remove na
+  
+  x <- rbind(x, f)
+}  
+  
+#x
+# dim(x)
+
+xxx <- x
+
+xxx[is.na(xxx)] <- 0
+
+# matrix
+mtrx <- xxx %>% 
+  ungroup() %>% 
+  select(-author_name, -smpl) #%>% 
+  #scale()
+
+u <- umap(mtrx)
+
+tibble(x = u$layout[,1],
+       y = u$layout[,2],
+       author_name = xxx$author_name) %>%
+  left_join(authors_slctd #%>% mutate(author_name = str_replace(author_name, 
+                                     #"(^\\w\\. \\w\\. )(\\w+)$",
+                                     #"\\2 \\1"
+                                     #))
+            , 
+            by = "author_name") %>% 
+  ggplot(aes(x, y, color = author_name)) + 
+  geom_text(aes(label = author_name), 
+            size = 4) + 
+  theme_bw() + 
+  # scale_color_manual(values = c(met.brewer("Veronese")[2], 
+  #                               met.brewer("Veronese")[5])) + 
+  labs(x = "", y = "", color = "") + 
+  theme(legend.position = "bottom",
+        axis.title.x = element_blank(), 
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        legend.text = element_text(size = 12))
+```
+
+all
+
+```{r}
+x <- NULL
+
+for (i in 1:2) {
+  # take a sample
+  s <- rhyme_words %>% 
+    mutate(author_name = ifelse(is.na(author_name), "Анонимы", author_name)) %>% 
+    filter(author_name %in% authors_slctd$author_name) %>% 
+    mutate(author_name = str_replace(author_name, 
+                                     "(^\\w\\. \\w\\. )(\\w+)$",
+                                     "\\2 \\1"
+                                     )) %>% 
+    group_by(author_name) %>% 
+    sample_n(1000)
+
+  # calculate inside the sample:
+  mfw <- s %>% 
+    filter(lemma %in% masc_MFW_50$lemma | lemma %in% fem_MFW_50$lemma) %>% 
+    count(lemma) %>% 
+    pivot_wider(names_from = lemma, values_from = n, values_fill = 0)
+  
+  mf_endings <- s %>% 
+    filter(ending_st %in% masc_ending_50$ending_st | 
+             ending_st %in% fem_ending_50$ending_st) %>% 
+    count(ending_st) %>% 
+    pivot_wider(names_from = ending_st, values_from = n, values_fill = 0)
+  
+  mf_possyl_masc <- s %>% 
+    filter(closure == "masc") %>% 
+    mutate(pos_syl = paste0(pos_syl, "_masc")) %>% 
+    filter(pos_syl %in% masc_possyl_25$pos_syl) %>% 
+    count(pos_syl) %>% 
+    pivot_wider(names_from = pos_syl, values_from = n, values_fill = 0)
+  
+  mf_possyl_fem <- s %>% 
+    filter(closure == "fem") %>% 
+    mutate(pos_syl = paste0(pos_syl, "_fem")) %>% 
+    filter(pos_syl %in% fem_possyl_25$pos_syl) %>% 
+    count(pos_syl) %>% 
+    pivot_wider(names_from = pos_syl, values_from = n, values_fill = 0)
+  
+  
+  # bind together
+  f <- cbind(mfw, mf_endings[, -1], mf_possyl_masc[, -1], mf_possyl_fem[, -1])
+  
+  f <- f %>% 
+    mutate(smpl = i)
+  
+  f[is.na(f)] <- 0 # remove na
+  
+  x <- rbind(x, f)
+}  
+  
 x
 dim(x)
 
@@ -549,16 +1005,35 @@ xxx <- x
 # matrix
 mtrx <- xxx %>% 
   ungroup() %>% 
-  select(-author_name, -smpl) 
+  select(-author_name, -smpl) %>% 
+  scale()
 
 u <- umap(mtrx)
 
 tibble(x = u$layout[,1],
        y = u$layout[,2],
        author_name = xxx$author_name) %>%
-  left_join(authors_slctd, by = "author_name") %>% 
+  left_join(authors_slctd #%>% mutate(author_name = str_replace(author_name, 
+                                     #"(^\\w\\. \\w\\. )(\\w+)$",
+                                     #"\\2 \\1"
+                                     #))
+            , 
+            by = "author_name") %>% 
   ggplot(aes(x, y, color = corpus)) + 
-  #geom_point() + 
-  geom_text(aes(label = author_name), size = 3) + 
-  theme_bw() 
+  geom_text(aes(label = author_name), 
+            size = 4) + 
+  theme_bw() + 
+  scale_color_manual(values = c(met.brewer("Veronese")[1],
+                                met.brewer("Veronese")[4])) +
+  labs(x = "", y = "", color = "") + 
+  theme(legend.position = "None",
+        axis.title.x = element_blank(), 
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        legend.text = element_text(size = 12))
+```
+
+```{r, eval=FALSE}
+ggsave("plots/fig_5-3-3_b.png", plot = last_plot(), dpi = 300, bg = "white",
+       width = 10, height = 7)
 ```

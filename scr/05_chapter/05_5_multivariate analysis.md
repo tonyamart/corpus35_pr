@@ -1,23 +1,42 @@
----
-title: "05_5_distances"
-format: md
-editor: visual
----
+# 05_5_distances
 
 ## load data
 
-```{r}
+``` r
 library(tidyverse)
+```
+
+    Warning: package 'ggplot2' was built under R version 4.3.1
+
+    Warning: package 'lubridate' was built under R version 4.3.1
+
+    ── Attaching core tidyverse packages ──────────────────────── tidyverse 2.0.0 ──
+    ✔ dplyr     1.1.3     ✔ readr     2.1.4
+    ✔ forcats   1.0.0     ✔ stringr   1.5.0
+    ✔ ggplot2   3.4.4     ✔ tibble    3.2.1
+    ✔ lubridate 1.9.3     ✔ tidyr     1.3.0
+    ✔ purrr     1.0.2     
+    ── Conflicts ────────────────────────────────────────── tidyverse_conflicts() ──
+    ✖ dplyr::filter() masks stats::filter()
+    ✖ dplyr::lag()    masks stats::lag()
+    ℹ Use the conflicted package (<http://conflicted.r-lib.org/>) to force all conflicts to become errors
+
+``` r
 library(umap)
 
 library(MetBrewer)
 library(ggrepel)
+```
+
+    Warning: package 'ggrepel' was built under R version 4.3.1
+
+``` r
 theme_set(theme_minimal())
 ```
 
 ### Corpus-1835
 
-```{r}
+``` r
 rhyme_words <- read.csv("../../data/corpus1835/sql_db/rhyme_words_upd.csv", 
                         
                         # DON'T LET R EAT IAMBS AND DO INTEGER 01 => 1
@@ -73,7 +92,18 @@ meta <- read.csv("../../data/corpus1835/sql_db/texts_metadata.csv")
 
 authors_meta <- read_csv("../../data/corpus1835/sql_db/authors.csv") %>% 
   select(A_ID, author_name)
+```
 
+    Rows: 315 Columns: 11
+    ── Column specification ────────────────────────────────────────────────────────
+    Delimiter: ","
+    chr (10): A_ID, author_name, author_full_name, author_sex, year_birth, year_...
+    dbl  (1): aristocracy
+
+    ℹ Use `spec()` to retrieve the full column specification for this data.
+    ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
+
+``` r
 meta <- meta %>% 
   left_join(authors_meta, by = "A_ID") %>% 
   mutate(corpus = str_extract(text_id, "^\\w")) %>% 
@@ -97,13 +127,26 @@ c35_rw <- rw %>%
 sample_n(c35_rw, 5)
 ```
 
-```{r}
+       text_id  corpus      meter    author_name      word      lemma closure
+    1 C_142__3 c1835_C       Iamb  Бороздна И.П.  покорный   покорный     fem
+    2 C_92__45 c1835_C       Iamb Жуковский В.А.    таится    таиться     fem
+    3    P_574 c1835_P       Iamb   Хомяков А.С.      уста       уста    masc
+    4    P_533 c1835_P    Trochee  Якубович Л.А.    горела     гореть     fem
+    5   P_1902 c1835_P Amphibrach           <NA> склонился склоняться     fem
+      ending_st pos_syl
+    1    о'рный   ADJ_3
+    2     и'тся  VERB_3
+    3       та'  NOUN_2
+    4      е'ла  VERB_3
+    5     и'лся  VERB_3
+
+``` r
 rm(authors_meta, lemm, meta, pos_transl, w, w1, w2, rhyme_pairs, rhyme_words, rw)
 ```
 
 ### RNC
 
-```{r}
+``` r
 rnc_rhymes <- read.csv("../../data/ch5/nkrja_rhyme_pairs.csv") %>% select(-X)
 # glimpse(rnc_rhymes)
 
@@ -167,16 +210,32 @@ rnc_rw <- cbind(w, lemm %>% select(lemma)) %>%
          ending_st, pos_syl)
 
 glimpse(rnc_rw) # final table
+```
 
+    Rows: 225,702
+    Columns: 9
+    $ text_id     <chr> "3870", "3870", "3870", "3870", "7246", "7246", "7246", "7…
+    $ corpus      <chr> "RNC_before 1810", "RNC_before 1810", "RNC_before 1810", "…
+    $ meter       <chr> "Я", "Я", "Я", "Я", "Я", "Я", "Я", "Я", "Я", "Я", "Я", "Я"…
+    $ author_name <chr> "И. И. Дмитриев", "И. И. Дмитриев", "И. И. Дмитриев", "И. …
+    $ word        <chr> "кантемир", "равнялись", "блистал", "находился", "спокоен"…
+    $ lemma       <chr> "кантемир", "равняться", "блистать", "находиться", "спокой…
+    $ closure     <chr> "masc", "fem", "masc", "fem", "fem", "masc", "fem", "masc"…
+    $ ending_st   <chr> "и'р", "я'лись", "а'л", "и'лся", "о'ен", "гу'", "я'ми", "у…
+    $ pos_syl     <chr> "NOUN_3", "VERB_3", "VERB_2", "VERB_4", "ADJ_3", "NOUN_2",…
+
+``` r
 # remove obsolete vars
 rm(c19, lemm, rnc_ids, rnc_rhymes, w, w1, w2)
 ```
 
-```{r}
+``` r
 colnames(c35_rw) == colnames(rnc_rw)
 ```
 
-```{r}
+    [1] TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE
+
+``` r
 rhyme_words <- rbind(c35_rw, rnc_rw)
 
 masc_rhymes <- rhyme_words %>% filter(closure == "masc" & corpus != "RNC_after 1840")
@@ -188,7 +247,7 @@ fem_rhymes <- rhyme_words %>% filter(closure == "fem" & corpus != "RNC_after 184
 
 ### Totals - corpus
 
-```{r}
+``` r
 totals_masc <- masc_rhymes %>% 
   group_by(corpus) %>% 
   count()
@@ -200,9 +259,18 @@ totals_fem <- fem_rhymes %>%
 totals_masc %>% left_join(totals_fem %>% rename(n_fem = n), by = "corpus")
 ```
 
+    # A tibble: 4 × 3
+    # Groups:   corpus [4]
+      corpus              n n_fem
+      <chr>           <int> <int>
+    1 RNC_1810-1830   50499 48582
+    2 RNC_before 1810 37479 39922
+    3 c1835_C         51353 47811
+    4 c1835_P         31337 28195
+
 ### Totals - authors
 
-```{r}
+``` r
 c35_rw %>% 
   filter(!is.na(author_name)) %>% 
   group_by(author_name) %>% 
@@ -210,18 +278,50 @@ c35_rw %>%
   head(40)
 ```
 
-```{r}
+    # A tibble: 40 × 2
+    # Groups:   author_name [40]
+       author_name          n
+       <chr>            <int>
+     1 Жуковский В.А.    7382
+     2 Крылов И.А.       6402
+     3 Бороздна И.П.     4676
+     4 Быстроглазов А.   4082
+     5 Бенедиктов В.Г.   4010
+     6 Бернет Е.         3914
+     7 Баратынский Е.А.  3830
+     8 Мейснер А.        3158
+     9 Смирнова А.       3132
+    10 Шахова Е.Н.       3090
+    # ℹ 30 more rows
+
+``` r
 rnc_rw %>% 
   group_by(author_name) %>% 
   count(sort = T) %>% 
   head(40)
 ```
 
+    # A tibble: 40 × 2
+    # Groups:   author_name [40]
+       author_name         n
+       <chr>           <int>
+     1 В. А. Жуковский 17012
+     2 А. С. Пушкин    14624
+     3 Г. Р. Державин  12700
+     4 Н. М. Языков     8814
+     5 И. И. Дмитриев   8214
+     6 П. А. Вяземский  6106
+     7 И. А. Крылов     5992
+     8 В. В. Капнист    5928
+     9 И. И. Хемницер   5128
+    10 Н. М. Карамзин   4908
+    # ℹ 30 more rows
+
 ## Features
 
 ### MFW in rhyme
 
-```{r}
+``` r
 masc_MFW_50 <- masc_rhymes %>%  
   count(lemma, sort = T) %>%  # here I count lemmas
   head(50) %>% 
@@ -233,10 +333,29 @@ fem_MFW_50 <- fem_rhymes %>%
   mutate(rank = row_number())
 
 head(masc_MFW_50)
+```
+
+      lemma    n rank
+    1     я 3694    1
+    2   мой 2956    2
+    3    ты 2201    3
+    4  свой 1861    4
+    5    он 1807    5
+    6   она 1704    6
+
+``` r
 head(fem_MFW_50)
 ```
 
-```{r, eval=FALSE}
+        lemma   n rank
+    1   слава 801    1
+    2    душа 796    2
+    3    рука 766    3
+    4 природа 725    4
+    5   знать 692    5
+    6     око 614    6
+
+``` r
 s <- rhyme_words %>% 
   group_by(corpus) %>% 
   sample_n(10000)
@@ -251,7 +370,7 @@ mfw[,1:7]
 
 ### MF endings
 
-```{r}
+``` r
 masc_ending_50 <- masc_rhymes %>%  
   count(ending_st, sort = T) %>% 
   head(50) %>% 
@@ -263,10 +382,29 @@ fem_ending_50 <- fem_rhymes %>%
   mutate(rank = row_number())
 
 head(masc_ending_50)
+```
+
+      ending_st     n rank
+    1       о'й 14734    1
+    2       е'й  9364    2
+    3       а'л  5788    3
+    4       и'т  5221    4
+    5      а'ть  4675    5
+    6       о'в  4636    6
+
+``` r
 head(fem_ending_50)
 ```
 
-```{r, eval=FALSE}
+      ending_st    n rank
+    1       о'ю 6351    1
+    2      а'ет 5798    2
+    3      а'ми 4370    3
+    4     е'нье 3235    4
+    5       а'я 3143    5
+    6     е'нья 3098    6
+
+``` r
 mf_endings <- s %>% 
   filter(ending_st %in% masc_ending_50$ending_st | 
            ending_st %in% fem_ending_50$ending_st) %>% 
@@ -279,7 +417,7 @@ dim(mf_endings)
 
 ### MF pos_syl
 
-```{r}
+``` r
 masc_possyl_25 <- masc_rhymes %>%  
   mutate(pos_syl = paste0(pos_syl, "_masc")) %>% 
   count(pos_syl, sort = T) %>%  
@@ -293,10 +431,29 @@ fem_possyl_25 <- fem_rhymes %>%
   mutate(rank = row_number())
 
 head(masc_possyl_25)
+```
+
+          pos_syl     n rank
+    1 NOUN_2_masc 49778    1
+    2 NOUN_1_masc 25770    2
+    3 VERB_2_masc 20222    3
+    4 VERB_3_masc 14435    4
+    5 NOUN_3_masc 14114    5
+    6 PRON_1_masc  9369    6
+
+``` r
 head(fem_possyl_25)
 ```
 
-```{r, eval=FALSE}
+         pos_syl     n rank
+    1 NOUN_3_fem 40697    1
+    2 NOUN_2_fem 27940    2
+    3 VERB_3_fem 18667    3
+    4 VERB_4_fem 17949    4
+    5  ADJ_3_fem 14230    5
+    6 NOUN_4_fem 12204    6
+
+``` r
 mf_possyl <- s %>% 
   filter(pos_syl %in% masc_possyl_50$pos_syl | 
            pos_syl %in% fem_possyl_50$pos_syl) %>% 
@@ -309,8 +466,7 @@ dim(mf_possyl)
 
 MDS
 
-```{r, eval=FALSE}
-
+``` r
 x <- NULL
 
 for (i in 1:100) {
@@ -383,7 +539,7 @@ proj %>%
 # then project ALL at the same time in the same space
 ```
 
-```{r, eval=FALSE}
+``` r
 u <- umap(xxx %>% 
   ungroup() %>% 
   select(-corpus, -smpl))
@@ -405,7 +561,7 @@ tibble(x=u$layout[,1],
 
 simple 10 authors selection
 
-```{r}
+``` r
 authors_slctd <- tibble(
   author_name = c("Бенедиктов В.Г.", "Бернет Е.", "Тимофеев А.В.", 
                "Некрасов Н.А.", "Суханов М.Д.", "Бороздна И.П.", 
@@ -424,9 +580,33 @@ authors_slctd <- tibble(
 authors_slctd
 ```
 
+    # A tibble: 20 × 2
+       author_name     corpus     
+       <chr>           <chr>      
+     1 Бенедиктов В.Г. Корпус-1835
+     2 Бернет Е.       Корпус-1835
+     3 Тимофеев А.В.   Корпус-1835
+     4 Некрасов Н.А.   Корпус-1835
+     5 Суханов М.Д.    Корпус-1835
+     6 Бороздна И.П.   Корпус-1835
+     7 Ростопчина Е.П. Корпус-1835
+     8 Мейснер А.      Корпус-1835
+     9 Шахова Е.Н.     Корпус-1835
+    10 Тепляков В.Г.   Корпус-1835
+    11 Г. Р. Державин  НКРЯ       
+    12 К. Н. Батюшков  НКРЯ       
+    13 А. С. Пушкин    НКРЯ       
+    14 А. А. Дельвиг   НКРЯ       
+    15 А. Ф. Мерзляков НКРЯ       
+    16 И. И. Дмитриев  НКРЯ       
+    17 Д. И. Хвостов   НКРЯ       
+    18 И. И. Хемницер  НКРЯ       
+    19 К. Ф. Рылеев    НКРЯ       
+    20 И. А. Крылов    НКРЯ       
+
 ### MFW50 + MF endings 50 + MF pos-syl 25
 
-```{r}
+``` r
 x <- NULL
 
 for (i in 1:3) {
@@ -479,8 +659,37 @@ for (i in 1:3) {
 }  
   
 x
-dim(x)
+```
 
+    # A tibble: 60 × 237
+    # Groups:   author_name [20]
+       author_name        блистать   бог   век венец  взор внимать  вода волна    вы
+       <chr>                 <int> <int> <int> <int> <int>   <int> <int> <int> <int>
+     1 "Батюшков К. Н. "         2     1     2     1     2       1     2     1     3
+     2 "Бенедиктов В.Г."         2     0     1     6     3       0     2     5     2
+     3 "Бернет Е."               2     3     3     2     0       0     3     7     0
+     4 "Бороздна И.П."           1     1     4     0     4       1     5     3     1
+     5 "Дельвиг А. А. "          1     9     1     2     1       0     1     1     8
+     6 "Державин Г. Р. "         2     6     3     1     8       2     1     5     1
+     7 "Дмитриев И. И. "         1     7     0     2     4       1     2     0     5
+     8 "Крылов И. А. "           0     3     0     0     1       0     6     0     2
+     9 "Мейснер А."              1     4     2     0     2       0     1     1     0
+    10 "Мерзляков А. Ф. "        3     6     4     1     3       3     0     2     1
+    # ℹ 50 more rows
+    # ℹ 227 more variables: говорить <int>, год <int>, гора <int>, грудь <int>,
+    #   день <int>, дорога <int>, друг <int>, душа <int>, желать <int>, жить <int>,
+    #   земля <int>, знать <int>, красота <int>, лететь <int>, любить <int>,
+    #   любовь <int>, мечта <int>, мечтание <int>, мир <int>, могила <int>,
+    #   мой <int>, молодой <int>, море <int>, мы <int>, наслаждение <int>,
+    #   небесный <int>, небо <int>, нет <int>, огонь <int>, один <int>, …
+
+``` r
+dim(x)
+```
+
+    [1]  60 237
+
+``` r
 xxx <- x
   
 # matrix
@@ -514,7 +723,9 @@ tibble(x = u$layout[,1],
         legend.text = element_text(size = 12))
 ```
 
-```{r, eval=FALSE}
+![](05_5_multivariate-analysis.markdown_strict_files/figure-markdown_strict/unnamed-chunk-19-1.png)
+
+``` r
 ggsave("plots/fig_5-3-1_mfw-gr.png", plot = last_plot(), dpi = 300,
        bg = "white", width = 11, height = 7)
 ```
@@ -523,7 +734,7 @@ ggsave("plots/fig_5-3-1_mfw-gr.png", plot = last_plot(), dpi = 300,
 
 Same without words
 
-```{r}
+``` r
 x <- NULL
 
 for (i in 1:3) {
@@ -611,14 +822,16 @@ tibble(x = u$layout[,1],
         legend.text = element_text(size = 12)) 
 ```
 
-```{r, eval=FALSE}
+![](05_5_multivariate-analysis.markdown_strict_files/figure-markdown_strict/unnamed-chunk-21-1.png)
+
+``` r
 ggsave("plots/fig_5-3-1_gr_nsc_fin.png", plot = last_plot(), dpi = 300, bg = "white",
        width = 10, height = 7)
 ```
 
 ### MFW 200
 
-```{r}
+``` r
 masc_MFW_200 <- masc_rhymes %>%  
   count(lemma, sort = T) %>%  # here I count lemmas
   head(200) %>% 
@@ -630,10 +843,29 @@ fem_MFW_200 <- fem_rhymes %>%
   mutate(rank = row_number())
 
 head(masc_MFW_200)
+```
+
+      lemma    n rank
+    1     я 3694    1
+    2   мой 2956    2
+    3    ты 2201    3
+    4  свой 1861    4
+    5    он 1807    5
+    6   она 1704    6
+
+``` r
 head(fem_MFW_200)
 ```
 
-```{r}
+        lemma   n rank
+    1   слава 801    1
+    2    душа 796    2
+    3    рука 766    3
+    4 природа 725    4
+    5   знать 692    5
+    6     око 614    6
+
+``` r
 x <- NULL
 
 for (i in 1:3) {
@@ -695,8 +927,11 @@ for (i in 1:3) {
   
 x[is.na(x)] <- 0
 dim(x)
+```
 
+    [1]  60 336
 
+``` r
 xxx <- x
   
 # matrix
@@ -728,7 +963,9 @@ tibble(x = u$layout[,1],
         legend.text = element_text(size = 12)) 
 ```
 
-```{r, eval=FALSE}
+![](05_5_multivariate-analysis.markdown_strict_files/figure-markdown_strict/unnamed-chunk-24-1.png)
+
+``` r
 ggsave("plots/fig_5-3-1_lemmata_nsc_fin.png", plot = last_plot(), dpi = 300, bg = "white",
        width = 10, height = 7)
 ```
@@ -737,9 +974,10 @@ ggsave("plots/fig_5-3-1_lemmata_nsc_fin.png", plot = last_plot(), dpi = 300, bg 
 
 ## Larger set of authors
 
-Take all 1830s authors with 2k rhymes + multiple samples from unknown authors
+Take all 1830s authors with 2k rhymes + multiple samples from unknown
+authors
 
-```{r}
+``` r
 authors_slctd <- c35_rw %>% 
   mutate(author_name = ifelse(is.na(author_name), "Анонимы", author_name)) %>% 
   group_by(author_name) %>% 
@@ -751,12 +989,27 @@ authors_slctd <- c35_rw %>%
   mutate(corpus = ifelse(author_name == "Бенедиктов В.Г.", "Бенедиктов", "Другие"))
 
 authors_slctd
-
 ```
+
+    # A tibble: 27 × 2
+    # Groups:   author_name [27]
+       author_name      corpus    
+       <chr>            <chr>     
+     1 Анонимы          Другие    
+     2 Бороздна И.П.    Другие    
+     3 Быстроглазов А.  Другие    
+     4 Бенедиктов В.Г.  Бенедиктов
+     5 Бернет Е.        Другие    
+     6 Баратынский Е.А. Другие    
+     7 Мейснер А.       Другие    
+     8 Шахова Е.Н.      Другие    
+     9 Тимофеев А.В.    Другие    
+    10 Некрасов Н.А.    Другие    
+    # ℹ 17 more rows
 
 Grammar
 
-```{r}
+``` r
 x <- NULL
 
 for (i in 1:2) {
@@ -848,9 +1101,11 @@ tibble(x = u$layout[,1],
         legend.text = element_text(size = 12)) 
 ```
 
+![](05_5_multivariate-analysis.markdown_strict_files/figure-markdown_strict/unnamed-chunk-27-1.png)
+
 Words
 
-```{r}
+``` r
 x <- NULL
 
 for (i in 1:2) {
@@ -942,9 +1197,11 @@ tibble(x = u$layout[,1],
         legend.text = element_text(size = 12))
 ```
 
+![](05_5_multivariate-analysis.markdown_strict_files/figure-markdown_strict/unnamed-chunk-28-1.png)
+
 all
 
-```{r}
+``` r
 x <- NULL
 
 for (i in 1:2) {
@@ -998,8 +1255,37 @@ for (i in 1:2) {
 }  
   
 x
-dim(x)
+```
 
+    # A tibble: 54 × 227
+    # Groups:   author_name [27]
+       author_name      бог  быть вдохновение   век  взор  вода волна говорить грудь
+       <chr>          <int> <int>       <int> <int> <int> <int> <int>    <int> <int>
+     1 Алексеев П.Ф.      3     3           1     2     4     6     7        5     4
+     2 Анонимы            3     4           1     2     3     7     5        2     1
+     3 Бакунин И.М.       1     4           2     3     2     0    14        3     0
+     4 Баратынский Е…     4     1           2     1     2     3     2        2     0
+     5 Башкатов А.        3     7           0     5     1     1     0        2     1
+     6 Бенедиктов В.…     0     2           2     3     3     3     2        1     7
+     7 Бернет Е.          2     2           0     4     1     0     5        8     2
+     8 Бороздна И.П.      0     3           3     5     4     5     1        1     0
+     9 Быстроглазов …     0     6           0     2     4     0     1        0     0
+    10 Демидов М.А.       0     6           6     0     1     2     3        0     1
+    # ℹ 44 more rows
+    # ℹ 217 more variables: давать <int>, день <int>, дорога <int>, друг <int>,
+    #   душа <int>, земля <int>, золотой <int>, красота <int>, лететь <int>,
+    #   лира <int>, любить <int>, любовь <int>, мечта <int>, мир <int>,
+    #   могила <int>, мой <int>, молодой <int>, море <int>, небесный <int>,
+    #   небо <int>, ночь <int>, огонь <int>, один <int>, око <int>, он <int>,
+    #   она <int>, петь <int>, печаль <int>, покой <int>, поле <int>, …
+
+``` r
+dim(x)
+```
+
+    [1]  54 227
+
+``` r
 xxx <- x
   
 # matrix
@@ -1033,7 +1319,9 @@ tibble(x = u$layout[,1],
         legend.text = element_text(size = 12))
 ```
 
-```{r, eval=FALSE}
+![](05_5_multivariate-analysis.markdown_strict_files/figure-markdown_strict/unnamed-chunk-29-1.png)
+
+``` r
 ggsave("plots/fig_5-3-3_b.png", plot = last_plot(), dpi = 300, bg = "white",
        width = 10, height = 7)
 ```

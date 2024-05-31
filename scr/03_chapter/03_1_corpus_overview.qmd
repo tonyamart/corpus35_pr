@@ -1,6 +1,6 @@
 ---
 title: "03_corpus_overview"
-format: html
+format: md
 editor: visual
 ---
 
@@ -19,7 +19,7 @@ theme_set(theme_minimal())
 ## load data
 
 ```{r}
-load("../../data/corpus1835/corpus_1835.Rda")
+corpus_1835 <- readRDS("../../data/corpus1835/corpus_1835.Rds")
 glimpse(corpus_1835)
 ```
 
@@ -107,30 +107,83 @@ Poems
 
 ```{r}
 corpus_1835 %>%
-  mutate(author = ifelse(author == "", author_sign, author)) %>% 
-  filter(author != "") %>% 
-  count(author, corpus, sort = T)
+  filter(author_text != "") %>% 
+  count(author_text, corpus, sort = T) %>% head(20)
 
 corpus_1835 %>%
-  mutate(author = ifelse(author == "", author_sign, author)) %>% 
-  filter(author != "") %>% 
-  count(author, corpus, sort = T) %>% 
-  ggplot(aes(x = reorder_within(author, -n, -n), y = n, fill = corpus)) + geom_col()
+  filter(author_text != "") %>% 
+  count(author_text, corpus, sort = T) %>% 
+  ggplot(aes(x = reorder_within(author_text, -n, -n), y = n, fill = corpus)) + geom_col() + 
+  theme(axis.text.x = element_blank())
 ```
+
+Number of tokens by authors
 
 ```{r}
 corpus_1835 %>%
-  mutate(author = ifelse(author == "", author_sign, author)) %>% 
-  filter(author != "") %>% 
-  select(author, corpus, text_lemm) %>% 
+  #filter(author_text != "") %>% 
+  select(author_text, corpus, text_lemm) %>% 
   unnest_tokens(input = text_lemm, output = word, token = "words") %>%
-  count(author, sort = T)
+  count(author_text, sort = T) %>% head(30)
 
 corpus_1835 %>%
-  mutate(author = ifelse(author == "", author_sign, author)) %>% 
-  filter(author != "") %>% 
-  select(author, corpus, text_lemm) %>% 
+  # filter(author != "") %>% 
+  select(author_text, corpus, text_lemm) %>% 
   unnest_tokens(input = text_lemm, output = word, token = "words") %>%
-  count(author, corpus, sort = T) %>% 
-  ggplot(aes(x = reorder_within(author, -n, -n), y = n, fill = corpus)) + geom_col()
+  count(author_text, corpus, sort = T) %>% 
+  ggplot(aes(x = reorder_within(author_text, -n, -n), y = n, fill = corpus)) + 
+  geom_col() + 
+  geom_hline(yintercept = 2000, color = "blue") + 
+  theme(axis.text.x = element_blank())
 ```
+
+# Subtitles & genres
+
+Simple word counter for genres and keywords in titles
+
+```{r}
+corpus_1835 %>% 
+  mutate(title_words = paste(text_title, text_subtitle)) %>% 
+  filter(text_title != "NA" & text_subtitle != "na") %>% 
+  select(text_id, text_title, title_words) %>% 
+  unnest_tokens(input = title_words, output = word, token = "words") %>%
+  #filter(word == "е") #%>% 
+  count(word, sort = T) 
+
+# things like separate letters ("e") came from titles with abbreviated names ("To E.E.")
+
+
+```
+
+```{r}
+titles <- corpus_1835 %>% 
+  mutate(title_words = paste(text_title, text_subtitle)) %>% 
+  filter(text_title != "NA" & text_subtitle != "na") %>% 
+  select(text_id, text_title, title_words) %>% 
+  unnest_tokens(input = title_words, output = word, token = "words") #%>%
+  #filter(word == "е") #%>% 
+  #count(word, sort = T) 
+
+# write.csv(titles, "poems_titles.csv") # write to lemmatise
+
+titles <- read.csv("poems_titles.csv") %>% select(-X)
+
+head(titles)
+```
+
+Count lemmas in titles
+
+```{r}
+titles_counter <- titles %>% 
+  count(lemma, sort = T)
+```
+
+Look into particular lemmas
+
+```{r}
+
+```
+
+# words
+
+## iambs

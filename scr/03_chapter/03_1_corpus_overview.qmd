@@ -199,7 +199,7 @@ Count lemmas in titles
 titles_counter <- titles %>% 
   count(lemma, sort = T)
 
-titles_counter
+head(titles_counter, 215)
 ```
 
 Count N of periodicals and books texts
@@ -219,13 +219,56 @@ n_corpus
 Look into particular lemmas
 
 ```{r}
-# genres
-
-# шарада
-# омоним
-# русский
-
 genres <- unlist(str_split(c("песня
+романс
+сонет
+элегия
+басня
+песнь
+альбом
+дума
+баллада
+отрывок
+подражание
+послание
+молитва
+фантазия
+псалом
+эпиграмма
+мелодия
+антологический
+надпись
+аполог
+сказка
+экспромт
+эпилог
+шарада
+омоним
+куплет
+гимн
+предание
+акростих
+быль
+ода
+преложение
+анаграмма
+эпиграм
+застольная
+надгробный
+аллегория
+логогриф
+идиллия
+нагробный
+надгробие
+рондо
+анаграм
+анфологический
+газель
+элегический
+эпиграммаять
+эпиграммик"), pattern = "\n"))
+
+genres_shortlist <- unlist(str_split(c("песня
 романс
 сонет
 элегия
@@ -246,10 +289,22 @@ genres <- unlist(str_split(c("песня
 аполог
 сказка
 экспромт
+надпись
 эпилог"), pattern = "\n"))
+```
 
+Count number of texts that include genre words in title
+
+```{r}
 titles_counter %>% 
   filter(lemma %in% genres)
+
+titles %>% 
+  filter(lemma %in% genres) %>% 
+  mutate(corpus = str_extract(text_id, "^\\w")) %>% 
+  count(corpus, lemma, sort = T) %>% 
+  pivot_wider(names_from = corpus, values_from = n)
+
 
 # roughly % of texts with genre titles
 titles %>% 
@@ -268,8 +323,18 @@ titles %>%
   left_join(n_corpus, by = "corpus") %>% 
   mutate(perc = n/total*100)
 
+# remove LRPI data
 titles %>% 
   filter(lemma %in% genres) %>% 
+  filter(!lemma %in% c("шарада", "омоним", "акростих", "анаграм")) %>% 
+  distinct(text_id) %>% 
+  mutate(corpus = str_extract(text_id, "^\\w")) %>% 
+  count(corpus) %>% 
+  left_join(n_corpus, by = "corpus") %>% 
+  mutate(perc = n/total*100)
+
+titles %>% 
+  filter(lemma %in% genres_shortlist) %>% 
   mutate(corpus = str_extract(text_id, "^\\w")) %>% 
   count(corpus, lemma, sort = T) %>% 
   left_join(n_corpus, by = "corpus") %>% 
@@ -277,7 +342,7 @@ titles %>%
   pivot_wider(names_from = corpus, values_from = perc)
 
 titles %>% 
-  filter(lemma %in% genres) %>% 
+  filter(lemma %in% genres_shortlist) %>% 
   mutate(corpus = str_extract(text_id, "^\\w")) %>% 
   count(corpus, lemma, sort = T) %>% 
   left_join(n_corpus, by = "corpus") %>% 
@@ -297,14 +362,6 @@ titles %>%
   scale_fill_manual(values = c(met.brewer("Veronese")[3],
                                met.brewer("Veronese")[6])) + 
   theme(axis.text = element_text(size = 12))
-```
-
-Total hits
-
-```{r}
-titles %>% 
-  filter(lemma %in% genres) %>% 
-  count(lemma, sort = T)
 ```
 
 Songs by years
@@ -359,6 +416,20 @@ songs_sources %>%
 
 # write full data for exploration
 # write.csv(songs_sources, "03_1_genres_songs-sources.csv")
+```
+
+Look into songs titles
+
+```{r}
+titles %>% 
+  filter(lemma == "песня") %>% 
+  left_join(sources, by = "text_id") %>% 
+  filter(year == "1840" & type == "periodicals") %>% 
+  select(text_id, text_title, book_title)
+
+# quick check on empty main titles
+corpus_1835 %>% 
+  filter(text_id %in% c("P_1190", "P_1191", "P_1794", "P_1795"))
 ```
 
 ### genre and meters

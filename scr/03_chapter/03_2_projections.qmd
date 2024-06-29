@@ -12,6 +12,9 @@ This script analyses how words are distributed inside genres making UMAP project
 library(tidyverse)
 library(tidytext)
 
+library(stylo)
+library(seetrees)
+
 library(umap)
 
 library(MetBrewer)
@@ -85,6 +88,8 @@ ids_genres <- titles %>%
           select(text_id, true_genre) %>% 
           rename(genre = true_genre)
           )
+
+rm(m, multigenre, titles)
 ```
 
 ```{r}
@@ -163,7 +168,7 @@ corpus_genres <- corpus_genres %>%
 # -260 poems
 ```
 
-Sample poems which are too long
+Sample lemmatised texts
 
 ```{r}
 genres_sampled <- sample_long(corpus_genres %>%  
@@ -196,6 +201,8 @@ genres_only <- genres_sampled %>%
 glimpse(genres_only)
 ```
 
+Check sampling
+
 ```{r}
 genres_only %>% 
   #select(-text_lemm) %>% 
@@ -205,7 +212,11 @@ genres_only %>%
   ggplot(aes(x = genre, y = n)) + geom_boxplot()
 ```
 
-## Projection
+## Projections
+
+### lemmas
+
+Test absolute word frequencies
 
 ```{r}
 genres_only %>% 
@@ -217,7 +228,7 @@ genres_only %>%
   pivot_wider(names_from = genre, values_from = n)
 ```
 
-### ranks
+#### ranks - 1500 MFW
 
 Extract MFW from the corpus
 
@@ -276,11 +287,16 @@ table(genres_only$genre)
 glimpse(dat)
 ```
 
+#### plots
+
+There is no meter clusters!
+
 ```{r}
 dat %>% 
   filter(meter != "Other?") %>% 
   ggplot(aes(x, y, color = meter, shape = meter)) + 
-  geom_point(size = 5, alpha = 0.6)
+  geom_point(size = 5, alpha = 0.6) + 
+  labs(title = "1500 MFW, lemmatised, pre-scaled abs freq")
 ```
 
 ```{r}
@@ -288,7 +304,8 @@ dat %>%
   filter(meter != "Other?") %>% 
   ggplot(aes(x, y, color = genre)) + 
   geom_point(size = 4, alpha = 0.6) + 
-  theme(legend.position = "None")
+  theme(legend.position = "None") + 
+  labs(title = "Colour = genre")
 ```
 
 ```{r}
@@ -296,7 +313,8 @@ dat %>%
   filter(meter != "Other?") %>% 
   ggplot(aes(x, y, color = author_text)) + 
   geom_point(size = 4, alpha = 0.6) + 
-  theme(legend.position = "None")
+  theme(legend.position = "None") + 
+  labs(title = "Colour = author")
 ```
 
 ```{r}
@@ -309,8 +327,9 @@ dat %>%
   
   ggplot(aes(x, y, color = genre, shape = meter)) + 
   geom_point(size = 5, alpha = 0.7) + 
-  geom_text(aes(label = author_text), size = 4, color = "black") + 
-  scale_color_manual(values = c(met.brewer("Archambault")))
+  geom_text(aes(label = author_text), size = 3, color = "black") + 
+  scale_color_manual(values = c(met.brewer("Archambault"))) + 
+  labs(title = "Only elegies")
 ```
 
 ```{r}
@@ -326,8 +345,9 @@ dat %>%
   
   ggplot(aes(x, y, color = meter, shape = meter)) + 
   geom_point(size = 5, alpha = 0.7) + 
-  geom_text(aes(label = author_text), size = 4) + 
-  scale_color_manual(values = c(met.brewer("Archambault")))
+  geom_text(aes(label = author_text), size = 3) + 
+  scale_color_manual(values = c(met.brewer("Archambault"))) + 
+  labs(title = "only songs, first lines")
 ```
 
 ```{r}
@@ -343,8 +363,9 @@ dat %>%
   
   ggplot(aes(x, y, color = meter, shape = meter)) + 
   geom_point(size = 5, alpha = 0.7) + 
-  geom_text(aes(label = author_text), size = 4) + 
-  scale_color_manual(values = c(met.brewer("Archambault")))
+  geom_text(aes(label = author_text), size = 3) + 
+  scale_color_manual(values = c(met.brewer("Archambault"))) + 
+  labs(title = "only songs, authors")
 ```
 
 ```{r}
@@ -353,17 +374,16 @@ dat %>%
   
   filter(meter == "Trochee") %>% 
   
-  filter(genre %in% c("песня",
-                      "послание",
-                      "басня",
-                      "сонет",
-                      "элегия",
-                      "баллада",
-                      "псалом")) %>%
+  filter(genre %in% c("баллада", 
+                      "романс", 
+                      "песня")) %>%
   
-  ggplot(aes(x, y, color = author_text)) + 
+  ggplot(aes(x, y, color = author_text, shape = genre)) + 
   geom_point(size = 5, alpha = 0.7) + 
-  geom_text(aes(label = author_text), size = 4) + theme(legend.position = "None")
+  geom_text(aes(label = author_text), size = 3) + 
+  theme(legend.position = "None") + 
+  labs(title = "6 genres, colours = authors, shapes = genres", 
+       subtitle = "point = ballad, triangle = song, square = romance") 
 ```
 
 ```{r}
@@ -384,4 +404,480 @@ dat %>%
   geom_point(size = 5, alpha = 0.7) + 
   #geom_text(aes(label = author_text), size = 4) + theme(legend.position = "None")
   scale_color_manual(values = c(met.brewer("Archambault")))
+```
+
+### word bigrams
+
+sampling of raw texts: non-lemmatized texts
+
+```{r}
+genres_sampled <- sample_long(corpus_genres %>%  
+                                select(-text_lemm) %>% 
+                                rename(text_lemm = text_cln,
+                                  id = text_id),
+                        starting_n = 1,
+                        sample_size = 25,
+                        over9000 = 5)
+
+genres_only <- genres_sampled %>% 
+  filter(!is.na(genre))
+```
+
+ranks
+
+```{r}
+ranks <- genres_only %>% 
+  unnest_tokens(input = text_lemm, output = bigram, token = "ngrams", 
+                n = 2) %>% 
+  count(bigram, sort = T) %>% 
+  head(200)
+
+head(ranks, 10)
+
+tail(ranks, 10)
+
+ranks %>% 
+  mutate(rank = row_number()) %>% 
+  sample_n(15) %>% 
+  arrange(-desc(rank))
+```
+
+Count bigrams in texts
+
+```{r}
+counter <- genres_only %>% 
+  unnest_tokens(input = text_lemm, output = bigram, token = "ngrams", n = 2) %>% 
+  group_by(id) %>% 
+  count(bigram) %>% 
+  filter(bigram %in% ranks$bigram) %>% 
+  ungroup()
+
+counter %>% 
+  sample_n(10)
+```
+
+Projection
+
+```{r}
+xxx <- counter %>% 
+  pivot_wider(names_from = bigram, values_from = n, values_fill = 0)
+
+mtrx <- xxx %>% 
+  ungroup() %>% 
+  select(-id) %>% 
+  scale()
+
+dim(mtrx)
+
+u <- umap(mtrx)
+
+dat <- tibble(x = u$layout[,1],
+       y = u$layout[,2],
+       id = xxx$id) %>% 
+  left_join(genres_only, by = "id") 
+  
+# table(genres_only$genre)
+
+head(dat)
+```
+
+#### plots
+
+Same projection tests
+
+```{r}
+dat %>% 
+  filter(meter != "Other?") %>% 
+  ggplot(aes(x, y, color = meter, shape = meter)) + 
+  geom_point(size = 5, alpha = 0.6) + 
+  labs(title = "200 MF word bigrams, non-lemmatised, pre-scaled abs freq")
+```
+
+```{r}
+dat %>% 
+  filter(meter != "Other?") %>% 
+  ggplot(aes(x, y, color = genre)) + 
+  geom_point(size = 4, alpha = 0.6) + 
+  theme(legend.position = "None") + 
+  labs(title = "Colour = genre")
+```
+
+```{r}
+dat %>% 
+  filter(meter != "Other") %>% 
+  
+  filter(meter == "Iamb") %>% 
+  
+  filter(genre == "элегия") %>% 
+  
+  ggplot(aes(x, y, color = genre, shape = meter)) + 
+  geom_point(size = 5, alpha = 0.7) + 
+  geom_text(aes(label = author_text), size = 3, color = "black") + 
+  scale_color_manual(values = c(met.brewer("Archambault"))) + 
+  labs(title = "Only elegies")
+```
+
+```{r}
+dat %>% 
+  mutate(first_line = str_extract(text_lemm, "^(.*?)\n"),
+         author_text = paste0(first_line)) %>% 
+  filter(meter != "Other") %>% 
+  
+  filter(meter == "Iamb" | 
+    meter == "Trochee") %>% 
+  
+  filter(genre == "песня") %>% 
+  
+  ggplot(aes(x, y, color = meter, shape = meter)) + 
+  geom_point(size = 5, alpha = 0.7) + 
+  geom_text(aes(label = author_text), size = 3) + 
+  scale_color_manual(values = c(met.brewer("Archambault"))) + 
+  labs(title = "only songs, first lines")
+```
+
+```{r}
+dat %>% 
+  filter(meter != "Other") %>% 
+  
+  filter(meter == "Trochee" | meter == "Iamb") %>% 
+  
+  filter(genre %in% c("песня",
+                      "послание",
+                      "басня",
+                      "сонет",
+                      "элегия",
+                      #"баллада",
+                      "псалом")) %>%
+  
+  ggplot(aes(x, y, color = genre, shape = meter)) + 
+  geom_point(size = 5, alpha = 0.7) + 
+  #geom_text(aes(label = author_text), size = 4) + theme(legend.position = "None")
+  scale_color_manual(values = c(met.brewer("Archambault")))
+```
+
+### char ngrams
+
+```{r}
+ranks <- genres_only %>% 
+  unnest_tokens(input = text_lemm, output = ngram, 
+                token = "character_shingles", n=5) %>% 
+  count(ngram, sort = T) %>% 
+  head(1000)
+
+head(ranks, 10)
+
+tail(ranks, 10)
+
+ranks %>% 
+  mutate(rank = row_number()) %>% 
+  sample_n(15) %>% 
+  arrange(-desc(rank))
+```
+
+```{r}
+counter <- genres_only %>% 
+  unnest_tokens(input = text_lemm, output = ngram, 
+                token = "character_shingles", n=5) %>% 
+  group_by(id) %>% 
+  count(ngram) %>% 
+  filter(ngram %in% ranks$ngram) %>% 
+  ungroup()
+
+counter %>% 
+  sample_n(10)
+```
+
+```{r}
+xxx <- counter %>% 
+  pivot_wider(names_from = ngram, values_from = n, values_fill = 0)
+
+mtrx <- xxx %>% 
+  ungroup() %>% 
+  select(-id) %>% 
+  scale()
+
+dim(mtrx)
+
+u <- umap(mtrx)
+
+dat <- tibble(x = u$layout[,1],
+       y = u$layout[,2],
+       id = xxx$id) %>% 
+  left_join(genres_only, by = "id") 
+  
+# table(genres_only$genre)
+
+head(dat)
+```
+
+#### plots
+
+```{r}
+dat %>% 
+  filter(meter != "Other?") %>% 
+  ggplot(aes(x, y, color = meter, shape = meter)) + 
+  geom_point(size = 5, alpha = 0.6) + 
+  labs(title = "1000 MF char 3-grams, non-lemmatised, pre-scaled abs freq")
+```
+
+```{r}
+dat %>% 
+  filter(meter != "Other?") %>% 
+  ggplot(aes(x, y, color = genre)) + 
+  geom_point(size = 4, alpha = 0.6) + 
+  theme(legend.position = "None") + 
+  labs(title = "Colour = genre")
+```
+
+```{r}
+dat %>% 
+  filter(meter != "Other") %>% 
+  
+  filter(meter == "Iamb") %>% 
+  
+  filter(genre == "элегия") %>% 
+  
+  ggplot(aes(x, y, color = genre, shape = meter)) + 
+  geom_point(size = 5, alpha = 0.7) + 
+  geom_text(aes(label = author_text), size = 3, color = "black") + 
+  scale_color_manual(values = c(met.brewer("Archambault"))) + 
+  labs(title = "Only elegies")
+```
+
+```{r}
+dat %>% 
+  mutate(first_line = str_extract(text_lemm, "^(.*?)\n"),
+         author_text = paste0(first_line)) %>% 
+  filter(meter != "Other") %>% 
+  
+  filter(meter == "Iamb" | 
+    meter == "Trochee") %>% 
+  
+  filter(genre == "песня") %>% 
+  
+  ggplot(aes(x, y, color = meter, shape = meter)) + 
+  geom_point(size = 5, alpha = 0.7) + 
+  geom_text(aes(label = author_text), size = 3) + 
+  scale_color_manual(values = c(met.brewer("Archambault"))) + 
+  labs(title = "only songs, first lines")
+```
+
+```{r}
+dat %>% 
+  filter(meter != "Other") %>% 
+  
+  filter(meter == "Trochee" | meter == "Iamb") %>% 
+  
+  filter(genre %in% c("песня",
+                      "послание",
+                      "басня",
+                      "сонет",
+                      "элегия",
+                      #"баллада",
+                      "псалом")) %>%
+  
+  ggplot(aes(x, y, color = genre, shape = meter)) + 
+  geom_point(size = 5, alpha = 0.7) + 
+  #geom_text(aes(label = author_text), size = 4) + theme(legend.position = "None")
+  scale_color_manual(values = c(met.brewer("Archambault")))
+```
+
+## Trees
+
+Sample lemmatised texts
+
+```{r}
+genres_sampled <- sample_long(corpus_genres %>%  
+                                #select(-text_lemm) %>% 
+                                rename(#text_lemm = text_cln,
+                                  id = text_id),
+                        starting_n = 1,
+                        sample_size = 25,
+                        over9000 = 5)
+```
+
+```{r}
+# glimpse(genres_sampled)
+
+genres_only <- genres_sampled %>% 
+  select(-text_cln) %>% 
+  filter(!is.na(genre)) %>% 
+  mutate(text_id = paste0(genre, "___", id)) %>% 
+  filter(genre %in% c(
+    "баллада", "басня", "дума", "мелодия", "песнь", "песня", "послание", 
+    "романс", "сонет", "элегия"
+  ))
+
+nrow(genres_only)
+table(genres_only$genre)
+
+rm(genres_sampled, ids_genres)
+```
+
+Word ranks : MFW 500
+
+```{r}
+ranks <- genres_only %>% 
+  unnest_tokens(input = text_lemm, output = word, token = "words") %>% 
+  count(word, sort = T) %>% 
+  head(500)
+
+head(ranks, 10)
+tail(ranks, 10)
+```
+
+### separate texts
+
+```{r, message=FALSE, warning=FALSE}
+do.call(file.remove, list(list.files("corpus_sampled/", full.names = TRUE)))
+
+x <- genres_only %>% 
+    group_by(genre) %>% 
+    sample_n(10) %>% 
+    mutate(path = paste0("corpus_sampled/", genre, "____", text_id))
+
+for (i in 1:nrow(x)) {
+    write_file(x$text_lemm[i], file = x$path[i])
+  }
+```
+
+```{r}
+test1 <- stylo(
+  gui = F,
+  corpus.dir = "corpus_sampled/",
+  corpus.lang = "Other",
+  mfw.min = 500,
+  mfw.max = 500,
+  analyzed.features = "w", 
+  ngram.size = 1,
+  distance.measure = "wurzburg"
+)
+```
+
+```{r, message=FALSE, warning=FALSE}
+do.call(file.remove, list(list.files("corpus_sampled/", full.names = TRUE)))
+
+x <- genres_only %>% 
+    group_by(meter) %>% 
+    sample_n(10) %>% 
+    mutate(path = paste0("corpus_sampled/", meter, "____", text_id))
+
+for (i in 1:nrow(x)) {
+    write_file(x$text_lemm[i], file = x$path[i])
+}
+
+test1 <- stylo(
+  gui = F,
+  corpus.dir = "corpus_sampled/",
+  corpus.lang = "Other",
+  mfw.min = 100,
+  mfw.max = 100,
+  analyzed.features = "w", 
+  ngram.size = 1,
+  distance.measure = "wurzburg"
+)
+```
+
+### combined samples
+
+Sample 20 texts of each genre, select MFW, write files for stylo
+
+```{r}
+
+do.call(file.remove, list(list.files("corpus_sampled/", full.names = TRUE)))
+
+
+for (j in 1:5) {
+
+  x <- genres_only %>% 
+    group_by(genre) %>% 
+    sample_n(10) %>% 
+    summarise(text = paste0(text_lemm, collapse = "             ")) %>% 
+    mutate(path = paste0("corpus_sampled/", genre, "_", j))
+  
+  for (i in 1:nrow(x)) {
+    write_file(x$text[i], file = x$path[i])
+  }
+
+}
+```
+
+#### stylo
+
+```{r, message=FALSE}
+test1 <- stylo(
+  gui = F,
+  corpus.dir = "corpus_sampled/",
+  corpus.lang = "Other",
+  mfw.min = 200,
+  mfw.max = 200,
+  analyzed.features = "w", 
+  ngram.size = 1,
+  distance.measure = "wurzburg"
+)
+
+seetrees::view_tree(test1, k = 2, p = 0.01)
+```
+
+```{r, message=FALSE}
+test1 <- stylo(
+  gui = F,
+  corpus.dir = "corpus_sampled/",
+  corpus.lang = "Other",
+  mfw.min = 500,
+  mfw.max = 500,
+  analyzed.features = "w", 
+  ngram.size = 1,
+  distance.measure = "wurzburg"
+)
+```
+
+```{r}
+seetrees::view_tree(test1, k = 2, p = 0.01)
+```
+
+```{r, message=FALSE}
+test1 <- stylo(
+  gui = F,
+  corpus.dir = "corpus_sampled/",
+  corpus.lang = "Other",
+  mfw.min = 1000,
+  mfw.max = 1000,
+  analyzed.features = "w", 
+  ngram.size = 1,
+  distance.measure = "wurzburg"
+)
+
+seetrees::view_tree(test1, k = 2, p = 0.01)
+```
+
+```{r, message=FALSE}
+test1 <- stylo(
+  gui = F,
+  corpus.dir = "corpus_sampled/",
+  corpus.lang = "Other",
+  mfw.min = 100,
+  mfw.max = 100,
+  analyzed.features = "w", 
+  ngram.size = 2,
+  distance.measure = "wurzburg"
+)
+
+seetrees::view_tree(test1, k = 2, p = 0.01)
+```
+
+```{r, message=FALSE}
+bct <- stylo(
+  gui = F,
+  corpus.dir = "corpus_sampled/",
+  corpus.lang = "Other",
+  analyzed.features = "w",
+  ngram.size = 1,
+  mfw.min = 200,
+  mfw.max = 1000,
+  mfw.incr = 1,
+  distance.measure = "wurzburg",
+  analysis.type = "BCT",
+  consensus.strength = 0.5
+)
 ```

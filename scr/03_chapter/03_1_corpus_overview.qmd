@@ -23,6 +23,34 @@ corpus_1835 <- readRDS("../../data/corpus1835/corpus_1835.Rds")
 glimpse(corpus_1835)
 ```
 
+Read full metadata with books & periodicals titles to count sources
+
+```{r}
+sources <- read.csv("../../data/corpus1835/sql_db/sources.csv")
+text_ids <- read.csv("../../data/corpus1835/sql_db/texts_metadata.csv")
+
+glimpse(sources)
+glimpse(text_ids)
+
+sources <- text_ids %>% 
+  select(text_id, source_id, meter, feet) %>% 
+  left_join(sources, by = "source_id")
+
+rm(text_ids)
+```
+
+Helpers
+
+```{r}
+meters_transl <- tibble(
+  meter = c("Other?", "Iamb", "Trochee", "Amphibrach", "Anapest", "Dactyl"),
+  meter_rus = c("Другой", "Ямб", "Хорей", "Амфибрахий", "Анапест", "Дактиль"),
+  meter_short = c("Др", "Я", "Х", "Амф", "Ан", "Д")
+)
+
+unique(corpus_1835$meter)
+```
+
 # Overview
 
 Corpus overview in terms of poems' length and sizes of subcorpora
@@ -381,22 +409,6 @@ titles %>%
                                met.brewer("Veronese")[6]))
 ```
 
-Read full metadata with books & periodicals titles to count sources
-
-```{r}
-sources <- read.csv("../../data/corpus1835/sql_db/sources.csv")
-text_ids <- read.csv("../../data/corpus1835/sql_db/texts_metadata.csv")
-
-glimpse(sources)
-glimpse(text_ids)
-
-sources <- text_ids %>% 
-  select(text_id, source_id, meter, feet) %>% 
-  left_join(sources, by = "source_id")
-
-rm(text_ids)
-```
-
 Attach metadata to text titles data and count sources per year
 
 ```{r}
@@ -434,27 +446,68 @@ corpus_1835 %>%
 
 ### genre and meters
 
+Some work around texts with multiple genres in the title ("подражание псалму")
+
+```{r}
+# multigenre <- titles %>% 
+#   select(text_id, lemma) %>% 
+#   filter(lemma %in% genres_shortlist) %>% 
+#   group_by(text_id) %>% 
+#   summarise(genre = paste0(lemma, collapse = " | ")) %>% 
+#   filter(str_detect(genre, " \\| "))
+
+# m <- corpus1835 %>% 
+#   filter(text_id %in% multigenre$text_id) %>% 
+#   select(text_id, text_title, text_subtitle) %>% 
+#   left_join(multigenre %>% select(text_id, genre), by = "text_id")
+
+# write.csv(m, "multigenre_texts.csv")
+
+# read the data with normalised genres
+m <- read.delim("multigenre_texts.csv", sep = ';') %>% select(-X)
+
+glimpse(m)
+```
+
 ```{r}
 titles %>% 
   filter(lemma %in% genres) %>% 
+  
+  # attach cleaned genres data for selected texts
+  left_join(m %>% select(text_id, true_genre), by = "text_id") %>% 
+  mutate(lemma = ifelse(!is.na(true_genre), true_genre, lemma)) %>% 
+  select(-true_genre) %>% 
+  
   # additional selection for a better plot
-  filter(lemma %in% c("баллада", "басня", "дума", "мелодия", "молитва",
-                      "отрывок", "песнь", "песня", "подражание", "послание", 
-                      "псалом", "романс", "сонет", "элегия", "эпиграмма")) %>% 
+  # additional selection for a better plot
+  filter(lemma %in% c("баллада", "басня", 
+                      "дума", "мелодия", #"молитва", "отрывок", 
+                      "песнь", "песня", #"подражание", "послание", 
+                      #"псалом", 
+                      "романс", "сонет", "элегия"#, "эпиграмма"
+                      )) %>% 
+  # capitalisation for the plot
+  mutate(lemma = tools::toTitleCase(lemma)) %>% 
+  
   left_join(sources, by = "text_id") %>% 
   filter(meter != "Other") %>% 
-  count(lemma, meter, sort = T) %>% 
-  ggplot(aes(x = meter, y = n, fill = meter)) + 
+  
+  # attach rus meters for the plot
+  left_join(meters_transl, by = "meter") %>% 
+  
+  count(lemma, meter_rus, sort = T) %>% 
+  ggplot(aes(x = meter_rus, y = n, fill = meter_rus)) + 
   geom_col(position = "dodge") + 
-  facet_wrap(~lemma, scales = "free") + 
+  facet_wrap(~lemma, scales = "free_x") + 
   coord_flip() + 
   scale_fill_manual(values = c(met.brewer("Veronese")[6],
                                met.brewer("Veronese")[4],
                                met.brewer("Veronese")[7],
-                               met.brewer("Veronese")[1],
-                               met.brewer("Veronese")[3])) + 
-  theme(text = element_text(size = 12)) + 
-  labs(x = "", y = "Количество текстов")
+                               met.brewer("Veronese")[3],
+                               met.brewer("Veronese")[1])) + 
+  theme(text = element_text(size = 12), 
+        legend.position = "None") + 
+  labs(x = "", y = "Количество текстов") 
 ```
 
 Same for formulas
@@ -462,27 +515,43 @@ Same for formulas
 ```{r}
 titles %>% 
   filter(lemma %in% genres) %>% 
+  
+  # attach cleaned genres data for selected texts
+  left_join(m %>% select(text_id, true_genre), by = "text_id") %>% 
+  mutate(lemma = ifelse(!is.na(true_genre), true_genre, lemma)) %>% 
+  select(-true_genre) %>% 
+  
   # additional selection for a better plot
-  filter(lemma %in% c("баллада", "басня", "дума", "мелодия", "молитва",
-                      "отрывок", "песнь", "песня", "подражание", "послание", 
-                      "псалом", "романс", "сонет", "элегия", "эпиграмма")) %>% 
+  filter(lemma %in% c("баллада", "басня", 
+                      "дума", "мелодия", #"молитва", "отрывок", 
+                      "песнь", "песня", #"подражание", "послание", 
+                      #"псалом", 
+                      "романс", "сонет", "элегия"#, "эпиграмма"
+                      )) %>% 
+  mutate(lemma = tools::toTitleCase(lemma)) %>% 
+  
   left_join(sources, by = "text_id") %>% 
   filter(meter != "Other") %>% 
-  mutate(formula = paste0(meter, "_", feet)) %>% 
-  filter(formula %in% c("Iamb_4", "Iamb_5", "Iamb_6", "Iamb_other",
-                        "Trochee_4", "Amphibrach_4")) %>% 
+  
+  left_join(meters_transl, by = "meter") %>% 
+  
+  mutate(formula = paste0(meter_short, feet)) %>% 
+  filter(formula %in% c("Я4", "Я5", "Я6", "Яother",
+                        "Х4", "Амф4")) %>% 
+  mutate(formula = ifelse(formula == "Яother", "Яв", formula)) %>% 
   count(lemma, formula, sort = T) %>% 
   ggplot(aes(x = formula, y = n, fill = formula)) + 
   geom_col(position = "dodge") + 
   facet_wrap(~lemma, scales = "free_x") + 
   coord_flip() + 
-  scale_fill_manual(values = c(met.brewer("Veronese")[6],
+  scale_fill_manual(values = c(met.brewer("Veronese")[5],
+                               met.brewer("Veronese")[3],
                                met.brewer("Veronese")[1],
                                met.brewer("Veronese")[7],
                                met.brewer("Veronese")[4],
-                               met.brewer("Veronese")[5],
-                               met.brewer("Veronese")[3])) +
-  theme(text = element_text(size = 12)) + 
+                               met.brewer("Veronese")[6])) +
+  theme(text = element_text(size = 12), 
+        legend.position = "None") + 
   labs(x = "", y = "Количество текстов")
 ```
 
@@ -512,7 +581,8 @@ titles %>%
                                met.brewer("Veronese")[5],
                                met.brewer("Veronese")[3])) +
   theme(text = element_text(size = 12)) + 
-  labs(x = "", y = "Количество текстов")
+  labs(x = "", y = "Количество текстов", 
+       title = "Only periodicals")
 ```
 
 Only books
@@ -716,6 +786,43 @@ titles %>%
                                met.brewer("Veronese")[1],
                                met.brewer("Veronese")[3])) + 
   theme(text = element_text(size = 12)) + 
+  labs(x = "", y = "Количество текстов")
+```
+
+Formulas
+
+```{r}
+titles %>% 
+  filter(lemma %in% topics) %>% 
+  filter(lemma %in% c("поэт", "ночь", "жизнь", "смерть",
+                      "море", "любовь", "могила", "сон", "мечта", 
+                      "звезда", "певец", "разлука", "слеза",
+                      "ангел", "мысль", "родина")) %>% 
+  
+  mutate(lemma = tools::toTitleCase(lemma)) %>% 
+  
+  left_join(sources, by = "text_id") %>% 
+  filter(meter != "Other") %>% 
+  
+  left_join(meters_transl, by = "meter") %>% 
+  
+  mutate(formula = paste0(meter_short, feet)) %>% 
+  filter(formula %in% c("Я4", "Я5", "Я6", "Яother",
+                        "Х4", "Амф4")) %>% 
+  mutate(formula = ifelse(formula == "Яother", "Яв", formula)) %>% 
+  count(lemma, formula, sort = T) %>% 
+  ggplot(aes(x = formula, y = n, fill = formula)) + 
+  geom_col(position = "dodge") + 
+  facet_wrap(~lemma, scales = "free_x") + 
+  coord_flip() + 
+  scale_fill_manual(values = c(met.brewer("Veronese")[5],
+                               met.brewer("Veronese")[3],
+                               met.brewer("Veronese")[1],
+                               met.brewer("Veronese")[7],
+                               met.brewer("Veronese")[4],
+                               met.brewer("Veronese")[6])) +
+  theme(text = element_text(size = 12), 
+        legend.position = "None") + 
   labs(x = "", y = "Количество текстов")
 ```
 

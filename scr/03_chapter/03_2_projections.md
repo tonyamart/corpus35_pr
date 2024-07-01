@@ -155,7 +155,9 @@ table(corpus_genres$genre)
             элегия      эпиграмма         эпилог 
                 72             27             13 
 
-## texts with genre titles
+## length in lines
+
+texts with genre titles
 
 ``` r
 corpus_genres %>% 
@@ -332,921 +334,187 @@ genres_only %>%
 
 ![](03_2_projections.markdown_strict_files/figure-markdown_strict/unnamed-chunk-13-1.png)
 
-## Projections
+## Aggregation
 
-### lemmas
+### genres - n lines available
 
-Test absolute word frequencies
+Number of lines after sampling
 
 ``` r
 genres_only %>% 
-  unnest_tokens(input = text_lemm, output = word, token = "words") %>% 
-  group_by(genre) %>% 
-  count(word, sort = T) %>% 
-  slice_max(n, n = 10) %>% 
-  ungroup() %>% 
-  pivot_wider(names_from = genre, values_from = n)
-```
-
-    # A tibble: 34 × 24
-       word  альбом антологический аполог баллада басня  дума мелодия молитва
-       <chr>  <int>          <int>  <int>   <int> <int> <int>   <int>   <int>
-     1 и        142             14     32     385   207   260      75     151
-     2 я        118              5     19     180    81    81      46      81
-     3 в        106              6     24     212   141   193      53      98
-     4 не        66              5     14     134   168    85      43      54
-     5 вы        58             NA     NA      NA    NA    NA      NA      NA
-     6 как       51              5      7      98    58    78      NA      NA
-     7 ты        41              6     NA      96    56    52      24      57
-     8 на        38             NA     11     138    81    68      26      NA
-     9 быть      36             NA     NA      NA    62    NA      23      NA
-    10 с         36              5     10     116    76    52      NA      32
-    # ℹ 24 more rows
-    # ℹ 15 more variables: надпись <int>, отрывок <int>, песнь <int>, песня <int>,
-    #   подражание <int>, послание <int>, псалом <int>, романс <int>, сказка <int>,
-    #   сонет <int>, фантазия <int>, экспромт <int>, элегия <int>, эпиграмма <int>,
-    #   эпилог <int>
-
-#### ranks - 1500 MFW
-
-Extract MFW from the corpus
-
-``` r
-ranks <- genres_only %>% 
-  unnest_tokens(input = text_lemm, output = word, token = "words") %>% 
-  count(word, sort = T) %>% 
-  head(1500)
-
-head(ranks, 10)
-```
-
-    # A tibble: 10 × 2
-       word      n
-       <chr> <int>
-     1 и      4596
-     2 в      3236
-     3 я      2641
-     4 не     2112
-     5 ты     1646
-     6 на     1588
-     7 с      1423
-     8 он     1302
-     9 как    1228
-    10 мой    1113
-
-``` r
-tail(ranks, 10)
-```
-
-    # A tibble: 10 × 2
-       word          n
-       <chr>     <int>
-     1 живо         10
-     2 жизненный    10
-     3 жизнить      10
-     4 завет        10
-     5 заключать    10
-     6 закрывать    10
-     7 запад        10
-     8 звонкий      10
-     9 злодейка     10
-    10 идеал        10
-
-``` r
-ranks %>% 
-  mutate(rank = row_number()) %>% 
-  sample_n(15) %>% 
-  arrange(-desc(rank))
-```
-
-    # A tibble: 15 × 3
-       word           n  rank
-       <chr>      <int> <int>
-     1 до           116   126
-     2 прах          89   162
-     3 мчаться       35   476
-     4 три           34   497
-     5 родимый       24   690
-     6 ласкать       20   807
-     7 блестящий     17   919
-     8 пол           16   992
-     9 подходить     15  1052
-    10 село          14  1142
-    11 божество      13  1162
-    12 приветный     13  1213
-    13 улыбаться     13  1243
-    14 молодецкий    12  1286
-    15 свое          12  1316
-
-Count N of MFW in each poem
-
-``` r
-counter <- genres_only %>% 
-  unnest_tokens(input = text_lemm, output = word, token = "words") %>% 
-  group_by(id) %>% 
-  count(word) %>% 
-  filter(word %in% ranks$word) %>% 
-  ungroup()
-
-counter %>% 
-  sample_n(10)
-```
-
-    # A tibble: 10 × 3
-       id          word          n
-       <chr>       <chr>     <int>
-     1 P_1741-2    подходить     1
-     2 P_1544-1    день          2
-     3 C_277__12-2 человек       1
-     4 C_241__18   все           2
-     5 P_422       звать         1
-     6 C_143__35   страх         1
-     7 P_25-1      ж             1
-     8 C_117__1-2  путь          1
-     9 P_1015-1    высокий       1
-    10 C_318__2-2  сердце        1
-
-Create a matrix & make a UMAP projection
-
-``` r
-xxx <- counter %>% 
-  pivot_wider(names_from = word, values_from = n, values_fill = 0)
-
-mtrx <- xxx %>% 
-  ungroup() %>% 
-  select(-id) %>% 
-  scale()
-
-dim(mtrx)
-```
-
-    [1] 1290 1500
-
-``` r
-u <- umap(mtrx)
-
-dat <- tibble(x = u$layout[,1],
-       y = u$layout[,2],
-       id = xxx$id) %>% 
-  left_join(genres_only, by = "id") 
-  
-table(genres_only$genre)
-```
-
-
-            альбом антологический         аполог        баллада          басня 
-                42              6              7             95             65 
-              дума        мелодия        молитва        надпись        отрывок 
-                60             24             33              8             75 
-             песнь          песня     подражание       послание         псалом 
-                86            272             29             93             33 
-            романс         сказка          сонет       фантазия       экспромт 
-               111             13             79             47              5 
-            элегия      эпиграмма         эпилог 
-               108              6             13 
-
-``` r
-glimpse(dat)
-```
-
-    Rows: 1,310
-    Columns: 12
-    $ x           <dbl> -1.7605549, -3.0068728, -0.5121671, -2.9623811, -3.0815956…
-    $ y           <dbl> 0.73588492, -0.06497558, -0.29764019, 0.40915321, 0.057255…
-    $ id          <chr> "C_101__1-1", "C_101__10", "C_101__11-1", "C_101__12-1", "…
-    $ author_text <chr> "Кашкин Д.Е.", "Кашкин Д.Е.", "Кашкин Д.Е.", "Кашкин Д.Е."…
-    $ text_title  <chr> "Романс", "Романс", "Романс", "Романс", "Романс", "Романс"…
-    $ year        <chr> "1836", "1836", "1836", "1836", "1836", "1836", "1836", "1…
-    $ text_cln    <chr> "В власти - ль смертного забыть,\nЧто ему всего дороже?\nП…
-    $ text_lemm   <chr> "в власть - ль смертный забывать,\nчто он все дорогой?\nпе…
-    $ meter       <fct> Dactyl, Iamb, Trochee, Dactyl, Iamb, Iamb, Iamb, Trochee, …
-    $ feet        <chr> "3", "3", "3", "3", "4", "4", "4", "4", "other", "4", "4",…
-    $ n_lines     <int> 30, 24, 32, 32, 32, 48, 24, 36, 48, 28, 56, 56, 36, 40, 40…
-    $ genre       <chr> "романс", "романс", "романс", "романс", "романс", "романс"…
-
-#### plots
-
-There is no meter clusters!
-
-``` r
-dat %>% 
-  filter(meter != "Other?") %>% 
-  ggplot(aes(x, y, color = meter, shape = meter)) + 
-  geom_point(size = 5, alpha = 0.6) + 
-  labs(title = "1500 MFW, lemmatised, pre-scaled abs freq")
-```
-
-![](03_2_projections.markdown_strict_files/figure-markdown_strict/unnamed-chunk-18-1.png)
-
-``` r
-dat %>% 
-  filter(meter != "Other?") %>% 
-  ggplot(aes(x, y, color = genre)) + 
-  geom_point(size = 4, alpha = 0.6) + 
-  theme(legend.position = "None") + 
-  labs(title = "Colour = genre")
-```
-
-![](03_2_projections.markdown_strict_files/figure-markdown_strict/unnamed-chunk-19-1.png)
-
-``` r
-dat %>% 
-  filter(meter != "Other?") %>% 
-  ggplot(aes(x, y, color = author_text)) + 
-  geom_point(size = 4, alpha = 0.6) + 
-  theme(legend.position = "None") + 
-  labs(title = "Colour = author")
-```
-
-![](03_2_projections.markdown_strict_files/figure-markdown_strict/unnamed-chunk-20-1.png)
-
-``` r
-dat %>% 
-  filter(meter != "Other") %>% 
-  
-  filter(meter == "Iamb") %>% 
-  
-  filter(genre == "элегия") %>% 
-  
-  ggplot(aes(x, y, color = genre, shape = meter)) + 
-  geom_point(size = 5, alpha = 0.7) + 
-  geom_text(aes(label = author_text), size = 3, color = "black") + 
-  scale_color_manual(values = c(met.brewer("Archambault"))) + 
-  labs(title = "Only elegies")
-```
-
-![](03_2_projections.markdown_strict_files/figure-markdown_strict/unnamed-chunk-21-1.png)
-
-``` r
-dat %>% 
-  mutate(first_line = str_extract(text_cln, "^(.*?)\n"),
-         author_text = paste0(first_line)) %>% 
-  filter(meter != "Other") %>% 
-  
-  filter(meter == "Iamb" | 
-    meter == "Trochee") %>% 
-  
-  filter(genre == "песня") %>% 
-  
-  ggplot(aes(x, y, color = meter, shape = meter)) + 
-  geom_point(size = 5, alpha = 0.7) + 
-  geom_text(aes(label = author_text), size = 3) + 
-  scale_color_manual(values = c(met.brewer("Archambault"))) + 
-  labs(title = "only songs, first lines")
-```
-
-![](03_2_projections.markdown_strict_files/figure-markdown_strict/unnamed-chunk-22-1.png)
-
-``` r
-dat %>% 
-  #mutate(first_line = str_extract(text_cln, "^(.*?)\n"),
-  #       author_text = paste0(first_line)) %>% 
-  filter(meter != "Other") %>% 
-  
-  filter(meter == "Iamb" | 
-    meter == "Trochee") %>% 
-  
-  filter(genre == "песня") %>% 
-  
-  ggplot(aes(x, y, color = meter, shape = meter)) + 
-  geom_point(size = 5, alpha = 0.7) + 
-  geom_text(aes(label = author_text), size = 3) + 
-  scale_color_manual(values = c(met.brewer("Archambault"))) + 
-  labs(title = "only songs, authors")
-```
-
-![](03_2_projections.markdown_strict_files/figure-markdown_strict/unnamed-chunk-23-1.png)
-
-``` r
-dat %>% 
-  filter(meter != "Other") %>% 
-  
-  filter(meter == "Trochee") %>% 
-  
-  filter(genre %in% c("баллада", 
-                      "романс", 
-                      "песня")) %>%
-  
-  ggplot(aes(x, y, color = author_text, shape = genre)) + 
-  geom_point(size = 5, alpha = 0.7) + 
-  geom_text(aes(label = author_text), size = 3) + 
-  theme(legend.position = "None") + 
-  labs(title = "6 genres, colours = authors, shapes = genres", 
-       subtitle = "point = ballad, triangle = song, square = romance") 
-```
-
-![](03_2_projections.markdown_strict_files/figure-markdown_strict/unnamed-chunk-24-1.png)
-
-``` r
-dat %>% 
-  filter(meter != "Other") %>% 
-  
-  filter(meter == "Trochee" | meter == "Iamb") %>% 
-  
-  filter(genre %in% c("песня",
-                      "послание",
-                      "басня",
-                      "сонет",
-                      "элегия",
-                      #"баллада",
-                      "псалом")) %>%
-  
-  ggplot(aes(x, y, color = genre, shape = meter)) + 
-  geom_point(size = 5, alpha = 0.7) + 
-  #geom_text(aes(label = author_text), size = 4) + theme(legend.position = "None")
-  scale_color_manual(values = c(met.brewer("Archambault")))
-```
-
-![](03_2_projections.markdown_strict_files/figure-markdown_strict/unnamed-chunk-25-1.png)
-
-### word bigrams
-
-sampling of raw texts: non-lemmatized texts
-
-``` r
-genres_sampled <- sample_long(corpus_genres %>%  
-                                select(-text_lemm) %>% 
-                                rename(text_lemm = text_cln,
-                                  id = text_id),
-                        starting_n = 1,
-                        sample_size = 25,
-                        over9000 = 5)
-```
-
-    Redetermining length of poems...
-
-    Preparing to sample...
-
-    Sampling long poems...
-
-    Warning: `cols` is now required when using `unnest()`.
-    ℹ Please use `cols = c(text_lemm)`.
-
-    `summarise()` has grouped output by 'id'. You can override using the `.groups`
-    argument.
-
-    Warning: `cols` is now required when using `unnest()`.
-    ℹ Please use `cols = c(text_lemm)`.
-
-    `summarise()` has grouped output by 'id'. You can override using the `.groups`
-    argument.
-
-    Warning: `cols` is now required when using `unnest()`.
-    ℹ Please use `cols = c(text_lemm)`.
-
-    `summarise()` has grouped output by 'id'. You can override using the `.groups`
-    argument.
-
-    Warning: `cols` is now required when using `unnest()`.
-    ℹ Please use `cols = c(text_lemm)`.
-
-    `summarise()` has grouped output by 'id'. You can override using the `.groups`
-    argument.
-
-    Sampling poems over 9000!!!...
-
-    Warning: `cols` is now required when using `unnest()`.
-    ℹ Please use `cols = c(text_lemm)`.
-
-    `summarise()` has grouped output by 'id'. You can override using the `.groups`
-    argument.
-
-    Replacing long texts by samples...
-
-``` r
-genres_only <- genres_sampled %>% 
-  filter(!is.na(genre))
-```
-
-ranks
-
-``` r
-ranks <- genres_only %>% 
-  unnest_tokens(input = text_lemm, output = bigram, token = "ngrams", 
-                n = 2) %>% 
-  count(bigram, sort = T) %>% 
-  head(200)
-
-head(ranks, 10)
-```
-
-    # A tibble: 10 × 2
-       bigram      n
-       <chr>   <int>
-     1 и в       210
-     2 и с       114
-     3 и на       79
-     4 и не       73
-     5 я не       61
-     6 с тобой    58
-     7 в нем      55
-     8 в душе     52
-     9 в ней      50
-    10 с ним      50
-
-``` r
-tail(ranks, 10)
-```
-
-    # A tibble: 10 × 2
-       bigram        n
-       <chr>     <int>
-     1 пред ним     13
-     2 с небес      13
-     3 с собою      13
-     4 свет и       13
-     5 что я        13
-     6 в дали       12
-     7 в даль       12
-     8 в небесах    12
-     9 в стране     12
-    10 в этом       12
-
-``` r
-ranks %>% 
-  mutate(rank = row_number()) %>% 
-  sample_n(15) %>% 
-  arrange(-desc(rank))
-```
-
-    # A tibble: 15 × 3
-       bigram        n  rank
-       <chr>     <int> <int>
-     1 к тебе       43    17
-     2 мой друг     40    20
-     3 в груди      25    54
-     4 души моей    21    72
-     5 по сердцу    20    80
-     6 и мне        19    84
-     7 в грудь      17   100
-     8 в очах       17   101
-     9 для нас      17   102
-    10 в море       16   120
-    11 на сердце    16   126
-    12 в тиши       15   134
-    13 мне и        15   142
-    14 на меня      15   144
-    15 когда же     13   186
-
-Count bigrams in texts
-
-``` r
-counter <- genres_only %>% 
-  unnest_tokens(input = text_lemm, output = bigram, token = "ngrams", n = 2) %>% 
-  group_by(id) %>% 
-  count(bigram) %>% 
-  filter(bigram %in% ranks$bigram) %>% 
-  ungroup()
-
-counter %>% 
-  sample_n(10)
-```
-
-    # A tibble: 10 × 3
-       id         bigram       n
-       <chr>      <chr>    <int>
-     1 P_366      я в          1
-     2 P_1179     мой друг     1
-     3 P_1927-1   с тобой      1
-     4 P_1126-1   мне в        1
-     5 C_124__28  в нем        1
-     6 P_337-1    и с          2
-     7 C_315__4-1 и без        1
-     8 P_554-2    но в         1
-     9 C_240__29  и что        1
-    10 C_128__10  в ответ      1
-
-Projection
-
-``` r
-xxx <- counter %>% 
-  pivot_wider(names_from = bigram, values_from = n, values_fill = 0)
-
-mtrx <- xxx %>% 
-  ungroup() %>% 
-  select(-id) %>% 
-  scale()
-
-dim(mtrx)
-```
-
-    [1] 1162  200
-
-``` r
-u <- umap(mtrx)
-
-dat <- tibble(x = u$layout[,1],
-       y = u$layout[,2],
-       id = xxx$id) %>% 
-  left_join(genres_only, by = "id") 
-  
-# table(genres_only$genre)
-
-head(dat)
-```
-
-    # A tibble: 6 × 11
-           x      y id    author_text text_title year  text_lemm meter feet  n_lines
-       <dbl>  <dbl> <chr> <chr>       <chr>      <chr> <chr>     <fct> <chr>   <int>
-    1  0.382  1.97  C_10… Кашкин Д.Е. Романс     1836  "Сердце … Dact… 3          30
-    2 -0.273 -1.23  C_10… Кашкин Д.Е. Романс     1836  "Когда б… Iamb  3          24
-    3  2.42  -0.852 C_10… Кашкин Д.Е. Романс     1836  "Мил сер… Troc… 3          32
-    4 -0.247 -0.165 C_10… Кашкин Д.Е. Романс     1836  "Тогда -… Dact… 3          32
-    5  1.69  -1.37  C_10… Кашкин Д.Е. Романс     1836  "Через с… Iamb  4          32
-    6  0.973 -0.981 C_10… Кашкин Д.Е. Романс     1836  "Там Кат… Iamb  4          48
-    # ℹ 1 more variable: genre <chr>
-
-#### plots
-
-Same projection tests
-
-``` r
-dat %>% 
-  filter(meter != "Other?") %>% 
-  ggplot(aes(x, y, color = meter, shape = meter)) + 
-  geom_point(size = 5, alpha = 0.6) + 
-  labs(title = "200 MF word bigrams, non-lemmatised, pre-scaled abs freq")
-```
-
-![](03_2_projections.markdown_strict_files/figure-markdown_strict/unnamed-chunk-30-1.png)
-
-``` r
-dat %>% 
-  filter(meter != "Other?") %>% 
-  ggplot(aes(x, y, color = genre)) + 
-  geom_point(size = 4, alpha = 0.6) + 
-  theme(legend.position = "None") + 
-  labs(title = "Colour = genre")
-```
-
-![](03_2_projections.markdown_strict_files/figure-markdown_strict/unnamed-chunk-31-1.png)
-
-``` r
-dat %>% 
-  filter(meter != "Other") %>% 
-  
-  filter(meter == "Iamb") %>% 
-  
-  filter(genre == "элегия") %>% 
-  
-  ggplot(aes(x, y, color = genre, shape = meter)) + 
-  geom_point(size = 5, alpha = 0.7) + 
-  geom_text(aes(label = author_text), size = 3, color = "black") + 
-  scale_color_manual(values = c(met.brewer("Archambault"))) + 
-  labs(title = "Only elegies")
-```
-
-![](03_2_projections.markdown_strict_files/figure-markdown_strict/unnamed-chunk-32-1.png)
-
-``` r
-dat %>% 
-  mutate(first_line = str_extract(text_lemm, "^(.*?)\n"),
-         author_text = paste0(first_line)) %>% 
-  filter(meter != "Other") %>% 
-  
-  filter(meter == "Iamb" | 
-    meter == "Trochee") %>% 
-  
-  filter(genre == "песня") %>% 
-  
-  ggplot(aes(x, y, color = meter, shape = meter)) + 
-  geom_point(size = 5, alpha = 0.7) + 
-  geom_text(aes(label = author_text), size = 3) + 
-  scale_color_manual(values = c(met.brewer("Archambault"))) + 
-  labs(title = "only songs, first lines")
-```
-
-![](03_2_projections.markdown_strict_files/figure-markdown_strict/unnamed-chunk-33-1.png)
-
-``` r
-dat %>% 
-  filter(meter != "Other") %>% 
-  
-  filter(meter == "Trochee" | meter == "Iamb") %>% 
-  
-  filter(genre %in% c("песня",
-                      "послание",
-                      "басня",
-                      "сонет",
-                      "элегия",
-                      #"баллада",
-                      "псалом")) %>%
-  
-  ggplot(aes(x, y, color = genre, shape = meter)) + 
-  geom_point(size = 5, alpha = 0.7) + 
-  #geom_text(aes(label = author_text), size = 4) + theme(legend.position = "None")
-  scale_color_manual(values = c(met.brewer("Archambault")))
-```
-
-![](03_2_projections.markdown_strict_files/figure-markdown_strict/unnamed-chunk-34-1.png)
-
-### char ngrams
-
-``` r
-ranks <- genres_only %>% 
-  unnest_tokens(input = text_lemm, output = ngram, 
-                token = "character_shingles", n=5) %>% 
-  count(ngram, sort = T) %>% 
-  head(1000)
-
-head(ranks, 10)
-```
-
-    # A tibble: 10 × 2
-       ngram     n
-       <chr> <int>
-     1 сердц   492
-     2 когда   367
-     3 енный   295
-     4 ердце   294
-     5 адост   270
-     6 небес   253
-     7 счаст   239
-     8 итель   236
-     9 благо   206
-    10 красн   206
-
-``` r
-tail(ranks, 10)
-```
-
-    # A tibble: 10 × 2
-       ngram     n
-       <chr> <int>
-     1 дится    32
-     2 евинн    32
-     3 елюби    32
-     4 енная    32
-     5 естан    32
-     6 иволн    32
-     7 ильны    32
-     8 лежит    32
-     9 ливый    32
-    10 ловно    32
-
-``` r
-ranks %>% 
-  mutate(rank = row_number()) %>% 
-  sample_n(15) %>% 
-  arrange(-desc(rank))
-```
-
-    # A tibble: 15 × 3
-       ngram     n  rank
-       <chr> <int> <int>
-     1 пусть   115    57
-     2 далек    73   169
-     3 устын    57   321
-     4 насла    52   369
-     5 еткак    50   388
-     6 ванье    49   406
-     7 город    49   410
-     8 люблю    49   419
-     9 таинс    49   427
-    10 бесны    43   534
-    11 меняп    42   568
-    12 мойдр    41   598
-    13 астно    37   718
-    14 призр    36   790
-    15 репещ    33   963
-
-``` r
-counter <- genres_only %>% 
-  unnest_tokens(input = text_lemm, output = ngram, 
-                token = "character_shingles", n=5) %>% 
-  group_by(id) %>% 
-  count(ngram) %>% 
-  filter(ngram %in% ranks$ngram) %>% 
-  ungroup()
-
-counter %>% 
-  sample_n(10)
-```
-
-    # A tibble: 10 × 3
-       id          ngram     n
-       <chr>       <chr> <int>
-     1 C_240__7-1  расно     1
-     2 P_762-2     мечта     1
-     3 P_26        разлу     1
-     4 C_92__26-1  есель     1
-     5 P_79-1      есный     1
-     6 C_92__56-2  сладо     2
-     7 P_263-1     тайно     1
-     8 C_92__1-1   юбовь     2
-     9 C_316__20-1 красн     1
-    10 P_1642      скрес     1
-
-``` r
-xxx <- counter %>% 
-  pivot_wider(names_from = ngram, values_from = n, values_fill = 0)
-
-mtrx <- xxx %>% 
-  ungroup() %>% 
-  select(-id) %>% 
-  scale()
-
-dim(mtrx)
-```
-
-    [1] 1291 1000
-
-``` r
-u <- umap(mtrx)
-
-dat <- tibble(x = u$layout[,1],
-       y = u$layout[,2],
-       id = xxx$id) %>% 
-  left_join(genres_only, by = "id") 
-  
-# table(genres_only$genre)
-
-head(dat)
-```
-
-    # A tibble: 6 × 11
-          x      y id     author_text text_title year  text_lemm meter feet  n_lines
-      <dbl>  <dbl> <chr>  <chr>       <chr>      <chr> <chr>     <fct> <chr>   <int>
-    1 -2.36 -1.03  C_101… Кашкин Д.Е. Романс     1836  "Сердце … Dact… 3          30
-    2 -2.41 -1.41  C_101… Кашкин Д.Е. Романс     1836  "Когда б… Iamb  3          24
-    3 -2.11 -1.19  C_101… Кашкин Д.Е. Романс     1836  "Мил сер… Troc… 3          32
-    4 -2.18 -1.33  C_101… Кашкин Д.Е. Романс     1836  "Тогда -… Dact… 3          32
-    5 -2.68 -0.970 C_101… Кашкин Д.Е. Романс     1836  "Через с… Iamb  4          32
-    6 -2.18 -0.627 C_101… Кашкин Д.Е. Романс     1836  "Там Кат… Iamb  4          48
-    # ℹ 1 more variable: genre <chr>
-
-#### plots
-
-``` r
-dat %>% 
-  filter(meter != "Other?") %>% 
-  ggplot(aes(x, y, color = meter, shape = meter)) + 
-  geom_point(size = 5, alpha = 0.6) + 
-  labs(title = "1000 MF char 3-grams, non-lemmatised, pre-scaled abs freq")
-```
-
-![](03_2_projections.markdown_strict_files/figure-markdown_strict/unnamed-chunk-38-1.png)
-
-``` r
-dat %>% 
-  filter(meter != "Other?") %>% 
-  ggplot(aes(x, y, color = genre)) + 
-  geom_point(size = 4, alpha = 0.6) + 
-  theme(legend.position = "None") + 
-  labs(title = "Colour = genre")
-```
-
-![](03_2_projections.markdown_strict_files/figure-markdown_strict/unnamed-chunk-39-1.png)
-
-``` r
-dat %>% 
-  filter(meter != "Other") %>% 
-  
-  filter(meter == "Iamb") %>% 
-  
-  filter(genre == "элегия") %>% 
-  
-  ggplot(aes(x, y, color = genre, shape = meter)) + 
-  geom_point(size = 5, alpha = 0.7) + 
-  geom_text(aes(label = author_text), size = 3, color = "black") + 
-  scale_color_manual(values = c(met.brewer("Archambault"))) + 
-  labs(title = "Only elegies")
-```
-
-![](03_2_projections.markdown_strict_files/figure-markdown_strict/unnamed-chunk-40-1.png)
-
-``` r
-dat %>% 
-  mutate(first_line = str_extract(text_lemm, "^(.*?)\n"),
-         author_text = paste0(first_line)) %>% 
-  filter(meter != "Other") %>% 
-  
-  filter(meter == "Iamb" | 
-    meter == "Trochee") %>% 
-  
-  filter(genre == "песня") %>% 
-  
-  ggplot(aes(x, y, color = meter, shape = meter)) + 
-  geom_point(size = 5, alpha = 0.7) + 
-  geom_text(aes(label = author_text), size = 3) + 
-  scale_color_manual(values = c(met.brewer("Archambault"))) + 
-  labs(title = "only songs, first lines")
-```
-
-![](03_2_projections.markdown_strict_files/figure-markdown_strict/unnamed-chunk-41-1.png)
-
-``` r
-dat %>% 
-  filter(meter != "Other") %>% 
-  
-  filter(meter == "Trochee" | meter == "Iamb") %>% 
-  
-  filter(genre %in% c("песня",
-                      "послание",
-                      "басня",
-                      "сонет",
-                      "элегия",
-                      #"баллада",
-                      "псалом")) %>%
-  
-  ggplot(aes(x, y, color = genre, shape = meter)) + 
-  geom_point(size = 5, alpha = 0.7) + 
-  #geom_text(aes(label = author_text), size = 4) + theme(legend.position = "None")
-  scale_color_manual(values = c(met.brewer("Archambault")))
-```
-
-![](03_2_projections.markdown_strict_files/figure-markdown_strict/unnamed-chunk-42-1.png)
-
-## Trees
-
-Sample lemmatised texts
-
-``` r
-genres_sampled <- sample_long(corpus_genres %>%  
-                                #select(-text_lemm) %>% 
-                                rename(#text_lemm = text_cln,
-                                  id = text_id),
-                        starting_n = 1,
-                        sample_size = 25,
-                        over9000 = 5)
-```
-
-    Redetermining length of poems...
-
-    Preparing to sample...
-
-    Sampling long poems...
-
-    Warning: `cols` is now required when using `unnest()`.
-    ℹ Please use `cols = c(text_lemm)`.
-
-    `summarise()` has grouped output by 'id'. You can override using the `.groups`
-    argument.
-
-    Warning: `cols` is now required when using `unnest()`.
-    ℹ Please use `cols = c(text_lemm)`.
-
-    `summarise()` has grouped output by 'id'. You can override using the `.groups`
-    argument.
-
-    Warning: `cols` is now required when using `unnest()`.
-    ℹ Please use `cols = c(text_lemm)`.
-
-    `summarise()` has grouped output by 'id'. You can override using the `.groups`
-    argument.
-
-    Warning: `cols` is now required when using `unnest()`.
-    ℹ Please use `cols = c(text_lemm)`.
-
-    `summarise()` has grouped output by 'id'. You can override using the `.groups`
-    argument.
-
-    Sampling poems over 9000!!!...
-
-    Warning: `cols` is now required when using `unnest()`.
-    ℹ Please use `cols = c(text_lemm)`.
-
-    `summarise()` has grouped output by 'id'. You can override using the `.groups`
-    argument.
-
-    Replacing long texts by samples...
-
-``` r
-# glimpse(genres_sampled)
-
-genres_only <- genres_sampled %>% 
   select(-text_cln) %>% 
-  filter(!is.na(genre)) %>% 
-  mutate(text_id = paste0(genre, "___", id)) %>% 
-  filter(genre %in% c(
-    "баллада", "басня", "дума", "мелодия", "песнь", "песня", "послание", 
-    "романс", "сонет", "элегия"
-  ))
-
-nrow(genres_only)
+  separate_rows(text_lemm, sep = "\n") %>% 
+  group_by(genre) %>% 
+  count(sort = T)
 ```
 
-    [1] 993
+    # A tibble: 23 × 2
+    # Groups:   genre [23]
+       genre        n
+       <chr>    <int>
+     1 песня     5900
+     2 романс    2288
+     3 элегия    2284
+     4 послание  2162
+     5 баллада   2148
+     6 песнь     1874
+     7 отрывок   1644
+     8 сонет     1408
+     9 дума      1193
+    10 басня     1103
+    # ℹ 13 more rows
+
+Number of lines in each meter
 
 ``` r
-table(genres_only$genre)
+genres_only %>% 
+  select(-text_cln) %>% 
+  separate_rows(text_lemm, sep = "\n") %>% 
+  group_by(genre, meter) %>% 
+  count(sort = T)
 ```
 
+    # A tibble: 89 × 3
+    # Groups:   genre, meter [89]
+       genre    meter       n
+       <chr>    <fct>   <int>
+     1 песня    Trochee  1937
+     2 послание Iamb     1935
+     3 элегия   Iamb     1912
+     4 песня    Other?   1366
+     5 отрывок  Iamb     1322
+     6 песня    Iamb     1183
+     7 романс   Iamb     1164
+     8 сонет    Iamb     1158
+     9 басня    Iamb     1091
+    10 песнь    Iamb      932
+    # ℹ 79 more rows
 
-     баллада    басня     дума  мелодия    песнь    песня послание   романс 
-          95       65       60       24       86      272       93      111 
-       сонет   элегия 
-          79      108 
+### grouping I - meters
+
+preprocessing: all texts longer than 50 lines are sampled down to 25
+lines, texts shorter than 8 lines excluded;
+
+grouping 1: no meter division; for each genre a sample of 100 lines is
+taken, each genre has 10 samples (1000 lines total)
 
 ``` r
-rm(genres_sampled, ids_genres)
+genres_sampled <- genres_only %>%
+  select(-text_cln) %>% 
+  
+  # filter only genres with > 1000 lines available
+  filter(genre %in% c("песня", "романс", "элегия", "баллада", "послание", 
+                      "песнь", "отрывок", "сонет", "басня", 
+                      "дума")) %>% 
+  
+  separate_rows(text_lemm, sep = "\n") %>% 
+  group_by(genre) %>% 
+  sample_n(1000) %>% 
+  mutate(sample_id = ceiling(1:1000),
+         sample_id = floor(sample_id/100)+1, 
+         sample_id = ifelse(sample_id == 11, 1, sample_id)) %>% 
+  ungroup()
+
+genres_sampled <- genres_sampled %>% 
+  mutate(sample_id = paste0(genre, "_", sample_id)) %>% 
+  group_by(sample_id) %>% 
+  summarise(text = paste0(text_lemm, collapse = "     --     ")) 
+
+str(genres_sampled)
 ```
 
-Word ranks : MFW 500
+    tibble [100 × 2] (S3: tbl_df/tbl/data.frame)
+     $ sample_id: chr [1:100] "баллада_1" "баллада_10" "баллада_2" "баллада_3" ...
+     $ text     : chr [1:100] "     --          --     голос песня ветерок ,     --          --     и как твой меч красный, - о?     --     оп"| __truncated__ "     --     напрасно! нет весть из вечный дом,     --     неприметно становиться шуба;     --     любо, что пер"| __truncated__ "\"так не даром же она     --     он умирать внезапно. уж генрих второй     --     — в полночный час, вчера днеп"| __truncated__ "     --     вдруг дверь боковой, греметь , растворяться.     --     твой конь уже быть старый и хилый,     --  "| __truncated__ ...
+
+### grouping II - meters + genres
+
+preprocessing: all texts longer than 50 lines are sampled down to 25
+lines, texts shorter than 8 lines excluded;
+
+grouping 2: genre and meter division; for each genre+metre a sample of
+100 lines is taken, each category has 5 samples (500 lines total)
 
 ``` r
-ranks <- genres_only %>% 
-  unnest_tokens(input = text_lemm, output = word, token = "words") %>% 
+genres_meters_v <- genres_only %>% 
+  select(-text_cln) %>% 
+  filter(meter != "Other?") %>% 
+  separate_rows(text_lemm, sep = "\n") %>% 
+  mutate(genre_meter = paste0(genre, "_", meter)) %>% 
+  count(genre_meter, sort = T)
+
+head(genres_meters_v, 20)
+```
+
+    # A tibble: 20 × 2
+       genre_meter            n
+       <chr>              <int>
+     1 песня_Trochee       1937
+     2 послание_Iamb       1935
+     3 элегия_Iamb         1912
+     4 отрывок_Iamb        1322
+     5 песня_Iamb          1183
+     6 романс_Iamb         1164
+     7 сонет_Iamb          1158
+     8 басня_Iamb          1091
+     9 песнь_Iamb           932
+    10 песня_Amphibrach     823
+    11 баллада_Trochee      814
+    12 альбом_Iamb          757
+    13 романс_Trochee       705
+    14 дума_Iamb            617
+    15 баллада_Amphibrach   558
+    16 фантазия_Iamb        541
+    17 молитва_Iamb         503
+    18 псалом_Iamb          432
+    19 баллада_Iamb         369
+    20 баллада_Anapest      332
+
+``` r
+selected_gm <- genres_meters_v %>% filter(n > 500) %>% pull(genre_meter)
+# selected_gm
+
+
+genres_m_sampled <- genres_only %>%
+  select(-text_cln) %>% 
+  filter(meter != "Other?") %>% 
+  
+  mutate(genre_meter = paste0(genre, "_", meter)) %>% 
+  
+  # filter only genres-meters paits with > 500 lines available
+  filter(genre_meter %in% selected_gm) %>% 
+  
+  separate_rows(text_lemm, sep = "\n") %>% 
+  group_by(genre_meter) %>% 
+  sample_n(500) %>% 
+  mutate(sample_id = ceiling(1:500),
+         sample_id = floor(sample_id/100)+1,
+         sample_id = ifelse(sample_id == 6, 1, sample_id)) %>% 
+  ungroup() 
+
+genres_m_sampled <- genres_m_sampled %>% 
+  mutate(sample_id = paste0(genre_meter, "__", sample_id)) %>% 
+  group_by(sample_id) %>% 
+  summarise(text = paste0(text_lemm, collapse = "     --     ")) 
+
+str(genres_m_sampled)
+```
+
+    tibble [85 × 2] (S3: tbl_df/tbl/data.frame)
+     $ sample_id: chr [1:85] "альбом_Iamb__1" "альбом_Iamb__2" "альбом_Iamb__3" "альбом_Iamb__4" ...
+     $ text     : chr [1:85] "исчезать в память твой ;     --     картинный краса природа здешний;     --     пусть ваш юность цвести душа , "| __truncated__ "владетельница из тщеславие     --     я сердце пробуждать опять,      --     тогда в стена молитвенный дом     "| __truncated__ "     --     чтоб настоящий мгновение     --     хоть скоро наш жизнь течь     --     искать я друг, но не мочь "| __truncated__ "как мимолетный мечтание,     --     сверкнуть, взор ко я склонить;     --     под седина продолжать,     --    "| __truncated__ ...
+
+## Projections
+
+### Genres
+
+#### 500 MFW
+
+Ranks
+
+``` r
+ranks <- genres_sampled %>% 
+  unnest_tokens(input = text, output = word, token = "words") %>% 
   count(word, sort = T) %>% 
   head(500)
 
@@ -1256,276 +524,845 @@ head(ranks, 10)
     # A tibble: 10 × 2
        word      n
        <chr> <int>
-     1 и      3372
-     2 в      2339
-     3 я      1925
-     4 не     1631
-     5 ты     1207
-     6 на     1181
-     7 с      1141
-     8 он      917
-     9 как     899
-    10 мой     828
+     1 и      1739
+     2 в      1233
+     3 я       881
+     4 не      797
+     5 на      605
+     6 с       563
+     7 ты      540
+     8 как     466
+     9 он      452
+    10 мой     356
 
 ``` r
 tail(ranks, 10)
 ```
 
     # A tibble: 10 × 2
-       word         n
-       <chr>    <int>
-     1 молчать     25
-     2 обнимать    25
-     3 оно         25
-     4 память      25
-     5 победа      25
-     6 полночь     25
-     7 полюбить    25
-     8 родимый     25
-     9 самый       25
-    10 свидание    25
-
-### separate texts
+       word        n
+       <chr>   <int>
+     1 бояться    12
+     2 бывать     12
+     3 вдали      12
+     4 видать     12
+     5 виться     12
+     6 влага      12
+     7 глухой     12
+     8 греметь    12
+     9 дальний    12
+    10 дитя       12
 
 ``` r
-do.call(file.remove, list(list.files("corpus_sampled/", full.names = TRUE)))
+ranks %>% 
+  mutate(rank = row_number()) %>% 
+  sample_n(15) %>% 
+  arrange(-desc(rank))
 ```
 
-     [1] TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE
-    [16] TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE
-    [31] TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE
-    [46] TRUE TRUE TRUE TRUE TRUE
+    # A tibble: 15 × 3
+       word         n  rank
+       <chr>    <int> <int>
+     1 она        333    11
+     2 все        221    19
+     3 жизнь      128    36
+     4 свет        86    56
+     5 их          70    72
+     6 лишь        70    73
+     7 роза        28   193
+     8 глядеть     25   212
+     9 оно         21   273
+    10 волнение    18   310
+    11 исчезать    18   316
+    12 уже         17   362
+    13 узнавать    17   363
+    14 быстро      15   391
+    15 виться      12   495
+
+Frequencies: count MFW freq in each sample
 
 ``` r
-x <- genres_only %>% 
-    group_by(genre) %>% 
-    sample_n(10) %>% 
-    mutate(path = paste0("corpus_sampled/", genre, "____", text_id))
+counter <- genres_sampled %>% 
+  unnest_tokens(input = text, output = word, token = "words") %>% 
+  group_by(sample_id) %>% 
+  count(word) %>% 
+  filter(word %in% ranks$word) %>% 
+  ungroup()
 
-for (i in 1:nrow(x)) {
-    write_file(x$text_lemm[i], file = x$path[i])
-  }
+counter %>% 
+  sample_n(10)
 ```
 
+    # A tibble: 10 × 3
+       sample_id  word       n
+       <chr>      <chr>  <int>
+     1 басня_1    цвести     3
+     2 баллада_7  милый      2
+     3 дума_6     божий      3
+     4 отрывок_1  душа       1
+     5 романс_8   ваш        1
+     6 дума_2     свет       3
+     7 песня_8    ночь       2
+     8 песня_5    хоть       1
+     9 отрывок_10 пора       1
+    10 отрывок_4  мой        3
+
+Matrix
+
 ``` r
-test1 <- stylo(
-  gui = F,
-  corpus.dir = "corpus_sampled/",
-  corpus.lang = "Other",
-  mfw.min = 500,
-  mfw.max = 500,
-  analyzed.features = "w", 
-  ngram.size = 1,
-  distance.measure = "wurzburg"
-)
+xxx <- counter %>% 
+  pivot_wider(names_from = word, values_from = n, values_fill = 0)
+
+mtrx <- xxx %>% 
+  ungroup() %>% 
+  select(-sample_id) %>% 
+  scale()
+
+dim(mtrx)
 ```
 
-    using current directory...
-
-    Performing no sampling (using entire text as sample)
-
-    slicing input text into tokens...
-
-
-    turning words into features, e.g. char n-grams (if applicable)...
-
-    Total nr. of samples in the corpus: 100
-
-    The corpus consists of 8733 tokens
-
-    processing  100  text samples
-
-    ..........
-    combining frequencies into a table...
-
-
-    culling @ 0 available features (words) 2648
-    Calculating z-scores... 
-
-    MFW used: 
-    500 
-    Processing metadata...
-
-
-    Assigning plot colors according to file names...
-
-     
-
-![](03_2_projections.markdown_strict_files/figure-markdown_strict/unnamed-chunk-47-1.png)
+    [1] 100 500
 
 ``` r
-do.call(file.remove, list(list.files("corpus_sampled/", full.names = TRUE)))
-```
+u <- umap(mtrx)
 
-      [1] TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE
-     [16] TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE
-     [31] TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE
-     [46] TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE
-     [61] TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE
-     [76] TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE
-     [91] TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE
-
-``` r
-x <- genres_only %>% 
-    group_by(meter) %>% 
-    sample_n(10) %>% 
-    mutate(path = paste0("corpus_sampled/", meter, "____", text_id))
-
-for (i in 1:nrow(x)) {
-    write_file(x$text_lemm[i], file = x$path[i])
-}
-
-test1 <- stylo(
-  gui = F,
-  corpus.dir = "corpus_sampled/",
-  corpus.lang = "Other",
-  mfw.min = 100,
-  mfw.max = 100,
-  analyzed.features = "w", 
-  ngram.size = 1,
-  distance.measure = "wurzburg"
-)
-```
-
-![](03_2_projections.markdown_strict_files/figure-markdown_strict/unnamed-chunk-48-1.png)
-
-### combined samples
-
-Sample 20 texts of each genre, select MFW, write files for stylo
-
-``` r
-do.call(file.remove, list(list.files("corpus_sampled/", full.names = TRUE)))
-```
-
-     [1] TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE
-    [16] TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE
-    [31] TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE
-    [46] TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE
-
-``` r
-for (j in 1:5) {
-
-  x <- genres_only %>% 
-    group_by(genre) %>% 
-    sample_n(10) %>% 
-    summarise(text = paste0(text_lemm, collapse = "             ")) %>% 
-    mutate(path = paste0("corpus_sampled/", genre, "_", j))
+dat <- tibble(x = u$layout[,1],
+       y = u$layout[,2],
+       sample_id = xxx$sample_id) %>% 
+  mutate(genre = str_remove(sample_id, "_\\d+$"))
   
-  for (i in 1:nrow(x)) {
-    write_file(x$text[i], file = x$path[i])
-  }
-
-}
+glimpse(dat)
 ```
 
-#### stylo
+    Rows: 100
+    Columns: 4
+    $ x         <dbl> -0.111628010, -0.365622926, 0.274730736, 0.022797022, 0.4619…
+    $ y         <dbl> 0.52403836, 0.37008465, 0.07802798, -0.94438828, 0.07449585,…
+    $ sample_id <chr> "баллада_1", "баллада_10", "баллада_2", "баллада_3", "баллад…
+    $ genre     <chr> "баллада", "баллада", "баллада", "баллада", "баллада", "балл…
 
 ``` r
-test1 <- stylo(
-  gui = F,
-  corpus.dir = "corpus_sampled/",
-  corpus.lang = "Other",
-  mfw.min = 200,
-  mfw.max = 200,
-  analyzed.features = "w", 
-  ngram.size = 1,
-  distance.measure = "wurzburg"
-)
+rm(ranks, counter, mtrx)
 ```
 
-![](03_2_projections.markdown_strict_files/figure-markdown_strict/unnamed-chunk-50-1.png)
+Plot
 
 ``` r
-seetrees::view_tree(test1, k = 2, p = 0.01)
+dat %>% 
+  ggplot(aes(x, y, color = genre)) + 
+  #geom_point(size = 5, alpha = 0.6) + 
+  geom_text(aes(label = genre)) + 
+  labs(title = "500 MFW, lemmatised, 10 samples of 100 lines from each genre")
 ```
 
-![](03_2_projections.markdown_strict_files/figure-markdown_strict/unnamed-chunk-50-2.png)
+![](03_2_projections.markdown_strict_files/figure-markdown_strict/unnamed-chunk-21-1.png)
 
-![](03_2_projections.markdown_strict_files/figure-markdown_strict/unnamed-chunk-50-3.png)
+#### 250 MFW
 
 ``` r
-test1 <- stylo(
-  gui = F,
-  corpus.dir = "corpus_sampled/",
-  corpus.lang = "Other",
-  mfw.min = 500,
-  mfw.max = 500,
-  analyzed.features = "w", 
-  ngram.size = 1,
-  distance.measure = "wurzburg"
-)
+ranks <- genres_sampled %>% 
+  unnest_tokens(input = text, output = word, token = "words") %>% 
+  count(word, sort = T) %>% 
+  head(250)
+
+head(ranks, 10)
 ```
 
-![](03_2_projections.markdown_strict_files/figure-markdown_strict/unnamed-chunk-51-1.png)
+    # A tibble: 10 × 2
+       word      n
+       <chr> <int>
+     1 и      1739
+     2 в      1233
+     3 я       881
+     4 не      797
+     5 на      605
+     6 с       563
+     7 ты      540
+     8 как     466
+     9 он      452
+    10 мой     356
 
 ``` r
-seetrees::view_tree(test1, k = 2, p = 0.01)
+tail(ranks, 10)
 ```
 
-![](03_2_projections.markdown_strict_files/figure-markdown_strict/unnamed-chunk-52-1.png)
-
-![](03_2_projections.markdown_strict_files/figure-markdown_strict/unnamed-chunk-52-2.png)
+    # A tibble: 10 × 2
+       word        n
+       <chr>   <int>
+     1 золотой    23
+     2 или        23
+     3 красота    23
+     4 крыло      23
+     5 месяц      23
+     6 много      23
+     7 нежный     23
+     8 новый      23
+     9 опять      23
+    10 пойти      23
 
 ``` r
-test1 <- stylo(
-  gui = F,
-  corpus.dir = "corpus_sampled/",
-  corpus.lang = "Other",
-  mfw.min = 1000,
-  mfw.max = 1000,
-  analyzed.features = "w", 
-  ngram.size = 1,
-  distance.measure = "wurzburg"
-)
+ranks %>% 
+  mutate(rank = row_number()) %>% 
+  sample_n(15) %>% 
+  arrange(-desc(rank))
 ```
 
-![](03_2_projections.markdown_strict_files/figure-markdown_strict/unnamed-chunk-53-1.png)
+    # A tibble: 15 × 3
+       word       n  rank
+       <chr>  <int> <int>
+     1 с        563     6
+     2 мы       246    16
+     3 кто       99    49
+     4 уж        75    66
+     5 ж         74    67
+     6 конь      63    77
+     7 век       44   118
+     8 глаз      43   124
+     9 со        42   129
+    10 еще       41   131
+    11 песня     38   138
+    12 туча      33   165
+    13 перед     25   215
+    14 черный    25   219
+    15 месяц     23   245
 
 ``` r
-seetrees::view_tree(test1, k = 2, p = 0.01)
+counter <- genres_sampled %>% 
+  unnest_tokens(input = text, output = word, token = "words") %>% 
+  group_by(sample_id) %>% 
+  count(word) %>% 
+  filter(word %in% ranks$word) %>% 
+  ungroup()
+
+counter %>% 
+  sample_n(10)
 ```
 
-![](03_2_projections.markdown_strict_files/figure-markdown_strict/unnamed-chunk-53-2.png)
-
-![](03_2_projections.markdown_strict_files/figure-markdown_strict/unnamed-chunk-53-3.png)
+    # A tibble: 10 × 3
+       sample_id  word        n
+       <chr>      <chr>   <int>
+     1 элегия_8   веселый     1
+     2 послание_8 о           3
+     3 дума_6     бог         1
+     4 сонет_2    он          7
+     5 романс_4   голос       1
+     6 песня_5    мы          5
+     7 басня_1    тот         1
+     8 послание_5 со          1
+     9 сонет_5    на          3
+    10 сонет_2    когда       1
 
 ``` r
-test1 <- stylo(
-  gui = F,
-  corpus.dir = "corpus_sampled/",
-  corpus.lang = "Other",
-  mfw.min = 100,
-  mfw.max = 100,
-  analyzed.features = "w", 
-  ngram.size = 2,
-  distance.measure = "wurzburg"
-)
+xxx <- counter %>% 
+  pivot_wider(names_from = word, values_from = n, values_fill = 0)
+
+mtrx <- xxx %>% 
+  ungroup() %>% 
+  select(-sample_id) %>% 
+  scale()
+
+dim(mtrx)
 ```
 
-![](03_2_projections.markdown_strict_files/figure-markdown_strict/unnamed-chunk-54-1.png)
+    [1] 100 250
 
 ``` r
-seetrees::view_tree(test1, k = 2, p = 0.01)
+u <- umap(mtrx)
+
+dat <- tibble(x = u$layout[,1],
+       y = u$layout[,2],
+       sample_id = xxx$sample_id) %>% 
+  mutate(genre = str_remove(sample_id, "_\\d+$"))
+  
+glimpse(dat)
 ```
 
-![](03_2_projections.markdown_strict_files/figure-markdown_strict/unnamed-chunk-54-2.png)
-
-![](03_2_projections.markdown_strict_files/figure-markdown_strict/unnamed-chunk-54-3.png)
+    Rows: 100
+    Columns: 4
+    $ x         <dbl> -0.75517569, -0.78798640, -0.44519402, -0.07567723, -0.33738…
+    $ y         <dbl> -0.06633743, -1.79126050, -0.74679284, -0.92776001, -0.95345…
+    $ sample_id <chr> "баллада_1", "баллада_10", "баллада_2", "баллада_3", "баллад…
+    $ genre     <chr> "баллада", "баллада", "баллада", "баллада", "баллада", "балл…
 
 ``` r
-bct <- stylo(
-  gui = F,
-  corpus.dir = "corpus_sampled/",
-  corpus.lang = "Other",
-  analyzed.features = "w",
-  ngram.size = 1,
-  mfw.min = 200,
-  mfw.max = 1000,
-  mfw.incr = 1,
-  distance.measure = "wurzburg",
-  analysis.type = "BCT",
-  consensus.strength = 0.5
-)
+rm(ranks, counter, mtrx)
 ```
 
-![](03_2_projections.markdown_strict_files/figure-markdown_strict/unnamed-chunk-55-1.png)
+``` r
+dat %>% 
+  ggplot(aes(x, y, color = genre)) + 
+  #geom_point(size = 5, alpha = 0.6) + 
+  geom_text(aes(label = genre)) + 
+  labs(title = "250 MFW, lemmatised, 10 samples of 100 lines from each genre")
+```
+
+![](03_2_projections.markdown_strict_files/figure-markdown_strict/unnamed-chunk-23-1.png)
+
+#### 750 MFW
+
+``` r
+ranks <- genres_sampled %>% 
+  unnest_tokens(input = text, output = word, token = "words") %>% 
+  count(word, sort = T) %>% 
+  head(750)
+
+head(ranks, 10)
+```
+
+    # A tibble: 10 × 2
+       word      n
+       <chr> <int>
+     1 и      1739
+     2 в      1233
+     3 я       881
+     4 не      797
+     5 на      605
+     6 с       563
+     7 ты      540
+     8 как     466
+     9 он      452
+    10 мой     356
+
+``` r
+tail(ranks, 10)
+```
+
+    # A tibble: 10 × 2
+       word          n
+       <chr>     <int>
+     1 близкий       8
+     2 близко        8
+     3 ведь          8
+     4 видение       8
+     5 влечь         8
+     6 водопад       8
+     7 воздушный     8
+     8 вой           8
+     9 волга         8
+    10 вольный       8
+
+``` r
+ranks %>% 
+  mutate(rank = row_number()) %>% 
+  sample_n(15) %>% 
+  arrange(-desc(rank))
+```
+
+    # A tibble: 15 × 3
+       word        n  rank
+       <chr>   <int> <int>
+     1 тот       134    33
+     2 над       121    40
+     3 звезда     40   133
+     4 дева       30   175
+     5 певец      29   182
+     6 слово      27   201
+     7 про        22   262
+     8 долго      18   313
+     9 об         17   350
+    10 нога       16   379
+    11 темный     16   385
+    12 высота     15   394
+    13 змея       12   504
+    14 горячий    10   603
+    15 простой     9   711
+
+``` r
+counter <- genres_sampled %>% 
+  unnest_tokens(input = text, output = word, token = "words") %>% 
+  group_by(sample_id) %>% 
+  count(word) %>% 
+  filter(word %in% ranks$word) %>% 
+  ungroup()
+
+counter %>% 
+  sample_n(10)
+```
+
+    # A tibble: 10 × 3
+       sample_id word       n
+       <chr>     <chr>  <int>
+     1 элегия_5  слеза      3
+     2 отрывок_2 друг       1
+     3 элегия_8  о          3
+     4 песнь_3   ты         8
+     5 элегия_10 быть       3
+     6 сонет_8   могила     1
+     7 отрывок_2 ум         1
+     8 дума_5    земной     1
+     9 отрывок_5 она        3
+    10 баллада_4 цветок     2
+
+``` r
+xxx <- counter %>% 
+  pivot_wider(names_from = word, values_from = n, values_fill = 0)
+
+mtrx <- xxx %>% 
+  ungroup() %>% 
+  select(-sample_id) %>% 
+  scale()
+
+dim(mtrx)
+```
+
+    [1] 100 750
+
+``` r
+u <- umap(mtrx)
+
+dat <- tibble(x = u$layout[,1],
+       y = u$layout[,2],
+       sample_id = xxx$sample_id) %>% 
+  mutate(genre = str_remove(sample_id, "_\\d+$"))
+  
+glimpse(dat)
+```
+
+    Rows: 100
+    Columns: 4
+    $ x         <dbl> 0.3424784, 0.4933782, 0.1714418, 0.6916190, 0.2730497, -0.29…
+    $ y         <dbl> -0.1637214, -0.7873532, -1.5466396, -0.3944412, 1.0698735, -…
+    $ sample_id <chr> "баллада_1", "баллада_10", "баллада_2", "баллада_3", "баллад…
+    $ genre     <chr> "баллада", "баллада", "баллада", "баллада", "баллада", "балл…
+
+``` r
+rm(ranks, counter, mtrx)
+
+dat %>% 
+  ggplot(aes(x, y, color = genre)) + 
+  #geom_point(size = 5, alpha = 0.6) + 
+  geom_text(aes(label = genre)) + 
+  labs(title = "750 MFW, lemmatised, 10 samples of 100 lines from each genre")
+```
+
+![](03_2_projections.markdown_strict_files/figure-markdown_strict/unnamed-chunk-24-1.png)
+
+### Genres + meters
+
+#### 500 MFW
+
+``` r
+ranks <- genres_m_sampled %>% 
+  unnest_tokens(input = text, output = word, token = "words") %>% 
+  count(word, sort = T) %>% 
+  head(500)
+
+head(ranks, 10)
+```
+
+    # A tibble: 10 × 2
+       word      n
+       <chr> <int>
+     1 и      1500
+     2 в      1006
+     3 я       803
+     4 не      624
+     5 ты      466
+     6 на      452
+     7 с       450
+     8 он      356
+     9 как     352
+    10 мой     337
+
+``` r
+tail(ranks, 10)
+```
+
+    # A tibble: 10 × 2
+       word        n
+       <chr>   <int>
+     1 яркий      11
+     2 альбом     10
+     3 боже       10
+     4 бояться    10
+     5 вал        10
+     6 верный     10
+     7 веселие    10
+     8 вид        10
+     9 вино       10
+    10 восторг    10
+
+``` r
+ranks %>% 
+  mutate(rank = row_number()) %>% 
+  sample_n(15) %>% 
+  arrange(-desc(rank))
+```
+
+    # A tibble: 15 × 3
+       word          n  rank
+       <chr>     <int> <int>
+     1 давать       60    70
+     2 слава        51    83
+     3 море         37   117
+     4 пора         37   118
+     5 солнце       29   161
+     6 красота      26   181
+     7 сиять        21   222
+     8 черный       20   241
+     9 конец        17   285
+    10 скала        17   292
+    11 меч          15   333
+    12 вихорь       13   385
+    13 чтобы        13   412
+    14 чей          12   449
+    15 волшебный    11   459
+
+``` r
+counter <- genres_m_sampled %>% 
+  unnest_tokens(input = text, output = word, token = "words") %>% 
+  group_by(sample_id) %>% 
+  count(word) %>% 
+  filter(word %in% ranks$word) %>% 
+  ungroup()
+
+counter %>% 
+  sample_n(10)
+```
+
+    # A tibble: 10 × 3
+       sample_id             word          n
+       <chr>                 <chr>     <int>
+     1 дума_Iamb__3          идти          1
+     2 послание_Iamb__5      всегда        2
+     3 отрывок_Iamb__4       или           1
+     4 фантазия_Iamb__3      стезя         1
+     5 песня_Iamb__5         открывать     1
+     6 романс_Trochee__4     по            1
+     7 басня_Iamb__4         взять         1
+     8 дума_Iamb__1          нести         1
+     9 песня_Amphibrach__5   муж           1
+    10 баллада_Amphibrach__5 то            2
+
+``` r
+xxx <- counter %>% 
+  pivot_wider(names_from = word, values_from = n, values_fill = 0)
+
+mtrx <- xxx %>% 
+  ungroup() %>% 
+  select(-sample_id) %>% 
+  scale()
+
+dim(mtrx)
+```
+
+    [1]  85 500
+
+``` r
+u <- umap(mtrx)
+
+dat <- tibble(x = u$layout[,1],
+       y = u$layout[,2],
+       sample_id = xxx$sample_id) %>% 
+  mutate(genre = str_remove(sample_id, "_\\w+__\\d+$"),
+         meter = str_extract(sample_id, "_\\w+__"),
+         meter = str_remove_all(meter, "_"))
+  
+glimpse(dat)
+```
+
+    Rows: 85
+    Columns: 5
+    $ x         <dbl> -0.366671907, 0.021358786, -0.287284624, -0.294278499, -0.42…
+    $ y         <dbl> -1.76153787, -2.06016466, -2.03687248, -1.94232821, -1.37585…
+    $ sample_id <chr> "альбом_Iamb__1", "альбом_Iamb__2", "альбом_Iamb__3", "альбо…
+    $ genre     <chr> "альбом", "альбом", "альбом", "альбом", "альбом", "баллада",…
+    $ meter     <chr> "Iamb", "Iamb", "Iamb", "Iamb", "Iamb", "Amphibrach", "Amphi…
+
+``` r
+dat %>% 
+  ggplot(aes(x, y, color = meter, shape = meter)) + 
+  geom_point(size = 3, alpha = 0.6) + 
+  geom_text(aes(label = genre), vjust=0.9) + 
+  labs(title = "500 MFW, lemmatised, 5 samples of 100 lines from each genre")
+```
+
+![](03_2_projections.markdown_strict_files/figure-markdown_strict/unnamed-chunk-28-1.png)
+
+#### 250 MFW
+
+``` r
+ranks <- genres_m_sampled %>% 
+  unnest_tokens(input = text, output = word, token = "words") %>% 
+  count(word, sort = T) %>% 
+  head(250)
+
+head(ranks, 10)
+```
+
+    # A tibble: 10 × 2
+       word      n
+       <chr> <int>
+     1 и      1500
+     2 в      1006
+     3 я       803
+     4 не      624
+     5 ты      466
+     6 на      452
+     7 с       450
+     8 он      356
+     9 как     352
+    10 мой     337
+
+``` r
+tail(ranks, 10)
+```
+
+    # A tibble: 10 × 2
+       word        n
+       <chr>   <int>
+     1 черный     20
+     2 это        20
+     3 берег      19
+     4 блеск      19
+     5 бросать    19
+     6 голубой    19
+     7 дар        19
+     8 дышать     19
+     9 легкий     19
+    10 могучий    19
+
+``` r
+ranks %>% 
+  mutate(rank = row_number()) %>% 
+  sample_n(15) %>% 
+  arrange(-desc(rank))
+```
+
+    # A tibble: 15 × 3
+       word         n  rank
+       <chr>    <int> <int>
+     1 мы         204    17
+     2 то         183    19
+     3 вы         130    26
+     4 лишь        85    46
+     5 вот         78    54
+     6 сказать     65    65
+     7 мочь        56    73
+     8 слава       51    83
+     9 ночь        49    90
+    10 счастие     43    98
+    11 этот        42   104
+    12 какой       31   148
+    13 тоска       31   150
+    14 страна      23   205
+    15 скрывать    20   236
+
+``` r
+counter <- genres_m_sampled %>% 
+  unnest_tokens(input = text, output = word, token = "words") %>% 
+  group_by(sample_id) %>% 
+  count(word) %>% 
+  filter(word %in% ranks$word) %>% 
+  ungroup()
+
+counter %>% 
+  sample_n(10)
+```
+
+    # A tibble: 10 × 3
+       sample_id           word         n
+       <chr>               <chr>    <int>
+     1 элегия_Iamb__1      для          3
+     2 песня_Trochee__4    для          2
+     3 дума_Iamb__3        счастие      1
+     4 баллада_Trochee__4  и           17
+     5 молитва_Iamb__4     исчезать     1
+     6 фантазия_Iamb__3    со           2
+     7 альбом_Iamb__5      бы           1
+     8 песнь_Iamb__2       красота      1
+     9 элегия_Iamb__2      взор         2
+    10 песня_Amphibrach__1 на           3
+
+``` r
+xxx <- counter %>% 
+  pivot_wider(names_from = word, values_from = n, values_fill = 0)
+
+mtrx <- xxx %>% 
+  ungroup() %>% 
+  select(-sample_id) %>% 
+  scale()
+
+dim(mtrx)
+```
+
+    [1]  85 250
+
+``` r
+u <- umap(mtrx)
+
+dat <- tibble(x = u$layout[,1],
+       y = u$layout[,2],
+       sample_id = xxx$sample_id) %>% 
+  mutate(genre = str_remove(sample_id, "_\\w+__\\d+$"),
+         meter = str_extract(sample_id, "_\\w+__"),
+         meter = str_remove_all(meter, "_"))
+
+glimpse(dat)
+```
+
+    Rows: 85
+    Columns: 5
+    $ x         <dbl> -2.2417647, -2.0079610, -2.2587395, -2.4515914, -2.1181395, …
+    $ y         <dbl> 0.45886913, -0.32432822, 0.14603876, -0.02413463, 0.10798424…
+    $ sample_id <chr> "альбом_Iamb__1", "альбом_Iamb__2", "альбом_Iamb__3", "альбо…
+    $ genre     <chr> "альбом", "альбом", "альбом", "альбом", "альбом", "баллада",…
+    $ meter     <chr> "Iamb", "Iamb", "Iamb", "Iamb", "Iamb", "Amphibrach", "Amphi…
+
+``` r
+rm(ranks, counter, mtrx)
+```
+
+``` r
+dat %>% 
+  ggplot(aes(x, y, color = meter, shape = meter)) + 
+  geom_point(size = 3, alpha = 0.6) + 
+  geom_text(aes(label = genre), vjust=0.9) + 
+  labs(title = "250 MFW, lemmatised, 5 samples of 100 lines from each genre")
+```
+
+![](03_2_projections.markdown_strict_files/figure-markdown_strict/unnamed-chunk-30-1.png)
+
+#### 750 MFW
+
+``` r
+ranks <- genres_m_sampled %>% 
+  unnest_tokens(input = text, output = word, token = "words") %>% 
+  count(word, sort = T) %>% 
+  head(750)
+
+head(ranks, 10)
+```
+
+    # A tibble: 10 × 2
+       word      n
+       <chr> <int>
+     1 и      1500
+     2 в      1006
+     3 я       803
+     4 не      624
+     5 ты      466
+     6 на      452
+     7 с       450
+     8 он      356
+     9 как     352
+    10 мой     337
+
+``` r
+tail(ranks, 10)
+```
+
+    # A tibble: 10 × 2
+       word          n
+       <chr>     <int>
+     1 заглушать     7
+     2 закон         7
+     3 запад         7
+     4 звездочка     7
+     5 зыбь          7
+     6 крепкий       7
+     7 крик          7
+     8 кумир         7
+     9 куст          7
+    10 лазурь        7
+
+``` r
+ranks %>% 
+  mutate(rank = row_number()) %>% 
+  sample_n(15) %>% 
+  arrange(-desc(rank))
+```
+
+    # A tibble: 15 × 3
+       word         n  rank
+       <chr>    <int> <int>
+     1 то         183    19
+     2 наш         70    62
+     3 светлый     34   134
+     4 солнце      29   161
+     5 младой      23   199
+     6 крыло       21   220
+     7 русский     15   344
+     8 белый       14   352
+     9 горе        12   418
+    10 труд        11   486
+    11 бояться     10   494
+    12 труп        10   539
+    13 замечать     8   647
+    14 манить       8   660
+    15 горний       7   729
+
+``` r
+counter <- genres_m_sampled %>% 
+  unnest_tokens(input = text, output = word, token = "words") %>% 
+  group_by(sample_id) %>% 
+  count(word) %>% 
+  filter(word %in% ranks$word) %>% 
+  ungroup()
+
+counter %>% 
+  sample_n(10)
+```
+
+    # A tibble: 10 × 3
+       sample_id             word           n
+       <chr>                 <chr>      <int>
+     1 элегия_Iamb__1        милый          1
+     2 песня_Amphibrach__1   прелестный     1
+     3 песня_Trochee__1      увидеть        1
+     4 песня_Iamb__5         да             1
+     5 баллада_Amphibrach__2 сердце         2
+     6 баллада_Amphibrach__5 биться         2
+     7 альбом_Iamb__5        благо          1
+     8 романс_Trochee__3     реветь         1
+     9 дума_Iamb__4          создание       1
+    10 дума_Iamb__2          хороший        1
+
+``` r
+xxx <- counter %>% 
+  pivot_wider(names_from = word, values_from = n, values_fill = 0)
+
+mtrx <- xxx %>% 
+  ungroup() %>% 
+  select(-sample_id) %>% 
+  scale()
+
+dim(mtrx)
+```
+
+    [1]  85 750
+
+``` r
+u <- umap(mtrx)
+
+dat <- tibble(x = u$layout[,1],
+       y = u$layout[,2],
+       sample_id = xxx$sample_id) %>% 
+  mutate(genre = str_remove(sample_id, "_\\w+__\\d+$"),
+         meter = str_extract(sample_id, "_\\w+__"),
+         meter = str_remove_all(meter, "_"))
+
+glimpse(dat)
+```
+
+    Rows: 85
+    Columns: 5
+    $ x         <dbl> -0.42069129, -0.18104963, -0.89878411, -0.80829785, -0.48357…
+    $ y         <dbl> 1.6723248, 1.0683108, 1.8142523, 1.6698733, 1.4274081, -1.34…
+    $ sample_id <chr> "альбом_Iamb__1", "альбом_Iamb__2", "альбом_Iamb__3", "альбо…
+    $ genre     <chr> "альбом", "альбом", "альбом", "альбом", "альбом", "баллада",…
+    $ meter     <chr> "Iamb", "Iamb", "Iamb", "Iamb", "Iamb", "Amphibrach", "Amphi…
+
+``` r
+rm(ranks, counter, mtrx)
+```
+
+``` r
+dat %>% 
+  ggplot(aes(x, y, color = meter, shape = meter)) + 
+  geom_point(size = 3, alpha = 0.6) + 
+  geom_text(aes(label = genre), vjust=0.9) + 
+  labs(title = "750 MFW, lemmatised, 5 samples of 100 lines from each genre")
+```
+
+![](03_2_projections.markdown_strict_files/figure-markdown_strict/unnamed-chunk-32-1.png)

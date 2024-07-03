@@ -105,7 +105,7 @@ corpus_genres <- corpus1835 %>%
 table(corpus_genres$genre)
 ```
 
-## length in lines 
+## length in lines
 
 texts with genre titles
 
@@ -214,7 +214,7 @@ genres_only %>%
   ggplot(aes(x = genre, y = n)) + geom_boxplot()
 ```
 
-## Aggregation 
+## Aggregation
 
 ### genres - n lines available
 

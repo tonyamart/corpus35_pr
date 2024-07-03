@@ -1,0 +1,658 @@
+---
+title: "03_2_classification"
+format: md
+editor: visual
+---
+
+## Classification
+
+This notebook uses samples of different poetic genres from the Corpus-1835 and try to classify them using SVM. The aim is to test whether even basic MFW-based classification accuracy will be higher than chance, and if yes, what are the "influential" words behind this result.
+
+### load data
+
+```{r}
+library(tidyverse)
+library(tidytext)
+
+library(e1071)
+library(caret)
+
+library(tidymodels)
+library(textrecipes)
+library(kernlab)
+
+library(MetBrewer)
+theme_set(theme_minimal())
+```
+
+```{r}
+# main corpus
+corpus1835 <- readRDS("../../data/corpus1835/corpus_1835.Rds")
+
+# read genre titles
+titles <- read.csv("poems_titles.csv") %>% select(-X)
+
+# read the data with normalised genres
+m <- read.delim("multigenre_texts.csv", sep = ';') %>% select(-X)
+
+# list of genre words (longer)
+genres <- unlist(str_split(c("песня
+романс
+сонет
+элегия
+басня
+песнь
+альбом
+дума
+баллада
+отрывок
+подражание
+послание
+молитва
+фантазия
+псалом
+эпиграмма
+мелодия
+антологический
+аполог
+сказка
+экспромт
+надпись
+эпилог"), pattern = "\n"))
+
+# attach normalised genres to other genre titles
+ids_genres <- titles %>% 
+  select(text_id, lemma) %>% 
+  filter(lemma %in% genres) %>% # select genres from the list
+  group_by(text_id) %>% 
+  summarise(genre = paste0(lemma, collapse = " | ")) %>% 
+  filter(!str_detect(genre, " \\| ")) %>% # remove multigenre titles
+  rbind(m %>% 
+          select(text_id, true_genre) %>% 
+          rename(genre = true_genre) # replace them with clean labels
+          ) %>% 
+  filter(genre != "")
+
+rm(genres, m, titles)
+```
+
+```{r}
+glimpse(ids_genres)
+ids_genres %>% count(genre, sort = T)
+```
+
+Select only texts with genre titles & needed columns
+
+```{r}
+corpus_genres <- corpus1835 %>% 
+  left_join(ids_genres, by = "text_id") %>% 
+  #filter(!is.na(genre)) %>% 
+  select(text_id, genre, meter, text_lemm) %>% 
+  mutate(genre = ifelse(is.na(genre), "no_genre", genre))
+```
+
+## poem-level classification
+
+### ranks
+
+Count word ranks (lemmatised corpus) for all genres
+
+NB here poems without genre titles are NOT filtered out, "others" are all possible other texts, both with and without genre titles.
+
+```{r}
+ranks <- corpus_genres %>% 
+  unnest_tokens(input = text_lemm, output = word, token = "words") %>% 
+  count(word, sort = T) %>% 
+  mutate(rank = row_number()) %>% 
+  head(300)
+
+head(ranks, 10)
+tail(ranks, 10)
+```
+
+### песня
+
+Create genre lables
+
+```{r}
+corpus_lbld <- corpus_genres %>% 
+  mutate(text_genre = ifelse(genre == "песня", genre, "другое")) 
+# leave only genre title of the needed class, rename the rest as 'other'
+
+table(corpus_lbld$text_genre) # number of available texts
+```
+
+Cound 300MFW freq in all texts in the labelled corpus
+
+```{r}
+freqs <- corpus_lbld %>% 
+  select(text_id, text_genre, text_lemm) %>% 
+  unnest_tokens(input = text_lemm, output = word, token = "words") %>% 
+  filter(word %in% ranks$word) %>% 
+  group_by(text_id, text_genre) %>% 
+  count(word) %>% 
+  ungroup() %>% 
+  pivot_wider(names_from = word, values_from = n, values_fill = 0) 
+
+dim(freqs)
+freqs[1:10, 1:10]
+```
+
+Scaling
+
+```{r}
+freqs_scaled <- freqs %>% 
+  select(-text_id, -text_genre) %>% 
+  scale() %>% 
+  as.tibble()
+
+
+freqs_scaled[1:10, 1:10]
+
+# glimpse(freqs_scaled)
+
+freqs_scaled <- tibble(text_id = freqs$text_id,
+       freqs_scaled,
+       text_genre = freqs$text_genre) %>% 
+  mutate(text_id = row_number())
+
+# glimpse(freqs_scaled)
+```
+
+Use tidymodels for 10-fold cross validation & fitting
+
+```{r}
+tidy_corpus <- freqs_scaled %>% 
+  group_by(text_genre) %>% 
+  sample_n(242) %>%   # number of texts in the tested genre
+  ungroup() %>% 
+  select(-text_id)
+
+## split the data into training and test sets
+corpus_split <- initial_split(tidy_corpus, strata="text_genre", prop = 7.5/10)
+
+corpus_split
+
+training_set <- training(corpus_split)
+test_set <- testing(corpus_split)
+
+# colnames(training_set) == colnames(test_set)
+```
+
+Settings for the classifier
+
+```{r}
+zscores_recipe <- recipe(text_genre ~ ., data = training_set) # all columns = all 300MFW freqs are used for the training
+
+# 10-fold cross validation setup
+folds <- vfold_cv(training_set, strata = "text_genre", v = 10)
+
+# model specifications
+svm_specs <- svm_poly(cost=1,degree = 1) %>% # linear kernel
+  set_mode("classification") %>%
+  set_engine("kernlab")
+
+# add recipe and model specs to the workflow 
+svm_wf <- workflow() %>%
+  add_recipe(zscores_recipe) %>%
+  add_model(svm_specs)
+```
+
+Fitting SVM
+
+```{r}
+svm_res <- fit_resamples(
+  svm_wf,
+  folds,
+  metrics = metric_set(accuracy),
+  control = control_resamples(save_pred = TRUE)
+)
+
+```
+
+```{r}
+metrics = collect_metrics(svm_res)
+metrics 
+```
+
+```{r}
+svm_model <-svm(as.factor(text_genre)~.,  
+                data = training_set, 
+                method = "C-classification", 
+                kernel = "linear", 
+                cost = 1, 
+                scale = T)
+
+summary(svm_model) 
+prediction <- predict(svm_model, test_set)
+confusionMatrix(prediction, as.factor(test_set$text_genre)) # NB check if the same positive class used below in the plot
+
+words_coefs <- t(svm_model$coefs) %*% svm_model$SV
+```
+
+```{r}
+tibble(weight=words_coefs[1,], word=colnames(words_coefs)) %>% 
+  mutate(genre = case_when(weight > 0 ~ "другое", 
+                           weight < 0 ~ "песня")) %>%
+  group_by(genre) %>% 
+  mutate(abs=abs(weight)) %>%
+  top_n(20,abs) %>% 
+  ggplot(aes(reorder(word,abs), abs, fill=genre)) + geom_col() +
+  coord_flip() + 
+  facet_wrap(~genre,scales="free") +
+  theme_minimal(base_size = 16) + 
+  labs(x = "", 
+       y = "",
+       fill = "") + 
+  #scale_fill_carto_d(palette = "Safe") + 
+  theme(legend.position = "none") + 
+  theme(axis.text = element_text(size = 14),
+        axis.title = element_text(size = 14),
+        plot.title = element_text(size = 14)) + 
+  theme(panel.border = element_blank(), 
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank()) +
+  theme(axis.line.x = element_line(color="black"), 
+        axis.line.y = element_line(color="black"))
+```
+
+### романс
+
+```{r}
+corpus_lbld <- corpus_genres %>% 
+  mutate(text_genre = ifelse(genre == "романс", genre, "другое")) 
+# leave only genre title of the needed class, rename the rest as 'other'
+
+table(corpus_lbld$text_genre) # number of available texts
+
+freqs <- corpus_lbld %>% 
+  select(text_id, text_genre, text_lemm) %>% 
+  unnest_tokens(input = text_lemm, output = word, token = "words") %>% 
+  filter(word %in% ranks$word) %>% 
+  group_by(text_id, text_genre) %>% 
+  count(word) %>% 
+  ungroup() %>% 
+  pivot_wider(names_from = word, values_from = n, values_fill = 0) 
+
+# dim(freqs)
+# freqs[1:10, 1:10]
+
+freqs_scaled <- freqs %>% 
+  select(-text_id, -text_genre) %>% 
+  scale() %>% 
+  as.tibble()
+
+
+# freqs_scaled[1:10, 1:10]
+
+# glimpse(freqs_scaled)
+
+freqs_scaled <- tibble(text_id = freqs$text_id,
+       freqs_scaled,
+       text_genre = freqs$text_genre) %>% 
+  mutate(text_id = row_number())
+
+
+tidy_corpus <- freqs_scaled %>% 
+  group_by(text_genre) %>% 
+  sample_n(104) %>%   # number of texts in the tested genre
+  ungroup() %>% 
+  select(-text_id)
+
+## split the data into training and test sets
+corpus_split <- initial_split(tidy_corpus, strata="text_genre", prop = 7.5/10)
+
+corpus_split
+
+training_set <- training(corpus_split)
+test_set <- testing(corpus_split)
+
+# colnames(training_set) == colnames(test_set)
+
+# fit the model
+svm_res <- fit_resamples(
+  svm_wf,
+  folds,
+  metrics = metric_set(accuracy),
+  control = control_resamples(save_pred = TRUE)
+)
+
+metrics = collect_metrics(svm_res)
+metrics 
+
+# check the word coefficients with e1071
+svm_model <-svm(as.factor(text_genre)~.,  
+                data = training_set, 
+                method = "C-classification", 
+                kernel = "linear", 
+                cost = 1, 
+                scale = T)
+
+summary(svm_model) 
+prediction <- predict(svm_model, test_set)
+confusionMatrix(prediction, as.factor(test_set$text_genre)) # NB check if the same positive class used below in the plot
+
+words_coefs <- t(svm_model$coefs) %*% svm_model$SV
+
+tibble(weight=words_coefs[1,], word=colnames(words_coefs)) %>% 
+  mutate(genre = case_when(weight > 0 ~ "другое", 
+                           weight < 0 ~ "романс")) %>%
+  group_by(genre) %>% 
+  mutate(abs=abs(weight)) %>%
+  top_n(20,abs) %>% 
+  ggplot(aes(reorder(word,abs), abs, fill=genre)) + geom_col() +
+  coord_flip() + 
+  facet_wrap(~genre,scales="free") +
+  theme_minimal(base_size = 16) + 
+  labs(x = "", 
+       y = "",
+       fill = "") + 
+  #scale_fill_carto_d(palette = "Safe") + 
+  theme(legend.position = "none") + 
+  theme(axis.text = element_text(size = 14),
+        axis.title = element_text(size = 14),
+        plot.title = element_text(size = 14)) + 
+  theme(panel.border = element_blank(), 
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank()) +
+  theme(axis.line.x = element_line(color="black"), 
+        axis.line.y = element_line(color="black"))
+```
+
+### элегия
+
+```{r}
+corpus_lbld <- corpus_genres %>% 
+  mutate(text_genre = ifelse(genre == "элегия", genre, "другое")) 
+# leave only genre title of the needed class, rename the rest as 'other'
+
+table(corpus_lbld$text_genre) # number of available texts
+
+freqs <- corpus_lbld %>% 
+  select(text_id, text_genre, text_lemm) %>% 
+  unnest_tokens(input = text_lemm, output = word, token = "words") %>% 
+  filter(word %in% ranks$word) %>% 
+  group_by(text_id, text_genre) %>% 
+  count(word) %>% 
+  ungroup() %>% 
+  pivot_wider(names_from = word, values_from = n, values_fill = 0) 
+
+# dim(freqs)
+# freqs[1:10, 1:10]
+
+freqs_scaled <- freqs %>% 
+  select(-text_id, -text_genre) %>% 
+  scale() %>% 
+  as.tibble()
+
+
+# freqs_scaled[1:10, 1:10]
+
+# glimpse(freqs_scaled)
+
+freqs_scaled <- tibble(text_id = freqs$text_id,
+       freqs_scaled,
+       text_genre = freqs$text_genre) %>% 
+  mutate(text_id = row_number())
+
+
+tidy_corpus <- freqs_scaled %>% 
+  group_by(text_genre) %>% 
+  sample_n(72) %>%   # number of texts in the tested genre
+  ungroup() %>% 
+  select(-text_id)
+
+## split the data into training and test sets
+corpus_split <- initial_split(tidy_corpus, strata="text_genre", prop = 7.5/10)
+
+corpus_split
+
+training_set <- training(corpus_split)
+test_set <- testing(corpus_split)
+
+# colnames(training_set) == colnames(test_set)
+
+# fit the model
+svm_res <- fit_resamples(
+  svm_wf,
+  folds,
+  metrics = metric_set(accuracy),
+  control = control_resamples(save_pred = TRUE)
+)
+
+metrics = collect_metrics(svm_res)
+metrics 
+
+# check the word coefficients with e1071
+svm_model <-svm(as.factor(text_genre)~.,  
+                data = training_set, 
+                method = "C-classification", 
+                kernel = "linear", 
+                cost = 1, 
+                scale = T)
+
+summary(svm_model) 
+prediction <- predict(svm_model, test_set)
+confusionMatrix(prediction, as.factor(test_set$text_genre)) # NB check if the same positive class used below in the plot
+
+words_coefs <- t(svm_model$coefs) %*% svm_model$SV
+
+tibble(weight=words_coefs[1,], word=colnames(words_coefs)) %>% 
+  mutate(genre = case_when(weight > 0 ~ "другое", 
+                           weight < 0 ~ "элегия")) %>%
+  group_by(genre) %>% 
+  mutate(abs=abs(weight)) %>%
+  top_n(20,abs) %>% 
+  ggplot(aes(reorder(word,abs), abs, fill=genre)) + geom_col() +
+  coord_flip() + 
+  facet_wrap(~genre,scales="free") +
+  theme_minimal(base_size = 16) + 
+  labs(x = "", 
+       y = "",
+       fill = "") + 
+  #scale_fill_carto_d(palette = "Safe") + 
+  theme(legend.position = "none") + 
+  theme(axis.text = element_text(size = 14),
+        axis.title = element_text(size = 14),
+        plot.title = element_text(size = 14)) + 
+  theme(panel.border = element_blank(), 
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank()) +
+  theme(axis.line.x = element_line(color="black"), 
+        axis.line.y = element_line(color="black"))
+```
+
+### басня
+
+```{r}
+corpus_lbld <- corpus_genres %>% 
+  mutate(text_genre = ifelse(genre == "басня", genre, "другое")) 
+# leave only genre title of the needed class, rename the rest as 'other'
+
+table(corpus_lbld$text_genre) # number of available texts
+
+freqs <- corpus_lbld %>% 
+  select(text_id, text_genre, text_lemm) %>% 
+  unnest_tokens(input = text_lemm, output = word, token = "words") %>% 
+  filter(word %in% ranks$word) %>% 
+  group_by(text_id, text_genre) %>% 
+  count(word) %>% 
+  ungroup() %>% 
+  pivot_wider(names_from = word, values_from = n, values_fill = 0) 
+
+# dim(freqs)
+# freqs[1:10, 1:10]
+
+freqs_scaled <- freqs %>% 
+  select(-text_id, -text_genre) %>% 
+  scale() %>% 
+  as.tibble()
+
+
+# freqs_scaled[1:10, 1:10]
+
+# glimpse(freqs_scaled)
+
+freqs_scaled <- tibble(text_id = freqs$text_id,
+       freqs_scaled,
+       text_genre = freqs$text_genre) %>% 
+  mutate(text_id = row_number())
+
+
+tidy_corpus <- freqs_scaled %>% 
+  group_by(text_genre) %>% 
+  sample_n(69) %>%   # number of texts in the tested genre
+  ungroup() %>% 
+  select(-text_id)
+
+## split the data into training and test sets
+corpus_split <- initial_split(tidy_corpus, strata="text_genre", prop = 7.5/10)
+
+corpus_split
+
+training_set <- training(corpus_split)
+test_set <- testing(corpus_split)
+
+# colnames(training_set) == colnames(test_set)
+
+# fit the model
+svm_res <- fit_resamples(
+  svm_wf,
+  folds,
+  metrics = metric_set(accuracy),
+  control = control_resamples(save_pred = TRUE)
+)
+
+metrics = collect_metrics(svm_res)
+metrics 
+
+# check the word coefficients with e1071
+svm_model <-svm(as.factor(text_genre)~.,  
+                data = training_set, 
+                method = "C-classification", 
+                kernel = "linear", 
+                cost = 1, 
+                scale = T)
+
+summary(svm_model) 
+prediction <- predict(svm_model, test_set)
+confusionMatrix(prediction, as.factor(test_set$text_genre)) # NB check if the same positive class used below in the plot
+
+words_coefs <- t(svm_model$coefs) %*% svm_model$SV
+
+tibble(weight=words_coefs[1,], word=colnames(words_coefs)) %>% 
+  mutate(genre = case_when(weight > 0 ~ "басня", 
+                           weight < 0 ~ "другое")) %>%
+  group_by(genre) %>% 
+  mutate(abs=abs(weight)) %>%
+  top_n(20,abs) %>% 
+  ggplot(aes(reorder(word,abs), abs, fill=genre)) + geom_col() +
+  coord_flip() + 
+  facet_wrap(~genre,scales="free") +
+  theme_minimal(base_size = 16) + 
+  labs(x = "", 
+       y = "",
+       fill = "") + 
+  #scale_fill_carto_d(palette = "Safe") + 
+  theme(legend.position = "none") + 
+  theme(axis.text = element_text(size = 14),
+        axis.title = element_text(size = 14),
+        plot.title = element_text(size = 14)) + 
+  theme(panel.border = element_blank(), 
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank()) +
+  theme(axis.line.x = element_line(color="black"), 
+        axis.line.y = element_line(color="black"))
+```
+
+## samples classification
+
+Below aggregated samples are used for the classification, not individual texts. One sample is 20 lines, 50 samples taken from each genre (including 'no_genre' class).
+
+```{r}
+corpus_genres %>% count(genre, sort = T) %>% head()
+
+genres_sampled <- corpus_genres %>%
+  
+  # filter only genres with > 1000 lines available
+  filter(genre %in% c("песня", "романс", "элегия", "баллада", "послание", 
+                      "песнь", "отрывок", "сонет", "басня", 
+                      "дума", "no_genre")) %>% 
+  
+  separate_rows(text_lemm, sep = "\n") %>% 
+  group_by(genre) %>% 
+  sample_n(1000) %>% 
+  mutate(sample_id = ceiling(1:1000),
+         sample_id = floor(sample_id/20)+1,
+         sample_id = ifelse(sample_id == 51, 1, sample_id)) %>% 
+  ungroup() 
+  
+
+genres_sampled <- genres_sampled %>% 
+  mutate(sample_id = paste0(genre, "_", sample_id)) %>% 
+  group_by(sample_id) %>% 
+  summarise(text = paste0(text_lemm, collapse = "     --     ")) %>% 
+  ungroup() %>% 
+  mutate(genre = str_remove(sample_id, "_\\d+$"))
+
+str(genres_sampled)
+```
+
+```{r}
+unique(genres_sampled$genre)
+```
+
+Ranks
+
+```{r}
+ranks <- genres_sampled %>% 
+  unnest_tokens(input = text, output = word, token = "words") %>% 
+  count(word, sort = T) %>% 
+  head(300)
+
+head(ranks, 10)
+tail(ranks, 10)
+```
+
+Frequencies (for all genres)
+
+```{r}
+genres_freqs <- genres_sampled %>% 
+  unnest_tokens(input = text, output = word, token = "words") %>% 
+  filter(word %in% ranks$word) %>% 
+  group_by(sample_id) %>% 
+  count(word) %>% 
+  pivot_wider(names_from = word, values_from = n, values_fill = 0) %>% 
+  ungroup() 
+
+freqs_scaled <- genres_freqs %>% 
+  select(-sample_id) %>% 
+  scale() %>% 
+  as.tibble()
+
+freqs_scaled <- freqs_scaled %>% 
+  mutate(sample_id = genres_freqs$sample_id) 
+```
+
+make a loop out of that and test classification
+
+```{r}
+f <- freqs_scaled %>% 
+  mutate(genre = str_remove(sample_id, "_\\d+$")) %>% 
+  select(-sample_id)
+
+table(f$genre)
+
+f1 <- f %>% 
+  filter(genre == "no_genre" | genre == "песня")
+```
+
+```{r}
+glimpse(f1)
+```
+
+NB mb classificator would work better with char ngrams
+
+```{r}
+
+```

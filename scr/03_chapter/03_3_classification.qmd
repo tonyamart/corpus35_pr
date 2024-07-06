@@ -81,7 +81,7 @@ glimpse(ids_genres)
 ids_genres %>% count(genre, sort = T)
 ```
 
-Select only texts with genre titles & needed columns
+Select only needed columns
 
 ```{r}
 corpus_genres <- corpus1835 %>% 
@@ -569,9 +569,13 @@ tibble(weight=words_coefs[1,], word=colnames(words_coefs)) %>%
 
 Below aggregated samples are used for the classification, not individual texts. One sample is 20 lines, 50 samples taken from each genre (including 'no_genre' class).
 
+### prepare samples
+
 ```{r}
 corpus_genres %>% count(genre, sort = T) %>% head()
 
+
+# select genres and take 1000 lines from each
 genres_sampled <- corpus_genres %>%
   
   # filter only genres with > 1000 lines available
@@ -587,7 +591,7 @@ genres_sampled <- corpus_genres %>%
          sample_id = ifelse(sample_id == 51, 1, sample_id)) %>% 
   ungroup() 
   
-
+# summarise lines in one cell according to sample ids
 genres_sampled <- genres_sampled %>% 
   mutate(sample_id = paste0(genre, "_", sample_id)) %>% 
   group_by(sample_id) %>% 
@@ -601,6 +605,8 @@ str(genres_sampled)
 ```{r}
 unique(genres_sampled$genre)
 ```
+
+### ranks
 
 Ranks
 
@@ -628,11 +634,13 @@ genres_freqs <- genres_sampled %>%
 freqs_scaled <- genres_freqs %>% 
   select(-sample_id) %>% 
   scale() %>% 
-  as.tibble()
+  as_tibble()
 
 freqs_scaled <- freqs_scaled %>% 
   mutate(sample_id = genres_freqs$sample_id) 
 ```
+
+### SVM model
 
 make a loop out of that and test classification
 
@@ -641,14 +649,331 @@ f <- freqs_scaled %>%
   mutate(genre = str_remove(sample_id, "_\\d+$")) %>% 
   select(-sample_id)
 
-table(f$genre)
+table(f$genre) # number of samples for each genre
 
+# filter out one genre
 f1 <- f %>% 
   filter(genre == "no_genre" | genre == "песня")
+
+table(f1$genre)
+```
+
+corpus split & tidymodels recipy
+
+```{r}
+tidy_corpus <- f1 %>% 
+  group_by(genre) %>% 
+  sample_n(50) %>%   # number of texts in the tested genre
+  ungroup() 
+
+## split the data into training and test sets
+corpus_split <- initial_split(tidy_corpus, strata="genre", prop = 7.5/10)
+
+corpus_split
+
+training_set <- training(corpus_split)
+test_set <- testing(corpus_split)
+
+
+# classifier settings
+zscores_recipe <- recipe(genre ~ ., data = training_set) # all columns = all 300MFW freqs are used for the training
+
+# 10-fold cross validation setup
+folds <- vfold_cv(training_set, strata = "genre", v = 10)
+
+# model specifications
+svm_specs <- svm_poly(cost = 1,degree = 1) %>% # linear kernel
+  set_mode("classification") %>%
+  set_engine("kernlab")
+
+# add recipe and model specs to the workflow 
+svm_wf <- workflow() %>%
+  add_recipe(zscores_recipe) %>%
+  add_model(svm_specs)
 ```
 
 ```{r}
-glimpse(f1)
+svm_res <- fit_resamples(
+  svm_wf,
+  folds,
+  metrics = metric_set(accuracy),
+  control = control_resamples(save_pred = TRUE)
+)
+
+
+```
+
+```{r}
+metrics = collect_metrics(svm_res)
+metrics 
+```
+
+e1071 model
+
+```{r}
+svm_model <-svm(as.factor(genre)~.,  
+                data = training_set, 
+                method = "C-classification", 
+                kernel = "linear", 
+                cost = 1, 
+                scale = T)
+
+summary(svm_model) 
+prediction <- predict(svm_model, test_set)
+confusionMatrix(prediction, as.factor(test_set$genre)) # NB check if the same positive class used below in the plot
+
+words_coefs <- t(svm_model$coefs) %*% svm_model$SV
+
+tibble(weight=words_coefs[1,], word=colnames(words_coefs)) %>% 
+  mutate(genre = case_when(weight > 0 ~ "no_genre", 
+                           weight < 0 ~ "песня")) %>%
+  group_by(genre) %>% 
+  mutate(abs=abs(weight)) %>%
+  top_n(20,abs) %>% 
+  ggplot(aes(reorder(word,abs), abs, fill=genre)) + geom_col() +
+  coord_flip() + 
+  facet_wrap(~genre,scales="free") +
+  theme_minimal(base_size = 16) + 
+  labs(x = "", 
+       y = "",
+       fill = "") + 
+  #scale_fill_carto_d(palette = "Safe") + 
+  theme(legend.position = "none") + 
+  theme(axis.text = element_text(size = 14),
+        axis.title = element_text(size = 14),
+        plot.title = element_text(size = 14)) + 
+  theme(panel.border = element_blank(), 
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank()) +
+  theme(axis.line.x = element_line(color="black"), 
+        axis.line.y = element_line(color="black"))
+```
+
+### Loop
+
+Ranks from the whole corpus
+
+```{r}
+## Word ranks the whole corpus
+ranks <- corpus_genres %>% 
+    unnest_tokens(input = text_lemm, output = word, token = "words") %>% 
+    count(word, sort = T) %>% 
+    head(300)
+
+head(ranks, 15)
+tail(ranks, 15)
+```
+
+```{r, warning=FALSE, eval=FALSE}
+
+res_save <- NULL # classification results
+x <- list() # plots
+
+# create a vector of genres
+genre_list <- corpus_genres %>%
+  # filter only genres with > 1000 lines available
+  filter(genre %in% c("песня", "романс", "элегия", "баллада", "послание", 
+                      "песнь", "отрывок", "сонет", "басня", 
+                      "дума", "no_genre")) %>% 
+  distinct(genre) %>% 
+  arrange(-desc(genre)) %>% 
+  pull(genre)
+  
+
+genre_selected <- NULL
+
+
+# starting from 2 as the 1st genre is "no_genre"
+for (j in 2:length(genre_list)) { 
+  
+  
+  genre_selected <- genre_list[j] # select genre
+  print(genre_selected)
+  
+  for (i in 1:25) {
+    
+    print(paste0("Taking sample: ", i))
+
+    # 1. Take samples from the corpus & calculate frequencies
+    # select genres and take 1000 lines from each
+    genres_sampled <- corpus_genres %>%
+    
+      # filter only genres with > 1000 lines available
+      filter(genre %in% c(#"песня", "романс", "элегия", "баллада", "послание", 
+                          #"песнь", "отрывок", "сонет", "басня", "дума", 
+                          genre_selected,
+                          "no_genre")) %>% 
+      
+      separate_rows(text_lemm, sep = "\n") %>% 
+      group_by(genre) %>% 
+      sample_n(1000) %>% 
+      mutate(sample_id = ceiling(1:1000),
+             sample_id = floor(sample_id/20)+1,
+             sample_id = ifelse(sample_id == 51, 1, sample_id)) %>% 
+      ungroup() 
+      
+    # summarise lines in one cell according to sample ids
+    genres_sampled <- genres_sampled %>% 
+      mutate(sample_id = paste0(genre, "_", sample_id)) %>% 
+      group_by(sample_id) %>% 
+      summarise(text = paste0(text_lemm, collapse = "     --     ")) %>% 
+      ungroup() %>% 
+      mutate(genre = str_remove(sample_id, "_\\d+$"))
+    
+
+  
+    # 2. Select the genre, calculate word frequencies & build an SVM model
+    ## a) frequencies
+      genres_freqs <- genres_sampled %>% 
+        unnest_tokens(input = text, output = word, token = "words") %>% 
+        filter(word %in% ranks$word) %>% 
+        group_by(sample_id) %>% 
+        count(word) %>% 
+        pivot_wider(names_from = word, values_from = n, values_fill = 0) %>% 
+        ungroup() 
+      
+      freqs_scaled <- genres_freqs %>% 
+        select(-sample_id) %>% 
+        scale() %>% 
+        as_tibble()
+      
+      freqs_scaled <- freqs_scaled %>% 
+        mutate(sample_id = genres_freqs$sample_id) 
+      
+      f <- freqs_scaled %>% 
+        mutate(genre = str_remove(sample_id, "_\\d+$")) %>% 
+        select(-sample_id)
+      
+      ## b) model settings
+      tidy_corpus <- f %>% 
+        group_by(genre) %>% 
+        sample_n(50) %>%   # number of texts in the tested genre
+        ungroup() 
+      
+      ## split the data into training and test sets
+      corpus_split <- initial_split(tidy_corpus, strata="genre", prop = 7.5/10)
+      
+      corpus_split
+      
+      training_set <- training(corpus_split)
+      test_set <- testing(corpus_split)
+      
+      
+      # classifier settings
+      zscores_recipe <- recipe(genre ~ ., data = training_set) # all columns = all 300MFW freqs are used for the training
+      
+      # 10-fold cross validation setup
+      folds <- vfold_cv(training_set, strata = "genre", v = 10)
+      
+      # model specifications
+      svm_specs <- svm_poly(cost = 1,degree = 1) %>% # linear kernel
+        set_mode("classification") %>%
+        set_engine("kernlab")
+      
+      # add recipe and model specs to the workflow 
+      svm_wf <- workflow() %>%
+        add_recipe(zscores_recipe) %>%
+        add_model(svm_specs)
+      
+      ## fit the model
+      svm_res <- fit_resamples(
+        svm_wf,
+        folds,
+        metrics = metric_set(accuracy),
+        control = control_resamples(save_pred = TRUE)
+      )
+      
+      # 3. Store results of several SVM tests
+      metrics <- collect_metrics(svm_res)
+      
+      res_save <- rbind(res_save, 
+                        metrics %>% mutate(genre = genre_selected)
+                        )
+      
+    
+  }
+  # 4. Take the last sample for one plot & store plots from the e1071 
+    svm_model <- svm(as.factor(genre)~.,  
+                    data = training_set, 
+                    method = "C-classification", 
+                    kernel = "linear", 
+                    cost = 1, 
+                    scale = T)
+    
+    # summary(svm_model) 
+    prediction <- predict(svm_model, test_set)
+    confusionMatrix(prediction, as.factor(test_set$genre)) # NB check if the same positive class used below in the plot
+    
+    words_coefs <- t(svm_model$coefs) %*% svm_model$SV
+    
+    p1 <- tibble(weight=words_coefs[1,], word=colnames(words_coefs)) %>% 
+      mutate(genre = case_when(weight > 0 ~ "no_genre", 
+                               weight < 0 ~ genre_selected)) %>%
+      group_by(genre) %>% 
+      mutate(abs=abs(weight)) %>%
+      top_n(20,abs) %>% 
+      ggplot(aes(reorder(word,abs), abs, fill=genre)) + geom_col() +
+      coord_flip() + 
+      facet_wrap(~genre,scales="free") +
+      theme_minimal(base_size = 16) + 
+      labs(x = "", 
+           y = "",
+           fill = "") 
+    
+    x[[j]] <- p1
+}
+```
+
+```{r}
+# save(res_save, x, file = "genre_classification_10.Rda") # save results from 10 iterations
+
+# save(res_save, x, file = "genre_classification_25.Rda") # save results from 25 iterations
+```
+
+### 10-iterations results
+
+```{r}
+load("genre_classification_10.Rda")
+
+res_save %>% 
+  group_by(genre) %>% 
+  summarise(mean = mean(mean))
+
+res_save %>% 
+  ggplot(aes(x = genre, y = mean)) + 
+  geom_boxplot() + 
+  #geom_jitter(alpha = 0.4) + 
+  geom_hline(yintercept = 0.5, lty = 2, color = "red") + 
+  labs(x = "",
+       y = "Точность классификатора",
+       subtitle = "1000 lines sampled from each genre and combined in 50 25-lines samples,\n300 MFW, lemmatized,\n25 iterations")
+
+for (i in 2:length(x)) {
+  print(x[[i]])
+}
+```
+
+### 25-iterations results
+
+```{r}
+load("genre_classification_25.Rda")
+
+res_save %>% 
+  group_by(genre) %>% 
+  summarise(mean = mean(mean))
+
+res_save %>% 
+  ggplot(aes(x = genre, y = mean)) + 
+  geom_boxplot() + 
+  #geom_jitter(alpha = 0.4) + 
+  geom_hline(yintercept = 0.5, lty = 2, color = "red") + 
+  labs(x = "",
+       y = "Точность классификатора",
+       subtitle = "1000 lines sampled from each genre and combined in 50 25-lines samples,\n300 MFW, lemmatized,\n25 iterations")
+
+for (i in 2:length(x)) {
+  print(x[[i]])
+}
 ```
 
 NB mb classificator would work better with char ngrams

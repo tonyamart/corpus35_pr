@@ -1,0 +1,333 @@
+---
+title: "03_5_authors"
+format: md
+editor: visual
+---
+
+## Exploration of the authors' styles
+
+This notebook takes samples of texts from known authors and tries to analyse whether there are some clusters based on the MFW.
+
+```{r, message=FALSE}
+library(tidyverse)
+library(tidytext)
+
+library(stylo)
+
+library(umap)
+
+library(MetBrewer)
+library(gghighlight)
+theme_set(theme_minimal())
+```
+
+Load data
+
+```{r}
+corpus1835 <- readRDS("../../data/corpus1835/corpus_1835.Rds")
+
+glimpse(corpus1835)
+```
+
+Number of non-empty lines by each author
+
+```{r}
+authors_lines <- corpus1835 %>% 
+  select(text_id, author_text, meter, text_lemm) %>% 
+  separate_rows(text_lemm, sep = "\n") %>% 
+  filter(text_lemm != "" & !str_detect(text_lemm, "^\\W+$|^\\s+$")) %>% 
+  group_by(author_text) %>% 
+  count(sort = T) %>% 
+  ungroup() %>% 
+  filter(n > 1000 & author_text != "")
+
+authors_lines
+```
+
+Number of lines in each meter
+
+```{r}
+corpus1835 %>% 
+  select(text_id, author_text, meter, text_lemm) %>% 
+  separate_rows(text_lemm, sep = "\n") %>% 
+  filter(text_lemm != "" & !str_detect(text_lemm, "^\\W+$|^\\s+$")) %>% 
+  group_by(author_text, meter) %>% 
+  count(sort = T) %>% 
+  ungroup() %>% 
+  filter(author_text %in% authors_lines$author_text) %>% 
+  filter(meter != "Other?") %>% 
+  arrange(-desc(author_text))
+```
+
+### metrical profile
+
+Look into how authors are grouped based on their usage of different meters
+
+```{r}
+# table(corpus1835$feet)
+
+metrical_mtrx <- corpus1835 %>% 
+  # select most represented authors
+  filter(author_text %in% authors_lines$author_text) %>% 
+  
+  # leave only clearly detected meters
+  filter(meter != "Other?" & feet %in% c(2, 3, 4, 5, 6, "other")) %>% 
+  mutate(formula = paste0(meter, "_", feet)) %>% 
+  
+  # count and sample lines
+  separate_rows(text_lemm, sep = "\n") %>% 
+  filter(text_lemm != "" & !str_detect(text_lemm, "^\\W+$|^\\s+$")) %>% 
+  
+  # remove authors who hasn't 1000 lines in selected meters
+  filter(!author_text %in% c("Бестужев А.А. (Марлинский)", 
+                             "Стромилов С.И.", 
+                             "Соколовский В.И.", 
+                             "Пуговишников А.М.")) %>% 
+  
+  
+  group_by(author_text) %>% 
+  sample_n(1000) %>% # sample 1000 lines from each author
+  ungroup() %>% 
+  
+  # count number of lines of each meter
+  group_by(author_text, formula) %>% 
+  count() %>% 
+  ungroup() %>% 
+  pivot_wider(names_from = formula, values_from = n, values_fill = 0)
+
+metrical_mtrx
+```
+
+Metrical variations taken into account:
+
+```{r}
+corpus1835 %>% 
+  # select most represented authors
+  filter(author_text %in% authors_lines$author_text) %>% 
+  
+  # leave only clearly detected meters
+  filter(meter != "Other?" & feet %in% c(2, 3, 4, 5, 6, "other")) %>% 
+  mutate(formula = paste0(meter, "_", feet)) %>% 
+  distinct(formula) %>% 
+  pull()
+```
+
+Projection
+
+```{r}
+# scale matrix and remove author's column
+mtrx <- metrical_mtrx %>% 
+  select(-author_text) %>% 
+  scale() 
+
+dim(mtrx)
+
+u <- umap(mtrx)
+
+dat <- tibble(x = u$layout[,1],
+       y = u$layout[,2],
+       author = metrical_mtrx$author_text) 
+  
+```
+
+Some custom labeling according to grouping found in scholarship
+
+```{r}
+
+unique(dat$author)
+
+authors_lbl <- tibble(
+  author = unique(dat$author),
+  author_group = c(
+    "Другое", "Другое", "Другое", "Другое", "Круг Бенедиктова",
+    "Круг Бенедиктова", "Пушкинский стиль", "Другое", "Другое", "Старшее поколение",
+    "Другое", "Круг Бенедиктова", "Пушкинский стиль", "Поэты конца 1830-х гг.", "Пушкинский стиль",
+    "Старшее поколение", "Другое", "Старшее поколение", "Пушкинский стиль", "Поэты конца 1830-х гг.",
+    "Поэты конца 1830-х гг.", "Круг Бенедиктова", "Старшее поколение", "Другое", "Поэты конца 1830-х гг.",
+    "Старшее поколение", "Круг Бенедиктова", "Другое", "Другое", "Поэты конца 1830-х гг.",
+    "Другое", "Пушкинский стиль", "Другое", "Пушкинский стиль", "Пушкинский стиль",
+    "Другое", "Другое", "Другое", "Пушкинский стиль", "Пушкинский стиль",
+    "Пушкинский стиль", "Круг Бенедиктова", "Другое", "Круг Бенедиктова", "Круг Бенедиктова"
+  )
+) %>% 
+  mutate(author_group = paste0('"', author_group, '"' ))
+
+table(authors_lbl$author_group)
+```
+
+#### proj
+
+```{r}
+# plot
+dat %>% 
+  filter(author != "Кольцов А.В.") %>% 
+  left_join(authors_lbl, by = "author") %>% 
+  ggplot(aes(x, y, color = author_group)) + 
+  #geom_point(size = 5, alpha = 0.6) + 
+  geom_text(aes(label = author)) + 
+  labs(title = "", x = "", y = "", color = "") + 
+  scale_color_manual(values = c("gray",
+                                met.brewer("Veronese")[3],
+                                met.brewer("Veronese")[1],
+                                met.brewer("Veronese")[5],
+                                met.brewer("Veronese")[7])) + 
+  theme(axis.text = element_blank())
+
+ggsave("metrical_profile_projection_md.png", plot = last_plot(),
+       bg = "white", dpi = 300, width = 8, height = 6)
+```
+
+#### lineplot
+
+```{r}
+mtrx %>% 
+  cbind(metrical_mtrx %>% select(author_text)) %>% 
+  pivot_longer(!author_text,
+               names_to = "meter",
+               values_to = "n") %>% 
+  left_join(authors_lbl %>% rename(author_text = author), 
+            by = "author_text") %>% 
+  ggplot(aes(x = meter,
+             y = n, 
+             group = author_text)) + 
+  geom_line(aes(color = author_group), show.legend = FALSE) + 
+  gghighlight(use_direct_label = FALSE,
+              unhighlighted_params = list(colour = alpha("grey85", 1))) + 
+  facet_wrap(~author_text) + 
+  geom_text(data = mtrx %>% cbind(metrical_mtrx %>% select(author_text)) %>% 
+              pivot_longer(!author_text, names_to = "meter", values_to = "n") %>% 
+              group_by(author_text) %>% 
+              slice_max(order_by = n, n = 2),
+            aes(y = n, label = meter),
+            size = 3,
+            vjust = -0.5,
+            show.legend = FALSE
+              ) +
+  scale_color_manual(values = c("gray9",
+                                met.brewer("Veronese")[3],
+                                met.brewer("Veronese")[1],
+                                met.brewer("Veronese")[5],
+                                met.brewer("Veronese")[7])) + 
+  theme(axis.text = element_blank())
+
+ggsave("metrical_profile_lineplot_md.png", plot = last_plot(),
+       bg = "white", dpi = 300, width = 10, height = 8)
+```
+
+### MFW usage
+
+Create MFW ranks based on the whole corpus
+
+```{r}
+ranks <- corpus1835 %>% 
+  unnest_tokens(input = "text_lemm", output = word, token = "words") %>% 
+  count(word, sort = T) %>% 
+  head(450) %>% 
+  # remove first 50 MFW
+  mutate(rank = row_number()) %>% 
+  filter(rank > 50)
+
+head(ranks)
+tail(ranks)
+nrow(ranks)
+```
+
+#### select sample
+
+```{r}
+counter <- corpus1835 %>% 
+  filter(author_text %in% authors_lines$author_text) %>% 
+  select(text_id, author_text, meter, text_lemm) %>% 
+  separate_rows(text_lemm, sep = "\n") %>% 
+  filter(text_lemm != "" & !str_detect(text_lemm, "^\\W+$|^\\s+$")) %>% 
+  group_by(author_text) %>% 
+  sample_n(1000) %>% 
+ 
+  
+  # create two samples of 500 lines for each author
+  mutate(sample_id = ceiling(1:1000),
+         sample_id = floor(sample_id/500)+1,
+         sample_id = ifelse(sample_id == 3, 1, sample_id),
+         sample_id = paste0(author_text, "_", sample_id)) %>% 
+  ungroup() %>% 
+  
+  # count words inside each sample
+  unnest_tokens(input = text_lemm, output = word, token = "words") %>% 
+  group_by(sample_id) %>% 
+  count(word) %>% 
+  ungroup() %>% 
+  filter(word %in% ranks$word)
+
+counter %>% sample_n(10)
+```
+
+#### UMAP projection
+
+```{r}
+xxx <- counter %>% 
+  pivot_wider(names_from = word, values_from = n, values_fill = 0)
+
+mtrx <- xxx %>% 
+  ungroup() %>% 
+  select(-sample_id) %>% 
+  scale()
+
+dim(mtrx)
+
+u <- umap(mtrx)
+
+dat <- tibble(x = u$layout[,1],
+       y = u$layout[,2],
+       author = xxx$sample_id) 
+  
+# glimpse(dat)
+```
+
+```{r}
+dat %>% 
+  mutate(sample_id = author,
+    author = str_remove(author, "_\\d+$")) %>% 
+  left_join(authors_lbl, by = "author") %>% 
+  mutate(author_group = ifelse(is.na(author_group), '"Другое"', author_group)) %>% 
+  ggplot(aes(x, y, color = author_group)) + 
+  #geom_point(size = 5, alpha = 0.6) + 
+  geom_text(aes(label = sample_id)) + 
+  labs(title = "", x = "", y = "", color = "") + 
+  scale_color_manual(values = c("gray", 
+                                met.brewer("Veronese")[3],
+                                met.brewer("Veronese")[1],
+                                met.brewer("Veronese")[5],
+                                met.brewer("Veronese")[7])) + 
+  theme(axis.text = element_blank())
+```
+
+### zeta
+
+Create & write samples
+
+```{r}
+
+corpus1835 %>% 
+  filter(author_text %in% authors_lines$author_text) %>% 
+  select(text_id, author_text, meter, text_lemm) %>% 
+  separate_rows(text_lemm, sep = "\n") %>% 
+  filter(text_lemm != "" & !str_detect(text_lemm, "^\\W+$|^\\s+$")) %>% 
+  group_by(author_text) %>% 
+  sample_n(1000) %>% 
+ 
+  
+  # create two samples of 500 lines for each author
+  mutate(sample_id = ceiling(1:1000),
+         sample_id = floor(sample_id/250)+1,
+         sample_id = ifelse(sample_id == 5, 1, sample_id),
+         sample_id = paste0(author_text, "_", sample_id)) %>% 
+  ungroup() %>% 
+  summarise(text = paste0(text_lemm, collapse = " ------ ")) %>% head
+  
+  left_join(authors_lbl %>% rename(author_text = author), by = "author_text") %>% 
+  head()
+  
+  mutate(genre = str_remove(sample_id, "_\\d+$"), 
+         path = ifelse(genre == "другое", "secondary_set/", "primary_set/"),
+         path = paste0("zeta_tests/fable/", path, sample_id, ".txt"))
+```

@@ -156,6 +156,29 @@ corpus_genres %>%
 
 ```
 
+word bi-grams
+
+```{r}
+corpus_genres %>% 
+  unnest_tokens(input = text_lemm, output = bigram, token = "ngrams", n = 2) %>% 
+  group_by(genre) %>% 
+  count(bigram) %>% 
+  ungroup() %>% 
+  # remove frequent proper names
+  #filter(!word %in% propnames) %>% 
+  bind_tf_idf(term = bigram, document = genre, n) %>% 
+  arrange(desc(tf_idf)) %>% 
+  group_by(genre) %>% 
+  slice_max(order_by = tf_idf, n = 5)  %>%
+  ungroup() %>% 
+  filter(!str_detect(genre, "no_genre")) %>% 
+  ggplot(aes(tf_idf, fct_reorder(bigram, tf_idf), fill = genre)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~genre, ncol = 3, scales = "free") +
+  labs(x = "tf-idf", y = NULL)
+
+```
+
 ### zeta
 
 #### fable
@@ -439,12 +462,15 @@ oppose(
 )
 ```
 
-### topic model
+## topic model
 
 Topic model based on the separate texts
 
 ```{r}
 table(corpus_genres$genre)
+
+corpus_genres <- corpus_genres %>% 
+  filter(genre != "no_genre")
 ```
 
 Create stoplist & rankings
@@ -469,7 +495,7 @@ tail(ranks)
 
 Create dtm and model, extract coefficients
 
-```{r}
+```{r, eval=FALSE}
 dtm <- corpus_genres %>% 
   mutate(doc_id = paste0(genre, "___", text_id)) %>% 
   unnest_tokens(input = text_lemm, output = word, token = "words") %>% 
@@ -485,6 +511,12 @@ mod_20 <- LDA(dtm, k = 20, method = "Gibbs",
 # Extract coefficients
 beta20 <- tidy(mod_20, matrix = "beta") 
 gamma20 <- tidy(mod_20, matrix = "gamma")
+
+save(beta20, gamma20, file = "lda_tm_genres_20.Rda")
+```
+
+```{r}
+load("lda_tm_genres_20.Rda")
 ```
 
 Beta
@@ -612,7 +644,7 @@ mg_lable <- corpus_genres %>%
 mg_lable
 ```
 
-```{r}
+```{r, eval=FALSE}
 dtm <- corpus_genres %>% 
   mutate(mg = paste0(meter, "_", genre)) %>% 
   filter(mg %in% mg_lable) %>% 
@@ -630,6 +662,12 @@ mod_20 <- LDA(dtm, k = 20, method = "Gibbs",
 # Extract coefficients
 beta20 <- tidy(mod_20, matrix = "beta") 
 gamma20 <- tidy(mod_20, matrix = "gamma")
+
+save(beta20, gamma20, file = "lda_tm_genres-meters_20.Rda")
+```
+
+```{r}
+load('lda_tm_genres-meters_20.Rda')
 ```
 
 Beta

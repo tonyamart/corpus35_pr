@@ -1,0 +1,69 @@
+# The file contains words that were extracted in the oppose script:
+# this subset lists words significantly PREFERRED by primary author(s).
+# The list can be used as an input wordlist for other methods, and for this
+# purpose it can be manually revised, edited, deleted, culled, etc.
+# You can either delete unwanted words, or mark them with "#"
+# -----------------------------------------------------------------------
+
+человек
+свет
+бог
+друг
+без
+гроб
+спать
+земля
+добрый
+хладный
+объятие
+счастие
+хотеть
+ах
+любить
+этот
+дитя
+судьба
+горький
+черный
+воля
+ласка
+солнце
+злой
+сирота
+немой
+страшный
+труд
+вечно
+истина
+божий
+умирать
+напрасно
+упасть
+до
+пусть
+смерть
+время
+грустный
+жизнь
+тьма
+красавица
+смертный
+глаз
+вечный
+бедный
+царь
+огонь
+страшно
+чело
+ко
+дева
+мчаться
+оставлять
+вздох
+ад
+железный
+миг
+небо
+место
+широкий
+влага

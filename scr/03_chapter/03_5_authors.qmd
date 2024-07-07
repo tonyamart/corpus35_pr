@@ -16,6 +16,13 @@ library(stylo)
 
 library(umap)
 
+library(e1071)
+library(caret)
+
+library(tidymodels)
+library(textrecipes)
+library(kernlab)
+
 library(MetBrewer)
 library(gghighlight)
 theme_set(theme_minimal())
@@ -130,11 +137,13 @@ dat <- tibble(x = u$layout[,1],
   
 ```
 
+### author's grouping
+
 Some custom labeling according to grouping found in scholarship
 
 ```{r}
 
-unique(dat$author)
+# unique(dat$author)
 
 authors_lbl <- tibble(
   author = unique(dat$author),
@@ -191,8 +200,9 @@ mtrx %>%
              y = n, 
              group = author_text)) + 
   geom_line(aes(color = author_group), show.legend = FALSE) + 
-  gghighlight(use_direct_label = FALSE,
-              unhighlighted_params = list(colour = alpha("grey85", 1))) + 
+  gghighlight(use_direct_label = FALSE#,
+              #unhighlighted_params = list(colour = alpha("grey85", 1))
+              ) + 
   facet_wrap(~author_text) + 
   geom_text(data = mtrx %>% cbind(metrical_mtrx %>% select(author_text)) %>% 
               pivot_longer(!author_text, names_to = "meter", values_to = "n") %>% 
@@ -306,28 +316,424 @@ dat %>%
 Create & write samples
 
 ```{r}
-
-corpus1835 %>% 
+corpus_prepared <- corpus1835 %>% 
   filter(author_text %in% authors_lines$author_text) %>% 
   select(text_id, author_text, meter, text_lemm) %>% 
   separate_rows(text_lemm, sep = "\n") %>% 
   filter(text_lemm != "" & !str_detect(text_lemm, "^\\W+$|^\\s+$")) %>% 
-  group_by(author_text) %>% 
-  sample_n(1000) %>% 
- 
+  
+  # attach lables
+  left_join(authors_lbl %>% rename(author_text = author), by = "author_text") %>%   filter(author_group == '"Пушкинский стиль"' | author_group == '"Круг Бенедиктова"') %>% 
+  mutate(author_group = str_remove_all(author_group, '"')) %>% 
+  # both groups has ~20k tokens
+
+  group_by(author_group) %>% 
+  sample_n(20000) %>% 
   
   # create two samples of 500 lines for each author
-  mutate(sample_id = ceiling(1:1000),
-         sample_id = floor(sample_id/250)+1,
-         sample_id = ifelse(sample_id == 5, 1, sample_id),
-         sample_id = paste0(author_text, "_", sample_id)) %>% 
+  mutate(sample_id = ceiling(1:20000),
+         sample_id = floor(sample_id/2000)+1,
+         sample_id = ifelse(sample_id == 11, 1, sample_id),
+         sample_id = paste0(author_group, "_", sample_id)) %>% 
   ungroup() %>% 
-  summarise(text = paste0(text_lemm, collapse = " ------ ")) %>% head
   
-  left_join(authors_lbl %>% rename(author_text = author), by = "author_text") %>% 
-  head()
+  group_by(sample_id) %>% 
+  summarise(text = paste0(text_lemm, collapse = " ------ ")) %>% 
+  ungroup() %>% 
   
-  mutate(genre = str_remove(sample_id, "_\\d+$"), 
-         path = ifelse(genre == "другое", "secondary_set/", "primary_set/"),
-         path = paste0("zeta_tests/fable/", path, sample_id, ".txt"))
+  mutate(author_group = str_remove(sample_id, "_\\d+$"), 
+         path = ifelse(author_group == "Пушкинский стиль", "secondary_set/", "primary_set/"),
+         path = paste0("zeta_tests/benediktov/", path, sample_id, ".txt")) 
+
+str(corpus_prepared)
+```
+
+```{r}
+do.call(file.remove, list(
+  list.files("zeta_tests/benediktov//primary_set", full.names = TRUE)))
+do.call(file.remove, list(
+  list.files("zeta_tests/benediktov//secondary_set", full.names = TRUE)))
+
+for (i in 1:nrow(corpus_prepared)) {
+  writeLines(corpus_prepared$text[i], corpus_prepared$path[i])
+}
+```
+
+```{r}
+oppose(
+  gui = FALSE,
+  path = "zeta_tests/benediktov/",
+  corpus.lang = "Other",
+  text.slice.length = 500,
+  write.png.file = TRUE
+)
+```
+
+#### classifier
+
+Basic classification based on 400 MFW
+
+##### MFW
+
+```{r}
+ranks <- corpus1835 %>% 
+  unnest_tokens(input = text_lemm, output = word, token = "words") %>% 
+  count(word, sort = T) %>% 
+  head(400) %>% 
+  mutate(rank = row_number())
+
+head(ranks)
+tail(ranks)
+```
+
+```{r}
+corpus_prepared <- corpus1835 %>% 
+  filter(author_text %in% authors_lines$author_text) %>% 
+  select(text_id, author_text, meter, text_lemm) %>% 
+  separate_rows(text_lemm, sep = "\n") %>% 
+  filter(text_lemm != "" & !str_detect(text_lemm, "^\\W+$|^\\s+$")) %>% 
+  
+  # attach lables
+  left_join(authors_lbl %>% rename(author_text = author), by = "author_text") %>%   filter(author_group == '"Пушкинский стиль"' | author_group == '"Круг Бенедиктова"') %>% 
+  mutate(author_group = str_remove_all(author_group, '"')) %>% 
+  # both groups has ~20k tokens
+
+  group_by(author_group) %>% 
+  sample_n(20000) %>% 
+  
+  # create two samples of 500 lines for each author
+  mutate(sample_id = ceiling(1:20000),
+         sample_id = floor(sample_id/200)+1,
+         sample_id = ifelse(sample_id == 101, 1, sample_id),
+         sample_id = paste0(author_group, "_", sample_id)) %>% 
+  ungroup() %>% 
+  
+  group_by(sample_id) %>% 
+  summarise(text = paste0(text_lemm, collapse = " ------ ")) %>% 
+  ungroup() %>% 
+  
+  mutate(author_group = str_remove(sample_id, "_\\d+$"))
+
+
+
+table(corpus_prepared$author_group)
+str(corpus_prepared)
+```
+
+```{r}
+freqs <- corpus_prepared %>% 
+  mutate(text_genre = author_group) %>% 
+  select(sample_id, text_genre, text) %>% 
+  unnest_tokens(input = text, output = word, token = "words") %>% 
+  filter(word %in% ranks$word) %>% 
+  group_by(sample_id, text_genre) %>% 
+  count(word) %>% 
+  ungroup() %>% 
+  pivot_wider(names_from = word, values_from = n, values_fill = 0) 
+
+dim(freqs)
+freqs[1:10, 1:10]
+
+freqs_scaled <- freqs %>% 
+  select(-sample_id, -text_genre) %>% 
+  scale() %>% 
+  as.tibble()
+
+
+freqs_scaled[1:10, 1:10]
+
+freqs_scaled <- tibble(sample_id = freqs$sample_id,
+       freqs_scaled,
+       text_genre = freqs$text_genre) %>% 
+  mutate(sample_id = row_number())
+
+tidy_corpus <- freqs_scaled %>% 
+  group_by(text_genre) %>% 
+  sample_n(100) %>%   # number of texts in the tested genre
+  ungroup() %>% 
+  select(-sample_id)
+
+## split the data into training and test sets
+corpus_split <- initial_split(tidy_corpus, strata="text_genre", prop = 7.5/10)
+
+corpus_split
+
+training_set <- training(corpus_split)
+test_set <- testing(corpus_split)
+
+zscores_recipe <- recipe(text_genre ~ ., data = training_set) # all columns = all 300MFW freqs are used for the training
+
+# 10-fold cross validation setup
+folds <- vfold_cv(training_set, strata = "text_genre", v = 10)
+
+# model specifications
+svm_specs <- svm_poly(cost=1,degree = 1) %>% # linear kernel
+  set_mode("classification") %>%
+  set_engine("kernlab")
+
+# add recipe and model specs to the workflow 
+svm_wf <- workflow() %>%
+  add_recipe(zscores_recipe) %>%
+  add_model(svm_specs)
+
+svm_res <- fit_resamples(
+  svm_wf,
+  folds,
+  metrics = metric_set(accuracy),
+  control = control_resamples(save_pred = TRUE)
+)
+
+metrics <- collect_metrics(svm_res)
+metrics
+
+svm_model <-svm(as.factor(text_genre)~.,  
+                data = training_set, 
+                method = "C-classification", 
+                kernel = "linear", 
+                cost = 1, 
+                scale = T)
+
+summary(svm_model) 
+prediction <- predict(svm_model, test_set)
+confusionMatrix(prediction, as.factor(test_set$text_genre)) # NB check if the same positive class used below in the plot
+
+words_coefs <- t(svm_model$coefs) %*% svm_model$SV
+
+tibble(weight=words_coefs[1,], word=colnames(words_coefs)) %>% 
+  mutate(genre = case_when(weight > 0 ~ "Круг Бенедиктова", 
+                           weight < 0 ~ "Пушкинский стиль")) %>%
+  group_by(genre) %>% 
+  mutate(abs=abs(weight)) %>%
+  top_n(20,abs) %>% 
+  ggplot(aes(reorder(word,abs), abs, fill=genre)) + geom_col() +
+  coord_flip() + 
+  facet_wrap(~genre,scales="free") +
+  theme_minimal(base_size = 16) + 
+  labs(x = "", 
+       y = "",
+       fill = "") + 
+  #scale_fill_carto_d(palette = "Safe") + 
+  theme(legend.position = "none") + 
+  theme(axis.text = element_text(size = 14),
+        axis.title = element_text(size = 14),
+        plot.title = element_text(size = 14)) + 
+  theme(panel.border = element_blank(), 
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank()) +
+  theme(axis.line.x = element_line(color="black"), 
+        axis.line.y = element_line(color="black"))
+```
+
+##### zeta words
+
+Import words from Zeta analysis (101 words altogether)
+
+```{r}
+wordlist <- unlist(str_split(c("человек
+свет
+этот
+бог
+друг
+без
+хотеть
+спать
+страшный
+хладный
+земля
+смерть
+счастие
+горький
+ни
+гроб
+напрасно
+ласка
+река
+любить
+ах
+широкий
+божий
+добрый
+дитя
+злой
+мчаться
+объятие
+ночь
+миг
+молитва
+плакать
+бедный
+истина
+рука
+чело
+черный
+печаль
+дева
+до
+пусть
+железный
+небо
+судьба
+влага
+ад
+труд
+мир
+страсть
+стоять
+вселенная
+чу
+легкий
+страшно
+у
+цветок
+вера
+уж
+пора
+их
+сад
+сей
+младой
+уже
+молодой
+краса
+гора
+стих
+будто
+восторг
+мечта
+мирра
+то
+раздаваться
+берег
+страх
+вдохновение
+морской
+ль
+скала
+туда
+вода
+предание
+поэзия
+ли
+пред
+во
+город
+пленять
+смелый
+воспоминание
+узнавать
+меж
+вновь
+дальний
+живой
+о
+брег
+любимый
+поверять
+прямой"), pattern = "\n"))
+```
+
+Classification
+
+```{r}
+freqs <- corpus_prepared %>% 
+  mutate(text_genre = author_group) %>% 
+  select(sample_id, text_genre, text) %>% 
+  unnest_tokens(input = text, output = word, token = "words") %>% 
+  filter(word %in% wordlist) %>% 
+  group_by(sample_id, text_genre) %>% 
+  count(word) %>% 
+  ungroup() %>% 
+  pivot_wider(names_from = word, values_from = n, values_fill = 0) 
+
+dim(freqs)
+freqs[1:10, 1:10]
+
+freqs_scaled <- freqs %>% 
+  select(-sample_id, -text_genre) %>% 
+  scale() %>% 
+  as.tibble()
+
+
+freqs_scaled[1:10, 1:10]
+
+freqs_scaled <- tibble(sample_id = freqs$sample_id,
+       freqs_scaled,
+       text_genre = freqs$text_genre) %>% 
+  mutate(sample_id = row_number())
+
+tidy_corpus <- freqs_scaled %>% 
+  group_by(text_genre) %>% 
+  sample_n(100) %>%   # number of texts in the tested genre
+  ungroup() %>% 
+  select(-sample_id)
+
+## split the data into training and test sets
+corpus_split <- initial_split(tidy_corpus, strata="text_genre", prop = 7.5/10)
+
+corpus_split
+
+training_set <- training(corpus_split)
+test_set <- testing(corpus_split)
+
+zscores_recipe <- recipe(text_genre ~ ., data = training_set) # all columns = all 300MFW freqs are used for the training
+
+# 10-fold cross validation setup
+folds <- vfold_cv(training_set, strata = "text_genre", v = 10)
+
+# model specifications
+svm_specs <- svm_poly(cost=1,degree = 1) %>% # linear kernel
+  set_mode("classification") %>%
+  set_engine("kernlab")
+
+# add recipe and model specs to the workflow 
+svm_wf <- workflow() %>%
+  add_recipe(zscores_recipe) %>%
+  add_model(svm_specs)
+
+svm_res <- fit_resamples(
+  svm_wf,
+  folds,
+  metrics = metric_set(accuracy),
+  control = control_resamples(save_pred = TRUE)
+)
+
+metrics <- collect_metrics(svm_res)
+metrics
+
+svm_model <-svm(as.factor(text_genre)~.,  
+                data = training_set, 
+                method = "C-classification", 
+                kernel = "linear", 
+                cost = 1, 
+                scale = T)
+
+summary(svm_model) 
+prediction <- predict(svm_model, test_set)
+confusionMatrix(prediction, as.factor(test_set$text_genre)) # NB check if the same positive class used below in the plot
+
+words_coefs <- t(svm_model$coefs) %*% svm_model$SV
+
+tibble(weight=words_coefs[1,], word=colnames(words_coefs)) %>% 
+  mutate(genre = case_when(weight > 0 ~ "Круг Бенедиктова", 
+                           weight < 0 ~ "Пушкинский стиль")) %>%
+  group_by(genre) %>% 
+  mutate(abs=abs(weight)) %>%
+  top_n(20,abs) %>% 
+  ggplot(aes(reorder(word,abs), abs, fill=genre)) + geom_col() +
+  coord_flip() + 
+  facet_wrap(~genre,scales="free") +
+  theme_minimal(base_size = 16) + 
+  labs(x = "", 
+       y = "",
+       fill = "") + 
+  #scale_fill_carto_d(palette = "Safe") + 
+  theme(legend.position = "none") + 
+  theme(axis.text = element_text(size = 14),
+        axis.title = element_text(size = 14),
+        plot.title = element_text(size = 14)) + 
+  theme(panel.border = element_blank(), 
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank()) +
+  theme(axis.line.x = element_line(color="black"), 
+        axis.line.y = element_line(color="black"))
 ```

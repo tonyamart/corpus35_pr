@@ -110,6 +110,18 @@ head(ranks, 10)
 tail(ranks, 10)
 ```
 
+### authors
+
+Quick check on whether some genres belongs mostly to one author
+
+```{r}
+corpus_genres %>% 
+  left_join(corpus1835 %>% select(text_id, author_text), by = "text_id") %>% 
+  filter(genre != "no_genre") %>% 
+  count(genre, author_text, sort = T) %>% 
+  head(30)
+```
+
 ### песня
 
 Create genre lables
@@ -211,7 +223,7 @@ svm_res <- fit_resamples(
 ```
 
 ```{r}
-metrics = collect_metrics(svm_res)
+metrics <- collect_metrics(svm_res)
 metrics 
 ```
 
@@ -308,6 +320,20 @@ training_set <- training(corpus_split)
 test_set <- testing(corpus_split)
 
 # colnames(training_set) == colnames(test_set)
+zscores_recipe <- recipe(text_genre ~ ., data = training_set) # all columns = all 300MFW freqs are used for the training
+
+# 10-fold cross validation setup
+folds <- vfold_cv(training_set, strata = "text_genre", v = 10)
+
+# model specifications
+svm_specs <- svm_poly(cost=1,degree = 1) %>% # linear kernel
+  set_mode("classification") %>%
+  set_engine("kernlab")
+
+# add recipe and model specs to the workflow 
+svm_wf <- workflow() %>%
+  add_recipe(zscores_recipe) %>%
+  add_model(svm_specs)
 
 # fit the model
 svm_res <- fit_resamples(
@@ -317,7 +343,7 @@ svm_res <- fit_resamples(
   control = control_resamples(save_pred = TRUE)
 )
 
-metrics = collect_metrics(svm_res)
+metrics <- collect_metrics(svm_res)
 metrics 
 
 # check the word coefficients with e1071
@@ -411,6 +437,20 @@ training_set <- training(corpus_split)
 test_set <- testing(corpus_split)
 
 # colnames(training_set) == colnames(test_set)
+zscores_recipe <- recipe(text_genre ~ ., data = training_set) # all columns = all 300MFW freqs are used for the training
+
+# 10-fold cross validation setup
+folds <- vfold_cv(training_set, strata = "text_genre", v = 10)
+
+# model specifications
+svm_specs <- svm_poly(cost=1,degree = 1) %>% # linear kernel
+  set_mode("classification") %>%
+  set_engine("kernlab")
+
+# add recipe and model specs to the workflow 
+svm_wf <- workflow() %>%
+  add_recipe(zscores_recipe) %>%
+  add_model(svm_specs)
 
 # fit the model
 svm_res <- fit_resamples(
@@ -974,10 +1014,4 @@ res_save %>%
 for (i in 2:length(x)) {
   print(x[[i]])
 }
-```
-
-NB mb classificator would work better with char ngrams
-
-```{r}
-
 ```

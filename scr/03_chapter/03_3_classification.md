@@ -100,7 +100,7 @@ library(tidymodels)
     ✖ yardstick::specificity() masks caret::specificity()
     ✖ recipes::step()          masks stats::step()
     ✖ tune::tune()             masks parsnip::tune(), e1071::tune()
-    • Use tidymodels_prefer() to resolve common conflicts.
+    • Dig deeper into tidy modeling with R at https://www.tmwr.org
 
 ``` r
 library(textrecipes)
@@ -421,14 +421,14 @@ svm_res <- fit_resamples(
 ```
 
 ``` r
-metrics = collect_metrics(svm_res)
+metrics <- collect_metrics(svm_res)
 metrics 
 ```
 
     # A tibble: 1 × 6
       .metric  .estimator  mean     n std_err .config             
       <chr>    <chr>      <dbl> <int>   <dbl> <chr>               
-    1 accuracy binary     0.649    10  0.0183 Preprocessor1_Model1
+    1 accuracy binary     0.624    10  0.0228 Preprocessor1_Model1
 
 ``` r
 svm_model <-svm(as.factor(text_genre)~.,  
@@ -452,9 +452,9 @@ summary(svm_model)
      SVM-Kernel:  linear 
            cost:  1 
 
-    Number of Support Vectors:  203
+    Number of Support Vectors:  199
 
-     ( 102 101 )
+     ( 102 97 )
 
 
     Number of Classes:  2 
@@ -471,26 +471,26 @@ confusionMatrix(prediction, as.factor(test_set$text_genre)) # NB check if the sa
 
               Reference
     Prediction другое песня
-        другое     36    25
-        песня      25    36
+        другое     43    24
+        песня      18    37
                                               
-                   Accuracy : 0.5902          
-                     95% CI : (0.4975, 0.6783)
+                   Accuracy : 0.6557          
+                     95% CI : (0.5643, 0.7394)
         No Information Rate : 0.5             
-        P-Value [Acc > NIR] : 0.02841         
+        P-Value [Acc > NIR] : 0.0003704       
                                               
-                      Kappa : 0.1803          
+                      Kappa : 0.3115          
                                               
-     Mcnemar's Test P-Value : 1.00000         
+     Mcnemar's Test P-Value : 0.4404007       
                                               
-                Sensitivity : 0.5902          
-                Specificity : 0.5902          
-             Pos Pred Value : 0.5902          
-             Neg Pred Value : 0.5902          
+                Sensitivity : 0.7049          
+                Specificity : 0.6066          
+             Pos Pred Value : 0.6418          
+             Neg Pred Value : 0.6727          
                  Prevalence : 0.5000          
-             Detection Rate : 0.2951          
-       Detection Prevalence : 0.5000          
-          Balanced Accuracy : 0.5902          
+             Detection Rate : 0.3525          
+       Detection Prevalence : 0.5492          
+          Balanced Accuracy : 0.6557          
                                               
            'Positive' Class : другое          
                                               
@@ -590,6 +590,20 @@ training_set <- training(corpus_split)
 test_set <- testing(corpus_split)
 
 # colnames(training_set) == colnames(test_set)
+zscores_recipe <- recipe(text_genre ~ ., data = training_set) # all columns = all 300MFW freqs are used for the training
+
+# 10-fold cross validation setup
+folds <- vfold_cv(training_set, strata = "text_genre", v = 10)
+
+# model specifications
+svm_specs <- svm_poly(cost=1,degree = 1) %>% # linear kernel
+  set_mode("classification") %>%
+  set_engine("kernlab")
+
+# add recipe and model specs to the workflow 
+svm_wf <- workflow() %>%
+  add_recipe(zscores_recipe) %>%
+  add_model(svm_specs)
 
 # fit the model
 svm_res <- fit_resamples(
@@ -598,15 +612,23 @@ svm_res <- fit_resamples(
   metrics = metric_set(accuracy),
   control = control_resamples(save_pred = TRUE)
 )
+```
 
-metrics = collect_metrics(svm_res)
+    → A | warning: Variable(s) `' constant. Cannot scale data.
+
+    There were issues with some computations   A: x1
+
+    There were issues with some computations   A: x2
+
+``` r
+metrics <- collect_metrics(svm_res)
 metrics 
 ```
 
     # A tibble: 1 × 6
       .metric  .estimator  mean     n std_err .config             
       <chr>    <chr>      <dbl> <int>   <dbl> <chr>               
-    1 accuracy binary     0.649    10  0.0183 Preprocessor1_Model1
+    1 accuracy binary     0.614    10  0.0226 Preprocessor1_Model1
 
 ``` r
 # check the word coefficients with e1071
@@ -631,9 +653,9 @@ summary(svm_model)
      SVM-Kernel:  linear 
            cost:  1 
 
-    Number of Support Vectors:  116
+    Number of Support Vectors:  124
 
-     ( 54 62 )
+     ( 64 60 )
 
 
     Number of Classes:  2 
@@ -650,29 +672,29 @@ confusionMatrix(prediction, as.factor(test_set$text_genre)) # NB check if the sa
 
               Reference
     Prediction другое романс
-        другое     16      8
-        романс     10     18
-                                              
-                   Accuracy : 0.6538          
-                     95% CI : (0.5091, 0.7803)
-        No Information Rate : 0.5             
-        P-Value [Acc > NIR] : 0.01824         
-                                              
-                      Kappa : 0.3077          
-                                              
-     Mcnemar's Test P-Value : 0.81366         
-                                              
-                Sensitivity : 0.6154          
-                Specificity : 0.6923          
-             Pos Pred Value : 0.6667          
-             Neg Pred Value : 0.6429          
-                 Prevalence : 0.5000          
-             Detection Rate : 0.3077          
-       Detection Prevalence : 0.4615          
-          Balanced Accuracy : 0.6538          
-                                              
-           'Positive' Class : другое          
-                                              
+        другое     17     13
+        романс      9     13
+                                             
+                   Accuracy : 0.5769         
+                     95% CI : (0.432, 0.7127)
+        No Information Rate : 0.5            
+        P-Value [Acc > NIR] : 0.1659         
+                                             
+                      Kappa : 0.1538         
+                                             
+     Mcnemar's Test P-Value : 0.5224         
+                                             
+                Sensitivity : 0.6538         
+                Specificity : 0.5000         
+             Pos Pred Value : 0.5667         
+             Neg Pred Value : 0.5909         
+                 Prevalence : 0.5000         
+             Detection Rate : 0.3269         
+       Detection Prevalence : 0.5769         
+          Balanced Accuracy : 0.5769         
+                                             
+           'Positive' Class : другое         
+                                             
 
 ``` r
 words_coefs <- t(svm_model$coefs) %*% svm_model$SV
@@ -767,6 +789,20 @@ training_set <- training(corpus_split)
 test_set <- testing(corpus_split)
 
 # colnames(training_set) == colnames(test_set)
+zscores_recipe <- recipe(text_genre ~ ., data = training_set) # all columns = all 300MFW freqs are used for the training
+
+# 10-fold cross validation setup
+folds <- vfold_cv(training_set, strata = "text_genre", v = 10)
+
+# model specifications
+svm_specs <- svm_poly(cost=1,degree = 1) %>% # linear kernel
+  set_mode("classification") %>%
+  set_engine("kernlab")
+
+# add recipe and model specs to the workflow 
+svm_wf <- workflow() %>%
+  add_recipe(zscores_recipe) %>%
+  add_model(svm_specs)
 
 # fit the model
 svm_res <- fit_resamples(
@@ -783,7 +819,7 @@ metrics
     # A tibble: 1 × 6
       .metric  .estimator  mean     n std_err .config             
       <chr>    <chr>      <dbl> <int>   <dbl> <chr>               
-    1 accuracy binary     0.649    10  0.0183 Preprocessor1_Model1
+    1 accuracy binary     0.605    10  0.0557 Preprocessor1_Model1
 
 ``` r
 # check the word coefficients with e1071
@@ -808,9 +844,9 @@ summary(svm_model)
      SVM-Kernel:  linear 
            cost:  1 
 
-    Number of Support Vectors:  83
+    Number of Support Vectors:  91
 
-     ( 42 41 )
+     ( 48 43 )
 
 
     Number of Classes:  2 
@@ -827,26 +863,26 @@ confusionMatrix(prediction, as.factor(test_set$text_genre)) # NB check if the sa
 
               Reference
     Prediction другое элегия
-        другое     11     10
-        элегия      7      8
+        другое     12      9
+        элегия      6      9
                                               
-                   Accuracy : 0.5278          
-                     95% CI : (0.3549, 0.6959)
+                   Accuracy : 0.5833          
+                     95% CI : (0.4076, 0.7449)
         No Information Rate : 0.5             
-        P-Value [Acc > NIR] : 0.4340          
+        P-Value [Acc > NIR] : 0.2025          
                                               
-                      Kappa : 0.0556          
+                      Kappa : 0.1667          
                                               
-     Mcnemar's Test P-Value : 0.6276          
+     Mcnemar's Test P-Value : 0.6056          
                                               
-                Sensitivity : 0.6111          
-                Specificity : 0.4444          
-             Pos Pred Value : 0.5238          
-             Neg Pred Value : 0.5333          
+                Sensitivity : 0.6667          
+                Specificity : 0.5000          
+             Pos Pred Value : 0.5714          
+             Neg Pred Value : 0.6000          
                  Prevalence : 0.5000          
-             Detection Rate : 0.3056          
+             Detection Rate : 0.3333          
        Detection Prevalence : 0.5833          
-          Balanced Accuracy : 0.5278          
+          Balanced Accuracy : 0.5833          
                                               
            'Positive' Class : другое          
                                               
@@ -960,7 +996,7 @@ metrics
     # A tibble: 1 × 6
       .metric  .estimator  mean     n std_err .config             
       <chr>    <chr>      <dbl> <int>   <dbl> <chr>               
-    1 accuracy binary     0.649    10  0.0183 Preprocessor1_Model1
+    1 accuracy binary     0.605    10  0.0557 Preprocessor1_Model1
 
 ``` r
 # check the word coefficients with e1071
@@ -973,7 +1009,7 @@ svm_model <-svm(as.factor(text_genre)~.,
 ```
 
     Warning in svm.default(x, y, scale = scale, ..., na.action = na.action):
-    Variable(s) 'юный' constant. Cannot scale data.
+    Variable(s) 'улыбка' and 'скала' and 'русский' constant. Cannot scale data.
 
 ``` r
 summary(svm_model) 
@@ -990,9 +1026,9 @@ summary(svm_model)
      SVM-Kernel:  linear 
            cost:  1 
 
-    Number of Support Vectors:  78
+    Number of Support Vectors:  65
 
-     ( 39 39 )
+     ( 34 31 )
 
 
     Number of Classes:  2 
@@ -1009,26 +1045,26 @@ confusionMatrix(prediction, as.factor(test_set$text_genre)) # NB check if the sa
 
               Reference
     Prediction басня другое
-        басня     16      4
-        другое     2     14
+        басня     13      2
+        другое     5     16
                                               
-                   Accuracy : 0.8333          
-                     95% CI : (0.6719, 0.9363)
+                   Accuracy : 0.8056          
+                     95% CI : (0.6398, 0.9181)
         No Information Rate : 0.5             
-        P-Value [Acc > NIR] : 3.48e-05        
+        P-Value [Acc > NIR] : 0.0001563       
                                               
-                      Kappa : 0.6667          
+                      Kappa : 0.6111          
                                               
-     Mcnemar's Test P-Value : 0.6831          
+     Mcnemar's Test P-Value : 0.4496918       
                                               
-                Sensitivity : 0.8889          
-                Specificity : 0.7778          
-             Pos Pred Value : 0.8000          
-             Neg Pred Value : 0.8750          
+                Sensitivity : 0.7222          
+                Specificity : 0.8889          
+             Pos Pred Value : 0.8667          
+             Neg Pred Value : 0.7619          
                  Prevalence : 0.5000          
-             Detection Rate : 0.4444          
-       Detection Prevalence : 0.5556          
-          Balanced Accuracy : 0.8333          
+             Detection Rate : 0.3611          
+       Detection Prevalence : 0.4167          
+          Balanced Accuracy : 0.8056          
                                               
            'Positive' Class : басня           
                                               
@@ -1115,7 +1151,7 @@ str(genres_sampled)
 
     tibble [550 × 3] (S3: tbl_df/tbl/data.frame)
      $ sample_id: chr [1:550] "no_genre_1" "no_genre_10" "no_genre_11" "no_genre_12" ...
-     $ text     : chr [1:550] "и, собирать жнец жена молодой,      --      в круг друг свой, в круг семья свой,      --     лев предлагать бар"| __truncated__ "слепить глаз, сердце палить,     --     но чей это камень ? над чей могила ?     --     и хотеть ль вы,     -- "| __truncated__ "закружиться она,     --     кто кивнуть, кто мигнуть украдкой,     --     с лицо печальный, гробовой,     --   "| __truncated__ "под иго грусть дух гнетущий     --     ты создание — вот создатель;     --     один звезда, во тьма, светиться,"| __truncated__ ...
+     $ text     : chr [1:550] "все мочь выражать так чудно!     --     слава праведный венчать     --     так дорезать      --          --    "| __truncated__ "парить - и в пламенный моление     --     безнравственность порок.      --     чтоб после пред суд свой потомок"| __truncated__ "блистать из облак прозрачный туман,     --     и матвеев быть     --     и под покров хитрый маска      --     "| __truncated__ "или греза преисподняя,      --      перед ты много день:      --          --     и неразлучный в век со я.     "| __truncated__ ...
      $ genre    : chr [1:550] "no_genre" "no_genre" "no_genre" "no_genre" ...
 
 ``` r
@@ -1141,34 +1177,34 @@ head(ranks, 10)
     # A tibble: 10 × 2
        word      n
        <chr> <int>
-     1 и      1973
-     2 в      1379
-     3 я       942
-     4 не      809
-     5 на      662
-     6 с       596
-     7 ты      559
-     8 он      551
-     9 как     513
-    10 мой     375
+     1 и      1933
+     2 в      1375
+     3 я       941
+     4 не      774
+     5 на      683
+     6 с       618
+     7 он      582
+     8 ты      565
+     9 как     511
+    10 мой     397
 
 ``` r
 tail(ranks, 10)
 ```
 
     # A tibble: 10 × 2
-       word           n
-       <chr>      <int>
-     1 прелестный    22
-     2 речь          22
-     3 свобода       22
-     4 сидеть        22
-     5 слышать       22
-     6 струя         22
-     7 хороший       22
-     8 часто         22
-     9 чужой         22
-    10 шум           22
+       word        n
+       <chr>   <int>
+     1 уста       22
+     2 белый      21
+     3 блеск      21
+     4 великий    21
+     5 глава      21
+     6 дикий      21
+     7 добрый     21
+     8 звать      21
+     9 или        21
+    10 лежать     21
 
 Frequencies (for all genres)
 
@@ -1272,6 +1308,8 @@ svm_res <- fit_resamples(
 
     There were issues with some computations   A: x1
 
+    There were issues with some computations   A: x4
+
     There were issues with some computations   A: x10
 
 ``` r
@@ -1282,7 +1320,7 @@ metrics
     # A tibble: 1 × 6
       .metric  .estimator  mean     n std_err .config             
       <chr>    <chr>      <dbl> <int>   <dbl> <chr>               
-    1 accuracy binary     0.688    10  0.0690 Preprocessor1_Model1
+    1 accuracy binary     0.692    10  0.0399 Preprocessor1_Model1
 
 e1071 model
 
@@ -1296,8 +1334,8 @@ svm_model <-svm(as.factor(genre)~.,
 ```
 
     Warning in svm.default(x, y, scale = scale, ..., na.action = na.action):
-    Variable(s) 'поэт' and 'заря' and 'мгла' and 'вдали' and 'желание' constant.
-    Cannot scale data.
+    Variable(s) 'кипеть' and 'народ' and 'светлый' and 'тишина' and 'лежать' and
+    'страх' and 'след' and 'холм' and 'дар' constant. Cannot scale data.
 
 ``` r
 summary(svm_model) 
@@ -1314,9 +1352,9 @@ summary(svm_model)
      SVM-Kernel:  linear 
            cost:  1 
 
-    Number of Support Vectors:  70
+    Number of Support Vectors:  68
 
-     ( 34 36 )
+     ( 35 33 )
 
 
     Number of Classes:  2 
@@ -1333,26 +1371,26 @@ confusionMatrix(prediction, as.factor(test_set$genre)) # NB check if the same po
 
               Reference
     Prediction no_genre песня
-      no_genre        9     2
-      песня           4    11
+      no_genre        8     7
+      песня           5     6
                                               
-                   Accuracy : 0.7692          
-                     95% CI : (0.5635, 0.9103)
+                   Accuracy : 0.5385          
+                     95% CI : (0.3337, 0.7341)
         No Information Rate : 0.5             
-        P-Value [Acc > NIR] : 0.004678        
+        P-Value [Acc > NIR] : 0.4225          
                                               
-                      Kappa : 0.5385          
+                      Kappa : 0.0769          
                                               
-     Mcnemar's Test P-Value : 0.683091        
+     Mcnemar's Test P-Value : 0.7728          
                                               
-                Sensitivity : 0.6923          
-                Specificity : 0.8462          
-             Pos Pred Value : 0.8182          
-             Neg Pred Value : 0.7333          
+                Sensitivity : 0.6154          
+                Specificity : 0.4615          
+             Pos Pred Value : 0.5333          
+             Neg Pred Value : 0.5455          
                  Prevalence : 0.5000          
-             Detection Rate : 0.3462          
-       Detection Prevalence : 0.4231          
-          Balanced Accuracy : 0.7692          
+             Detection Rate : 0.3077          
+       Detection Prevalence : 0.5769          
+          Balanced Accuracy : 0.5385          
                                               
            'Positive' Class : no_genre        
                                               

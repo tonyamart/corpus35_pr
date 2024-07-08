@@ -8,7 +8,7 @@ editor: visual
 
 This notebook takes samples of texts from known authors and tries to analyse whether there are some clusters based on the MFW.
 
-```{r, message=FALSE}
+```{r, message=FALSE, warning=FALSE}
 library(tidyverse)
 library(tidytext)
 
@@ -34,6 +34,144 @@ Load data
 corpus1835 <- readRDS("../../data/corpus1835/corpus_1835.Rds")
 
 glimpse(corpus1835)
+```
+
+#### RNC data
+
+```{r}
+load("../../data/nkrja_19th_lem.Rda")
+
+
+
+meters_trnsl <- tibble(
+  meter_r = c("Я3", "Я4", "Я5", "Я6", "Х4", "Аф2", "Х6"),
+  formula = c("Iamb_3", "Iamb_4", "Iamb_5", "Iamb_6", 
+              "Trochee_4", "Amphibrach_2", "Trochee_6")
+)
+
+rnc_selected <- c19 %>% 
+  filter(author %in% c("Г. Р. Державин", "Н. М. Карамзин", 
+                       "К. Н. Батюшков", "А. А. Дельвиг", 
+                       "А. Ф. Мерзляков", "А. С. Пушкин", 
+                       "Е. А. Баратынский")) %>% 
+  select(-formula) %>% 
+  mutate(meter_r = paste0(meter, feet)) %>% 
+  left_join(meters_trnsl, by = "meter_r") %>% 
+  mutate(formula = ifelse(str_detect(meter_r, "Явольная"), 
+                          "Iamb_other", formula),
+         formula = ifelse(str_detect(meter_r, "Ярегулярная"), 
+                          "Iamb_other", formula),
+         formula = ifelse(str_detect(meter_r, "Хвольная|Хрегулярная"),
+                          "Trochee_other", formula),
+         meter = str_remove(formula, "_.*?$"),
+         author_text = str_replace(author, 
+                                   "(^\\w\\. \\w\\.) (\\w+)$",
+                                   "\\2 \\1"),
+         author_text = paste0(author_text, "_НКРЯ")) %>% 
+  rename(text_lemm = lemma,
+         text_id = `Unnamed..0`) %>% 
+  select(text_id, author_text, meter, formula, text_lemm) %>% 
+  separate_rows(text_lemm, sep = "\n") %>% 
+  filter(text_lemm != "" & !str_detect(text_lemm, "^\\W+$|^\\s+$")) 
+
+glimpse(rnc_selected)
+
+rnc_selected %>% 
+  count(author_text, sort = T)
+
+rm(c19)
+```
+
+Number of Iamb-4 texts without genre title
+
+```{r}
+# read genre titles
+titles <- read.csv("poems_titles.csv") %>% select(-X)
+
+# read the data with normalised genres
+m <- read.delim("multigenre_texts.csv", sep = ';') %>% select(-X)
+
+# list of genre words (longer)
+genres <- unlist(str_split(c("песня
+романс
+сонет
+элегия
+басня
+песнь
+альбом
+дума
+баллада
+отрывок
+подражание
+послание
+молитва
+фантазия
+псалом
+эпиграмма
+мелодия
+антологический
+аполог
+сказка
+экспромт
+надпись
+эпилог"), pattern = "\n"))
+
+# attach normalised genres to other genre titles
+ids_genres <- titles %>% 
+  select(text_id, lemma) %>% 
+  filter(lemma %in% genres) %>% # select genres from the list
+  group_by(text_id) %>% 
+  summarise(genre = paste0(lemma, collapse = " | ")) %>% 
+  filter(!str_detect(genre, " \\| ")) %>% # remove multigenre titles
+  rbind(m %>% 
+          select(text_id, true_genre) %>% 
+          rename(genre = true_genre) # replace them with clean labels
+          ) %>% 
+  filter(genre != "")
+
+corpus_genres <- corpus1835 %>% 
+  left_join(ids_genres, by = "text_id") %>% 
+  #filter(!is.na(genre)) %>% 
+  select(text_id, genre, meter, feet, text_lemm) %>% 
+  mutate(genre = ifelse(is.na(genre), "no_genre", genre)) 
+
+glimpse(corpus_genres)
+
+# for Iamb-4 only
+corpus_genres %>% 
+  mutate(formula = paste0(meter, "_", feet)) %>% 
+  filter(formula == "Iamb_4") %>% 
+  mutate(genre = ifelse(genre != "no_genre", "is_genre", genre)) %>% 
+  count(genre)
+
+meters_total <- corpus_genres %>% 
+  mutate(formula = paste0(meter, "_", feet)) %>% 
+  filter(formula %in% c("Iamb_3", "Iamb_4", "Iamb_5", "Iamb_6",
+                        "Iamb_other", "Trochee_4", "Amphigraph_4",
+                        "Amphibrach_other", "Trochee_other")) %>% 
+  count(formula) %>% rename(total = n)
+
+#proportion of genre labeled texts for top-10 formulas
+corpus_genres %>% 
+  mutate(formula = paste0(meter, "_", feet)) %>% 
+  filter(formula %in% c("Iamb_3", "Iamb_4", "Iamb_5", "Iamb_6",
+                        "Iamb_other", "Trochee_4", "Amphigraph_4",
+                        "Amphibrach_other", "Trochee_other")) %>% 
+  mutate(genre = ifelse(genre != "no_genre", "is_genre", genre)) %>% 
+  group_by(formula) %>% 
+  count(genre) %>% 
+  ungroup() %>% 
+  left_join(meters_total, by = "formula") %>% 
+  mutate(perc = round(n/total*100, 1)) %>% 
+  select(-n, -total) %>% 
+  pivot_wider(names_from = genre, values_from = perc) %>% 
+  arrange(desc(is_genre))
+
+
+# total 1458 texts in Iamb-4,
+# 251 text is with genre label, 1207 without
+
+rm(corpus_genres, genres, m, titles, ids_genres, meters_total)
 ```
 
 Number of non-empty lines by each author
@@ -91,6 +229,12 @@ metrical_mtrx <- corpus1835 %>%
                              "Соколовский В.И.", 
                              "Пуговишников А.М.")) %>% 
   
+  # filter only needed columns
+  select(text_id, author_text, meter, formula, text_lemm) %>% 
+  
+  # attach RNC data
+  rbind(rnc_selected) %>% 
+  filter(!is.na(formula)) %>% 
   
   group_by(author_text) %>% 
   sample_n(1000) %>% # sample 1000 lines from each author
@@ -108,15 +252,17 @@ metrical_mtrx
 Metrical variations taken into account:
 
 ```{r}
-corpus1835 %>% 
-  # select most represented authors
-  filter(author_text %in% authors_lines$author_text) %>% 
-  
-  # leave only clearly detected meters
-  filter(meter != "Other?" & feet %in% c(2, 3, 4, 5, 6, "other")) %>% 
-  mutate(formula = paste0(meter, "_", feet)) %>% 
-  distinct(formula) %>% 
-  pull()
+# corpus1835 %>% 
+#   # select most represented authors
+#   filter(author_text %in% authors_lines$author_text) %>% 
+#   
+#   # leave only clearly detected meters
+#   filter(meter != "Other?" & feet %in% c(2, 3, 4, 5, 6, "other")) %>% 
+#   mutate(formula = paste0(meter, "_", feet)) %>% 
+#   distinct(formula) %>% 
+#   pull()
+
+colnames(metrical_mtrx)
 ```
 
 Projection
@@ -148,20 +294,31 @@ Some custom labeling according to grouping found in scholarship
 authors_lbl <- tibble(
   author = unique(dat$author),
   author_group = c(
-    "Другое", "Другое", "Другое", "Другое", "Круг Бенедиктова",
-    "Круг Бенедиктова", "Пушкинский стиль", "Другое", "Другое", "Старшее поколение",
-    "Другое", "Круг Бенедиктова", "Пушкинский стиль", "Поэты конца 1830-х гг.", "Пушкинский стиль",
-    "Старшее поколение", "Другое", "Старшее поколение", "Пушкинский стиль", "Поэты конца 1830-х гг.",
-    "Поэты конца 1830-х гг.", "Круг Бенедиктова", "Старшее поколение", "Другое", "Поэты конца 1830-х гг.",
-    "Старшее поколение", "Круг Бенедиктова", "Другое", "Другое", "Поэты конца 1830-х гг.",
-    "Другое", "Пушкинский стиль", "Другое", "Пушкинский стиль", "Пушкинский стиль",
-    "Другое", "Другое", "Другое", "Пушкинский стиль", "Пушкинский стиль",
-    "Пушкинский стиль", "Круг Бенедиктова", "Другое", "Круг Бенедиктова", "Круг Бенедиктова"
+    "Другое", "Другое", "НКРЯ", 
+    "Другое", "НКРЯ", "Другое", 
+    "Круг Бенедиктова", "Круг Бенедиктова", "Пушкинский стиль", 
+    "Другое", "Другое", "Старшее поколение",
+    "Другое", "Круг Бенедиктова", "Пушкинский стиль", 
+    "НКРЯ", "Поэты конца 1830-х гг.", "НКРЯ", 
+    "Пушкинский стиль", "Старшее поколение", "Другое", 
+    "НКРЯ", "Старшее поколение", "Пушкинский стиль", 
+    "Поэты конца 1830-х гг.", "Поэты конца 1830-х гг.", "Круг Бенедиктова", 
+    "Старшее поколение", "Другое", "Поэты конца 1830-х гг.",
+    "Старшее поколение", "Круг Бенедиктова", "Другое", 
+    "НКРЯ", "Другое", "Поэты конца 1830-х гг.", 
+    "Другое", "Пушкинский стиль", "Другое", 
+    "НКРЯ", "Пушкинский стиль", "Пушкинский стиль", 
+    "Другое", "Другое", 
+    "Другое", "Пушкинский стиль", "Пушкинский стиль",
+    "Пушкинский стиль", "Круг Бенедиктова", "Другое", 
+    "Круг Бенедиктова", "Круг Бенедиктова"
   )
 ) %>% 
   mutate(author_group = paste0('"', author_group, '"' ))
 
 table(authors_lbl$author_group)
+
+authors_lbl
 ```
 
 #### proj
@@ -176,10 +333,11 @@ dat %>%
   geom_text(aes(label = author)) + 
   labs(title = "", x = "", y = "", color = "") + 
   scale_color_manual(values = c("gray",
-                                met.brewer("Veronese")[3],
-                                met.brewer("Veronese")[1],
-                                met.brewer("Veronese")[5],
-                                met.brewer("Veronese")[7])) + 
+                                 met.brewer("Veronese")[3],
+                                 "gray30", #met.brewer("Veronese")[4],
+                                 met.brewer("Veronese")[1],
+                                 met.brewer("Veronese")[5],
+                                 met.brewer("Veronese")[7])) + 
   theme(axis.text = element_blank())
 
 ggsave("metrical_profile_projection_md.png", plot = last_plot(),
@@ -213,15 +371,27 @@ mtrx %>%
             vjust = -0.5,
             show.legend = FALSE
               ) +
+  
+  geom_text(data = mtrx %>% cbind(metrical_mtrx %>% select(author_text)) %>% 
+              pivot_longer(!author_text, names_to = "meter", values_to = "n") %>% 
+              group_by(author_text) %>% 
+              slice_min(order_by = n, n = 1),
+            aes(y = n, label = meter),
+            size = 3,
+            vjust = 0.5,
+            show.legend = FALSE
+              ) +
+  
   scale_color_manual(values = c("gray9",
                                 met.brewer("Veronese")[3],
+                                "gray30",
                                 met.brewer("Veronese")[1],
                                 met.brewer("Veronese")[5],
                                 met.brewer("Veronese")[7])) + 
   theme(axis.text = element_blank())
 
 ggsave("metrical_profile_lineplot_md.png", plot = last_plot(),
-       bg = "white", dpi = 300, width = 10, height = 8)
+       bg = "white", dpi = 300, width = 14, height = 10)
 ```
 
 ### MFW usage
@@ -250,6 +420,14 @@ counter <- corpus1835 %>%
   select(text_id, author_text, meter, text_lemm) %>% 
   separate_rows(text_lemm, sep = "\n") %>% 
   filter(text_lemm != "" & !str_detect(text_lemm, "^\\W+$|^\\s+$")) %>% 
+  
+  # filter only needed columns
+  select(text_id, author_text, meter, text_lemm) %>% 
+  
+  # attach RNC data
+  rbind(rnc_selected %>% select(-formula)) %>%
+  
+  
   group_by(author_text) %>% 
   sample_n(1000) %>% 
  
@@ -305,6 +483,7 @@ dat %>%
   labs(title = "", x = "", y = "", color = "") + 
   scale_color_manual(values = c("gray", 
                                 met.brewer("Veronese")[3],
+                                "gray30",
                                 met.brewer("Veronese")[1],
                                 met.brewer("Veronese")[5],
                                 met.brewer("Veronese")[7])) + 

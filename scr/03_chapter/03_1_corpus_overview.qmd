@@ -13,7 +13,9 @@ library(tidyverse)
 library(tidytext)
 
 library(MetBrewer)
+library(patchwork)
 theme_set(theme_minimal())
+
 ```
 
 ## load data
@@ -324,14 +326,17 @@ genres_shortlist <- unlist(str_split(c("песня
 Count number of texts that include genre words in title
 
 ```{r}
-titles_counter %>% 
-  filter(lemma %in% genres)
+titles %>% 
+  filter(lemma %in% genres) %>% 
+  count(lemma, sort = T)
 
 titles %>% 
   filter(lemma %in% genres) %>% 
   mutate(corpus = str_extract(text_id, "^\\w")) %>% 
   count(corpus, lemma, sort = T) %>% 
-  pivot_wider(names_from = corpus, values_from = n)
+  pivot_wider(names_from = corpus, values_from = n, values_fill = 0) %>% 
+  mutate(total = P+C) %>% 
+  arrange(desc(total))
 
 
 # roughly % of texts with genre titles
@@ -369,7 +374,7 @@ titles %>%
   mutate(perc = round(n/total*100, 2)) %>% select(-n, -total) %>% 
   pivot_wider(names_from = corpus, values_from = perc)
 
-titles %>% 
+p1 <- titles %>% 
   filter(lemma %in% genres_shortlist) %>% 
   mutate(corpus = str_extract(text_id, "^\\w")) %>% 
   count(corpus, lemma, sort = T) %>% 
@@ -389,24 +394,43 @@ titles %>%
        fill = "Корпус") +
   scale_fill_manual(values = c(met.brewer("Veronese")[3],
                                met.brewer("Veronese")[6])) + 
-  theme(axis.text = element_text(size = 12))
+  theme(axis.text = element_text(size = 12), 
+        legend.position = "bottom",
+        legend.text = element_text(size = 12))
+
+p1
 ```
 
 Songs by years
 
 ```{r}
-glimpse(corpus_1835)
+# glimpse(corpus_1835)
 
-titles %>% 
+p2 <- titles %>% 
   left_join(corpus_1835 %>% select(text_id, year), by = "text_id") %>% 
-  mutate(corpus = str_extract(text_id, "^\\w")) %>% 
+  mutate(corpus = str_extract(text_id, "^\\w"), 
+         corpus = ifelse(corpus == "P", "Периодика", "Отд. изд.")) %>% 
   count(corpus, year, lemma, sort = T) %>% 
   filter(lemma == "песня" | lemma == "романс") %>% 
   ggplot(aes(x = year, y = n, fill = corpus)) + 
-  geom_col(position = "dodge") + 
+  geom_col(position = "dodge") +  
   facet_wrap(~lemma, ncol = 1) + 
   scale_fill_manual(values = c(met.brewer("Veronese")[3],
-                               met.brewer("Veronese")[6]))
+                               met.brewer("Veronese")[6])) + 
+  theme(axis.text = element_text(size = 12), 
+        strip.text = element_text(size = 12),
+        legend.position = "bottom") + 
+  labs(x = "", y = "Количество текстов", fill = "") 
+
+p2
+```
+
+```{r}
+ggsave("plots/Fig_3-1-1.png", plot = p1, dpi = 300,
+       bg = "white", width = 7, height = 5)
+
+ggsave("plots/Fig_3-1-1a.png", plot = p2, dpi = 300,
+       bg = "white", width = 3, height = 4)
 ```
 
 Attach metadata to text titles data and count sources per year
@@ -506,8 +530,13 @@ titles %>%
                                met.brewer("Veronese")[3],
                                met.brewer("Veronese")[1])) + 
   theme(text = element_text(size = 12), 
-        legend.position = "None") + 
+        legend.position = "None",
+        axis.text = element_text(size = 12),
+        strip.text = element_text(size = 12)) + 
   labs(x = "", y = "Количество текстов") 
+
+ggsave("plots/Fig_3-1-2a.png", plot = last_plot(), dpi = 300,
+       bg = "white", width = 8, height = 6)
 ```
 
 Same for formulas
@@ -551,8 +580,40 @@ titles %>%
                                met.brewer("Veronese")[4],
                                met.brewer("Veronese")[6])) +
   theme(text = element_text(size = 12), 
-        legend.position = "None") + 
+        legend.position = "None",
+        axis.text = element_text(size = 12),
+        strip.text = element_text(size = 12)) + 
   labs(x = "", y = "Количество текстов")
+
+ggsave("plots/Fig_3-1-2b.png", plot = last_plot(), dpi = 300,
+       bg = "white", width = 8, height = 6)
+```
+
+Elegies in iamb-5
+
+```{r}
+titles %>% 
+  filter(lemma %in% genres) %>% 
+  
+  # attach cleaned genres data for selected texts
+  left_join(m %>% select(text_id, true_genre), by = "text_id") %>% 
+  mutate(lemma = ifelse(!is.na(true_genre), true_genre, lemma)) %>% 
+  select(-true_genre) %>% 
+  
+  # additional selection for a better plot
+  filter(lemma %in% c("баллада", "басня", 
+                      "дума", "мелодия", #"молитва", "отрывок", 
+                      "песнь", "песня", #"подражание", "послание", 
+                      #"псалом", 
+                      "романс", "сонет", "элегия"#, "эпиграмма"
+                      )) %>% 
+  mutate(lemma = tools::toTitleCase(lemma)) %>% 
+  
+  left_join(sources, by = "text_id") %>% 
+  filter(meter != "Other") %>% 
+  left_join(corpus_1835 %>% select(text_id, author_text, text_subtitle, text_raw), 
+            by = "text_id") %>% 
+  filter(lemma == "Сонет" & meter == "Iamb" & feet == "5") 
 ```
 
 Only periodicals

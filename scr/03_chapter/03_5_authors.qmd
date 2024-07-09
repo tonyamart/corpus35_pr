@@ -373,7 +373,7 @@ mtrx %>%
   gghighlight(use_direct_label = FALSE#,
               #unhighlighted_params = list(colour = alpha("grey85", 1))
               ) + 
-  facet_wrap(~author_text, ncol=6) + 
+  facet_wrap(~author_text, ncol=8) + 
   geom_text(data = mtrx %>% cbind(metrical_mtrx %>% select(author_text)) %>% 
               pivot_longer(!author_text, names_to = "meter", values_to = "n") %>% 
               group_by(author_text) %>% 
@@ -381,6 +381,7 @@ mtrx %>%
             aes(y = n, label = meter),
             size = 3,
             vjust = -0.5,
+            hjust = 0.9,
             show.legend = FALSE
               ) +
   

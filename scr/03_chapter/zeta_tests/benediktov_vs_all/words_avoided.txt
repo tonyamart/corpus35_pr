@@ -1,0 +1,53 @@
+# The file contains words that were extracted in Burrows' Zeta test:
+# this subset lists words significantly AVOIDED by primary author(s).
+# The list can be used as an input wordlist for other methods, and for this
+# purpose it can be manually revised, edited, deleted, culled, etc.
+# You can either delete unwanted words, or mark them with "#"
+# -----------------------------------------------------------------------
+
+сей
+себя
+становиться
+во
+такой
+краса
+уж
+будто
+их
+знать
+ль
+долина
+тут
+лес
+вид
+младой
+гора
+враг
+коль
+говорить
+забывать
+кой
+муза
+ж
+страх
+дело
+сам
+здесь
+славный
+двор
+пленять
+вода
+да
+же
+богиня
+зима
+молодой
+б
+еще
+видеть
+сколь
+поверять
+видать
+или
+певец
+царь

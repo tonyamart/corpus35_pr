@@ -402,8 +402,8 @@ mtrx %>%
                                 met.brewer("Veronese")[7])) + 
   theme(axis.text = element_blank())
 
-ggsave("plots/metrical_profile_lineplot_md.png", plot = last_plot(),
-       bg = "white", dpi = 300, width = 25, height = 15)
+# ggsave("plots/metrical_profile_lineplot_md.png", plot = last_plot(),
+#        bg = "white", dpi = 300, width = 25, height = 15)
 ```
 
 ### MFW usage
@@ -459,6 +459,9 @@ counter <- corpus1835 %>%
   filter(word %in% ranks$word)
 
 counter %>% sample_n(10)
+
+counter %>% 
+  count(sample_id, sort = T)
 ```
 
 #### UMAP projection
@@ -510,6 +513,8 @@ dat %>%
 
 ### zeta
 
+#### Benediktov vs Pushkin
+
 Create & write samples
 
 ```{r}
@@ -543,6 +548,10 @@ corpus_prepared <- corpus1835 %>%
          path = paste0("zeta_tests/benediktov/", path, sample_id, ".txt")) 
 
 str(corpus_prepared)
+
+corpus_prepared %>% 
+  unnest_tokens(input = text, output = word, token = "words") %>% 
+  count(sample_id)
 ```
 
 ```{r}
@@ -566,18 +575,80 @@ oppose(
 )
 ```
 
-#### classifier
+#### Benediktov vs all
+
+```{r}
+corpus_prepared <- corpus1835 %>% 
+  filter(author_text %in% authors_lines$author_text) %>% 
+  select(text_id, author_text, meter, text_lemm) %>% 
+  separate_rows(text_lemm, sep = "\n") %>% 
+  filter(text_lemm != "" & !str_detect(text_lemm, "^\\W+$|^\\s+$")) %>% 
+  
+  # attach lables
+  left_join(authors_lbl %>% rename(author_text = author), by = "author_text") %>%    
+  # rewrite labels: Benediktov vs all
+  mutate(author_group = str_remove_all(author_group, '"'),
+         author_group = ifelse(author_group != "Круг Бенедиктова",
+                               "Другие",
+                               author_group)) %>% 
+  filter(!is.na(author_group)) %>%  
+
+  group_by(author_group) %>% 
+  sample_n(20000) %>% 
+  
+  # create 10 samples of 2000 lines for each group
+  mutate(sample_id = ceiling(1:20000),
+         sample_id = floor(sample_id/2000)+1,
+         sample_id = ifelse(sample_id == 11, 1, sample_id),
+         sample_id = paste0(author_group, "_", sample_id)) %>% 
+  ungroup() %>% 
+  
+  group_by(sample_id) %>% 
+  summarise(text = paste0(text_lemm, collapse = " ------ ")) %>% 
+  ungroup() %>% 
+  
+  mutate(author_group = str_remove(sample_id, "_\\d+$"), 
+         path = ifelse(author_group == "Другие", "secondary_set/", "primary_set/"),
+         path = paste0("zeta_tests/benediktov_vs_all/", path, sample_id, ".txt")) 
+
+str(corpus_prepared)
+```
+
+```{r}
+do.call(file.remove, list(
+  list.files("zeta_tests/benediktov_vs_all//primary_set", full.names = TRUE)))
+do.call(file.remove, list(
+  list.files("zeta_tests/benediktov_vs_all//secondary_set", full.names = TRUE)))
+
+for (i in 1:nrow(corpus_prepared)) {
+  writeLines(corpus_prepared$text[i], corpus_prepared$path[i])
+}
+```
+
+```{r, message=FALSE}
+oppose(
+  gui = FALSE,
+  path = "zeta_tests/benediktov_vs_all/",
+  corpus.lang = "Other",
+  text.slice.length = 500,
+  write.png.file = TRUE
+)
+```
+
+### classification
 
 Basic classification based on 400 MFW
 
-##### MFW
+#### MFW - sampled lines
 
 ```{r}
 ranks <- corpus1835 %>% 
   unnest_tokens(input = text_lemm, output = word, token = "words") %>% 
   count(word, sort = T) %>% 
-  head(400) %>% 
-  mutate(rank = row_number())
+  head(350) %>% 
+  # remove first 50 MFW
+  mutate(rank = row_number()) %>% 
+  filter(rank > 50)
 
 head(ranks)
 tail(ranks)
@@ -598,10 +669,10 @@ corpus_prepared <- corpus1835 %>%
   group_by(author_group) %>% 
   sample_n(20000) %>% 
   
-  # create two samples of 500 lines for each author
+  # create 200 samples of 100 lines
   mutate(sample_id = ceiling(1:20000),
-         sample_id = floor(sample_id/200)+1,
-         sample_id = ifelse(sample_id == 101, 1, sample_id),
+         sample_id = floor(sample_id/100)+1,
+         sample_id = ifelse(sample_id == 201, 1, sample_id),
          sample_id = paste0(author_group, "_", sample_id)) %>% 
   ungroup() %>% 
   
@@ -615,6 +686,10 @@ corpus_prepared <- corpus1835 %>%
 
 table(corpus_prepared$author_group)
 str(corpus_prepared)
+
+corpus_prepared %>% 
+  unnest_tokens(input = text, output = word, token = "words") %>% 
+  count(sample_id)
 ```
 
 ```{r}
@@ -646,7 +721,7 @@ freqs_scaled <- tibble(sample_id = freqs$sample_id,
 
 tidy_corpus <- freqs_scaled %>% 
   group_by(text_genre) %>% 
-  sample_n(100) %>%   # number of texts in the tested genre
+  sample_n(200) %>%   # number of texts in the tested genre
   ungroup() %>% 
   select(-sample_id)
 
@@ -721,11 +796,445 @@ tibble(weight=words_coefs[1,], word=colnames(words_coefs)) %>%
         axis.line.y = element_line(color="black"))
 ```
 
-##### zeta words
+```{r}
+authors_lbl$author_group
+
+authors_lbl %>% filter(author_group %in% c("\"Круг Бенедиктова\"",
+                                           "\"Пушкинский стиль\"")) %>% 
+  arrange(-desc(author_group))
+```
+
+#### MFW - separate texts
+
+```{r}
+corpus_prepared <- corpus1835 %>% 
+  filter(author_text %in% authors_lines$author_text) %>% 
+  select(text_id, author_text, meter, text_lemm) %>% 
+  
+  # attach lables
+  left_join(authors_lbl %>% rename(author_text = author), by = "author_text") %>%   filter(author_group == '"Пушкинский стиль"' | author_group == '"Круг Бенедиктова"') %>% 
+  mutate(author_group = str_remove_all(author_group, '"')) %>% 
+  # both groups has > 400 texts
+
+  group_by(author_group) %>% 
+  
+  sample_n(400) %>% 
+  
+  ungroup() %>% 
+  
+  rename(text = text_lemm) %>% 
+  
+  select(text_id, author_group, text)
+
+table(corpus_prepared$author_group)
+str(corpus_prepared)
+```
+
+Classifier
+
+```{r}
+freqs <- corpus_prepared %>% 
+  mutate(text_genre = author_group) %>% # rename for simplicity
+  select(-author_group) %>% 
+  # tokenize
+  unnest_tokens(input = text, output = word, token = "words") %>% 
+  
+  # filter 400 MFW
+  filter(word %in% ranks$word) %>% 
+  
+  # count words inside each text
+  group_by(text_id, text_genre) %>% 
+  count(word) %>% 
+  ungroup() %>% 
+  pivot_wider(names_from = word, values_from = n, values_fill = 0) 
+
+dim(freqs)
+freqs[1:10, 1:10]
+
+freqs_scaled <- freqs %>% 
+  select(-text_id, -text_genre) %>% 
+  scale() %>% 
+  as_tibble()
+
+
+freqs_scaled[1:10, 1:10]
+
+freqs_scaled <- tibble(sample_id = freqs$text_id,
+       freqs_scaled,
+       text_genre = freqs$text_genre) %>% 
+  mutate(sample_id = row_number())
+
+tidy_corpus <- freqs_scaled %>% 
+  #group_by(text_genre) %>% 
+  #sample_n(100) %>%   # number of texts in the tested genre
+  ungroup() %>% 
+  select(-sample_id)
+
+## split the data into training and test sets
+corpus_split <- initial_split(tidy_corpus, strata="text_genre", prop = 7.5/10)
+
+corpus_split
+
+training_set <- training(corpus_split)
+test_set <- testing(corpus_split)
+
+zscores_recipe <- recipe(text_genre ~ ., data = training_set) # all columns = all 300MFW freqs are used for the training
+
+# 10-fold cross validation setup
+folds <- vfold_cv(training_set, strata = "text_genre", v = 10)
+
+# model specifications
+svm_specs <- svm_poly(cost=1,degree = 1) %>% # linear kernel
+  set_mode("classification") %>%
+  set_engine("kernlab")
+
+# add recipe and model specs to the workflow 
+svm_wf <- workflow() %>%
+  add_recipe(zscores_recipe) %>%
+  add_model(svm_specs)
+
+svm_res <- fit_resamples(
+  svm_wf,
+  folds,
+  metrics = metric_set(accuracy),
+  control = control_resamples(save_pred = TRUE)
+)
+
+metrics <- collect_metrics(svm_res)
+metrics # accuracy on separated texts is about 66%
+
+svm_model <-svm(as.factor(text_genre)~.,  
+                data = training_set, 
+                method = "C-classification", 
+                kernel = "linear", 
+                cost = 1, 
+                scale = T)
+
+summary(svm_model) 
+prediction <- predict(svm_model, test_set)
+confusionMatrix(prediction, as.factor(test_set$text_genre)) # acc ~0.61
+
+words_coefs <- t(svm_model$coefs) %*% svm_model$SV
+
+tibble(weight=words_coefs[1,], word=colnames(words_coefs)) %>% 
+  mutate(genre = case_when(weight > 0 ~ "Круг Бенедиктова", 
+                           weight < 0 ~ "Пушкинский стиль")) %>%
+  group_by(genre) %>% 
+  mutate(abs=abs(weight)) %>%
+  top_n(20,abs) %>% 
+  ggplot(aes(reorder(word,abs), abs, fill=genre)) + geom_col() +
+  coord_flip() + 
+  facet_wrap(~genre,scales="free") +
+  theme_minimal(base_size = 16) + 
+  labs(x = "", 
+       y = "",
+       fill = "") + 
+  #scale_fill_carto_d(palette = "Safe") + 
+  theme(legend.position = "none") + 
+  theme(axis.text = element_text(size = 14),
+        axis.title = element_text(size = 14),
+        plot.title = element_text(size = 14)) + 
+  theme(panel.border = element_blank(), 
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank()) +
+  theme(axis.line.x = element_line(color="black"), 
+        axis.line.y = element_line(color="black"))
+```
+
+#### MFW - Benediktov vs all
+
+```{r}
+corpus_prepared <- corpus1835 %>% 
+  filter(author_text %in% authors_lines$author_text) %>% 
+  select(text_id, author_text, meter, text_lemm) %>% 
+  separate_rows(text_lemm, sep = "\n") %>% 
+  filter(text_lemm != "" & !str_detect(text_lemm, "^\\W+$|^\\s+$")) %>% 
+  
+  # attach lables
+  left_join(authors_lbl %>% rename(author_text = author), by = "author_text") %>%   
+  # rewrite labels: Benediktov vs all
+  mutate(author_group = str_remove_all(author_group, '"'),
+         author_group = ifelse(author_group != "Круг Бенедиктова",
+                               "Другие",
+                               author_group)) %>% 
+  filter(!is.na(author_group)) %>% 
+
+    group_by(author_group) %>% 
+  sample_n(20000) %>% 
+  
+  # create 800 samples of 25 lines
+  mutate(sample_id = ceiling(1:20000),
+         sample_id = floor(sample_id/100)+1,
+         sample_id = ifelse(sample_id == 201, 1, sample_id),
+         sample_id = paste0(author_group, "_", sample_id)) %>% 
+  ungroup() %>% 
+  
+  group_by(sample_id) %>% 
+  summarise(text = paste0(text_lemm, collapse = " ------ ")) %>% 
+  ungroup() %>% 
+  
+  mutate(author_group = str_remove(sample_id, "_\\d+$"))
+
+
+
+table(corpus_prepared$author_group)
+str(corpus_prepared)
+
+```
+
+```{r}
+freqs <- corpus_prepared %>% 
+  mutate(text_genre = author_group) %>% 
+  select(sample_id, text_genre, text) %>% 
+  unnest_tokens(input = text, output = word, token = "words") %>% 
+  filter(word %in% ranks$word) %>% 
+  group_by(sample_id, text_genre) %>% 
+  count(word) %>% 
+  ungroup() %>% 
+  pivot_wider(names_from = word, values_from = n, values_fill = 0) 
+
+dim(freqs)
+freqs[1:10, 1:10]
+
+freqs_scaled <- freqs %>% 
+  select(-sample_id, -text_genre) %>% 
+  scale() %>% 
+  as.tibble()
+
+
+freqs_scaled[1:10, 1:10]
+
+freqs_scaled <- tibble(sample_id = freqs$sample_id,
+       freqs_scaled,
+       text_genre = freqs$text_genre) %>% 
+  mutate(sample_id = row_number())
+
+tidy_corpus <- freqs_scaled %>% 
+  group_by(text_genre) %>% 
+  sample_n(200) %>%   # number of texts in the tested genre
+  ungroup() %>% 
+  select(-sample_id)
+
+## split the data into training and test sets
+corpus_split <- initial_split(tidy_corpus, strata="text_genre", prop = 7.5/10)
+
+corpus_split
+
+training_set <- training(corpus_split)
+test_set <- testing(corpus_split)
+
+zscores_recipe <- recipe(text_genre ~ ., data = training_set) # all columns = all 300MFW freqs are used for the training
+
+# 10-fold cross validation setup
+folds <- vfold_cv(training_set, strata = "text_genre", v = 10)
+
+# model specifications
+svm_specs <- svm_poly(cost=1,degree = 1) %>% # linear kernel
+  set_mode("classification") %>%
+  set_engine("kernlab")
+
+# add recipe and model specs to the workflow 
+svm_wf <- workflow() %>%
+  add_recipe(zscores_recipe) %>%
+  add_model(svm_specs)
+
+svm_res <- fit_resamples(
+  svm_wf,
+  folds,
+  metrics = metric_set(accuracy),
+  control = control_resamples(save_pred = TRUE)
+)
+
+metrics <- collect_metrics(svm_res)
+metrics
+
+svm_model <-svm(as.factor(text_genre)~.,  
+                data = training_set, 
+                method = "C-classification", 
+                kernel = "linear", 
+                cost = 1, 
+                scale = T)
+
+summary(svm_model) 
+prediction <- predict(svm_model, test_set)
+confusionMatrix(prediction, as.factor(test_set$text_genre)) # NB check if the same positive class used below in the plot
+
+words_coefs <- t(svm_model$coefs) %*% svm_model$SV
+
+tibble(weight=words_coefs[1,], word=colnames(words_coefs)) %>% 
+  mutate(genre = case_when(weight > 0 ~ "Другие", 
+                           weight < 0 ~ "Круг Бенедиктова")) %>%
+  group_by(genre) %>% 
+  mutate(abs=abs(weight)) %>%
+  top_n(20,abs) %>% 
+  ggplot(aes(reorder(word,abs), abs, fill=genre)) + geom_col() +
+  coord_flip() + 
+  facet_wrap(~genre,scales="free") +
+  theme_minimal(base_size = 16) + 
+  labs(x = "", 
+       y = "",
+       fill = "") + 
+  #scale_fill_carto_d(palette = "Safe") + 
+  theme(legend.position = "none") + 
+  theme(axis.text = element_text(size = 14),
+        axis.title = element_text(size = 14),
+        plot.title = element_text(size = 14)) + 
+  theme(panel.border = element_blank(), 
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank()) +
+  theme(axis.line.x = element_line(color="black"), 
+        axis.line.y = element_line(color="black"))
+```
+
+#### MFW RNC vs Benediktov
+
+```{r}
+corpus_prepared <- corpus1835 %>% 
+  filter(author_text %in% authors_lines$author_text) %>% 
+  select(text_id, author_text, meter, text_lemm) %>% 
+  
+  # attach RNC data
+  rbind(rnc_selected %>% select(-formula)) %>%
+  
+  separate_rows(text_lemm, sep = "\n") %>% 
+  filter(text_lemm != "" & !str_detect(text_lemm, "^\\W+$|^\\s+$")) %>% 
+  
+  # attach lables
+  left_join(authors_lbl %>% rename(author_text = author), by = "author_text") %>%   filter(author_group == '"НКРЯ"' | author_group == '"Круг Бенедиктова"') %>% 
+  mutate(author_group = str_remove_all(author_group, '"')) %>% 
+  
+  # both groups has more than 20k tokens
+  group_by(author_group) %>% 
+  sample_n(20000) %>% 
+  
+  # create 800 samples of 25 lines
+  mutate(sample_id = ceiling(1:20000),
+         sample_id = floor(sample_id/100)+1,
+         sample_id = ifelse(sample_id == 201, 1, sample_id),
+         sample_id = paste0(author_group, "_", sample_id)) %>% 
+  ungroup() %>% 
+  
+  group_by(sample_id) %>% 
+  summarise(text = paste0(text_lemm, collapse = " ------ ")) %>% 
+  ungroup() %>% 
+  
+  mutate(author_group = str_remove(sample_id, "_\\d+$"))
+
+
+
+table(corpus_prepared$author_group)
+str(corpus_prepared)
+```
+
+```{r}
+freqs <- corpus_prepared %>% 
+  mutate(text_genre = author_group) %>% 
+  select(sample_id, text_genre, text) %>% 
+  unnest_tokens(input = text, output = word, token = "words") %>% 
+  filter(word %in% ranks$word) %>% 
+  group_by(sample_id, text_genre) %>% 
+  count(word) %>% 
+  ungroup() %>% 
+  pivot_wider(names_from = word, values_from = n, values_fill = 0) 
+
+dim(freqs)
+freqs[1:10, 1:10]
+
+freqs_scaled <- freqs %>% 
+  select(-sample_id, -text_genre) %>% 
+  scale() %>% 
+  as.tibble()
+
+
+freqs_scaled[1:10, 1:10]
+
+freqs_scaled <- tibble(sample_id = freqs$sample_id,
+       freqs_scaled,
+       text_genre = freqs$text_genre) %>% 
+  mutate(sample_id = row_number())
+
+tidy_corpus <- freqs_scaled %>% 
+  group_by(text_genre) %>% 
+  sample_n(200) %>%   # number of texts in the tested genre
+  ungroup() %>% 
+  select(-sample_id)
+
+## split the data into training and test sets
+corpus_split <- initial_split(tidy_corpus, strata="text_genre", prop = 7.5/10)
+
+corpus_split
+
+training_set <- training(corpus_split)
+test_set <- testing(corpus_split)
+
+zscores_recipe <- recipe(text_genre ~ ., data = training_set) # all columns = all 400MFW freqs are used for the training
+
+# 10-fold cross validation setup
+folds <- vfold_cv(training_set, strata = "text_genre", v = 10)
+
+# model specifications
+svm_specs <- svm_poly(cost=1,degree = 1) %>% # linear kernel
+  set_mode("classification") %>%
+  set_engine("kernlab")
+
+# add recipe and model specs to the workflow 
+svm_wf <- workflow() %>%
+  add_recipe(zscores_recipe) %>%
+  add_model(svm_specs)
+
+svm_res <- fit_resamples(
+  svm_wf,
+  folds,
+  metrics = metric_set(accuracy),
+  control = control_resamples(save_pred = TRUE)
+)
+
+metrics <- collect_metrics(svm_res)
+metrics
+
+svm_model <-svm(as.factor(text_genre)~.,  
+                data = training_set, 
+                method = "C-classification", 
+                kernel = "linear", 
+                cost = 1, 
+                scale = T)
+
+summary(svm_model) 
+prediction <- predict(svm_model, test_set)
+confusionMatrix(prediction, as.factor(test_set$text_genre)) # NB check if the same positive class used below in the plot
+
+words_coefs <- t(svm_model$coefs) %*% svm_model$SV
+
+tibble(weight=words_coefs[1,], word=colnames(words_coefs)) %>% 
+  mutate(genre = case_when(weight > 0 ~ "Круг Бенедиктова", 
+                           weight < 0 ~ "НКРЯ")) %>%
+  group_by(genre) %>% 
+  mutate(abs=abs(weight)) %>%
+  top_n(20,abs) %>% 
+  ggplot(aes(reorder(word,abs), abs, fill=genre)) + geom_col() +
+  coord_flip() + 
+  facet_wrap(~genre,scales="free") +
+  theme_minimal(base_size = 16) + 
+  labs(x = "", 
+       y = "",
+       fill = "") + 
+  #scale_fill_carto_d(palette = "Safe") + 
+  theme(legend.position = "none") + 
+  theme(axis.text = element_text(size = 14),
+        axis.title = element_text(size = 14),
+        plot.title = element_text(size = 14)) + 
+  theme(panel.border = element_blank(), 
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank()) +
+  theme(axis.line.x = element_line(color="black"), 
+        axis.line.y = element_line(color="black"))
+```
+
+##### class w/zeta words
 
 Import words from Zeta analysis (101 words altogether)
 
-```{r}
+```{r, eval=FALSE}
 wordlist <- unlist(str_split(c("человек
 свет
 этот
@@ -831,7 +1340,7 @@ wordlist <- unlist(str_split(c("человек
 
 Classification
 
-```{r}
+```{r, eval=FALSE}
 freqs <- corpus_prepared %>% 
   mutate(text_genre = author_group) %>% 
   select(sample_id, text_genre, text) %>% 

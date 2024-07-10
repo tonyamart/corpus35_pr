@@ -22,7 +22,7 @@ library(MetBrewer)
 ```
 
 ```{r}
-corpus <- readRDS("../../data/corpus1835/corpus_1835.Rds")
+corpus <- readRDS("../../../data/corpus1835/corpus_1835.Rds")
 
 glimpse(corpus)
 ```

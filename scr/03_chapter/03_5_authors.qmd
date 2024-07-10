@@ -14,6 +14,8 @@ library(tidytext)
 
 library(stylo)
 
+library(topicmodels)
+
 library(umap)
 
 library(e1071)
@@ -259,16 +261,6 @@ metrical_mtrx
 Metrical variations taken into account:
 
 ```{r}
-# corpus1835 %>% 
-#   # select most represented authors
-#   filter(author_text %in% authors_lines$author_text) %>% 
-#   
-#   # leave only clearly detected meters
-#   filter(meter != "Other?" & feet %in% c(2, 3, 4, 5, 6, "other")) %>% 
-#   mutate(formula = paste0(meter, "_", feet)) %>% 
-#   distinct(formula) %>% 
-#   pull()
-
 colnames(metrical_mtrx)
 ```
 
@@ -352,8 +344,14 @@ dat %>%
         legend.text = element_text(size = 12), 
         legend.position = "bottom")
 
-ggsave("plots/Fig_3-2-2.png", plot = last_plot(),
-       bg = "white", dpi = 300, width = 11, height = 7)
+# ggsave("plots/Fig_3-2-2.png", plot = last_plot(),
+#        bg = "white", dpi = 300, width = 11, height = 7)
+```
+
+```{r}
+corpus1835 %>% 
+  filter(author_text == "Суханов М.Д.") %>% 
+  select(text_title, text_subtitle, source_text)
 ```
 
 #### lineplot
@@ -935,4 +933,203 @@ tibble(weight=words_coefs[1,], word=colnames(words_coefs)) %>%
         panel.grid.minor = element_blank()) +
   theme(axis.line.x = element_line(color="black"), 
         axis.line.y = element_line(color="black"))
+```
+
+### tm
+
+#### prepare data
+
+```{r}
+corpus_prepared <- corpus1835 %>% 
+  filter(author_text %in% authors_lines$author_text) %>% 
+  select(text_id, author_text, meter, text_lemm) %>% 
+  # separate_rows(text_lemm, sep = "\n") %>% 
+  # filter(text_lemm != "" & !str_detect(text_lemm, "^\\W+$|^\\s+$")) %>% 
+  
+  # attach lables
+  left_join(authors_lbl %>% rename(author_text = author), by = "author_text") %>%   filter(author_group == '"Пушкинский стиль"' | author_group == '"Круг Бенедиктова"') %>% 
+  
+  mutate(author_text = paste0(author_text, "__", author_group),
+         author_text = str_remove_all(author_text, '\\"')) %>% 
+  
+  group_by(author_text) %>% 
+  sample_n(20) %>% 
+  
+  
+  # create two samples of 500 lines for each author
+  # mutate(sample_id = ceiling(1:1000),
+  #        sample_id = floor(sample_id/50)+1,
+  #        sample_id = ifelse(sample_id == 21, 1, sample_id),
+  #        sample_id = paste0(author_text, "_", sample_id)) %>% 
+  # 
+  # ungroup() %>% 
+  # 
+  # group_by(sample_id) %>% 
+  
+  #summarise(text = paste0(text_lemm, collapse = " ----- ")) %>% 
+  ungroup() %>% 
+  mutate(doc_id = paste0(author_text, "__", author_group, "_", row_number()),
+         text = text_lemm) %>% 
+  select(doc_id, text)
+# samples of 1000 lines from each author, 20 samples of 50 lines for each author
+str(corpus_prepared)
+```
+
+Create a topic model to see the distribution of topics in the two classes of authors
+
+```{r}
+stoplist <- c("и","в","во","не","что","он","на","я","с","со","как","а","то","все","она","так","его","но","ты","к","у","же","вы","за","бы","по","ее","мне","было","вот","от","меня","о","из","ему","теперь","даже","ну","ли","если","или","ни","быть","был","него","до","вас","нибудь","вам","сказал","себя","ей","может","они","есть","ней","для","мы","тебя","их","чем","была","сам","чтоб","без","будто","чего","себе","под","будет","ж","кто","этот","того","потому","этого","какой","ним","этом","мой","тем","чтобы","нее","были","куда","зачем","всех","можно","при","об","хоть","над","больше","тот","через","эти","нас","про","всего","них","какая","много","разве","сказала","три","эту","моя","свою","этой","перед","лучше","чуть","том","такой","им","более","всю","между","твой","весь", "елена")
+
+
+ranks <- corpus_prepared %>% 
+  unnest_tokens(input = text, output = word, token = "words") %>% 
+  count(word, sort = T) %>% 
+  
+  # remove words from the stoplist
+  filter(!word %in% stoplist) %>% 
+  head(3000)
+
+head(ranks)
+tail(ranks)
+```
+
+```{r}
+# total number of words in all samples
+corpus_prepared %>% 
+  unnest_tokens(input = text, output = word, token = "words") %>% nrow()
+
+# number of texts
+length(unique(corpus_prepared$doc_id))
+```
+
+```{r, eval=FALSE}
+dtm <- corpus_prepared %>% 
+  #rename(doc_id = sample_id) %>% 
+  unnest_tokens(input = text, output = word, token = "words") %>% 
+  filter(word %in% ranks$word) %>% 
+  count(doc_id, word) %>% 
+  cast_dtm(document = doc_id, term = word, value = n)
+
+
+
+# Create a model with 20 topics
+mod_75 <- LDA(dtm, k = 75, method = "Gibbs",
+              control = list(alpha = 0.5, delta = 0.1, 
+                             iter = 2000, seed = 1234, thin = 1))
+
+# Extract coefficients
+beta75 <- tidy(mod_75, matrix = "beta") 
+gamma75 <- tidy(mod_75, matrix = "gamma")
+
+save(beta75, gamma75, file = "lda_tm_authors_75.Rda")
+```
+
+```{r}
+load("lda_tm_authors_75.Rda")
+```
+
+```{r}
+#### Plot: words' probabilities in topics ####
+beta75 %>% 
+  group_by(topic) %>% 
+  top_n(10, beta) %>% 
+  ungroup() %>%
+  arrange(topic, desc(beta)) %>% 
+  ggplot(aes(reorder_within(term, beta, topic), beta, fill = factor(topic))) + 
+  geom_col(show.legend = FALSE) + 
+  facet_wrap(~topic, scales = "free") + 
+  coord_flip() + 
+  theme_minimal(base_size = 14) + 
+  scale_x_reordered() + 
+  labs(title = "Probability of top 10 words in topics",
+       subtitle = "LDA model build with 'topicmodels' r package, 40 topics, alpha = 0,5, 2000 iterations") + 
+  theme(axis.title.x = element_blank(),
+        axis.title.y = element_blank())
+
+
+ggsave("plots/tm75_authors_beta.png", plot = last_plot(),
+       bg = "white", width = 20, height = 15)
+```
+
+Distribution of topics
+
+```{r}
+# glimpse(gamma75)
+
+gamma75 %>% 
+  mutate(author = str_extract(document, "^\\w+\\s\\w\\.\\w?\\.?"),
+         author = str_remove_all(author, "_"),
+         author_group = str_extract(document, "__\\w+.\\w+_"),
+         author_group = str_remove_all(author_group, "_")) %>% 
+  group_by(author, author_group, topic) %>% 
+  summarise(mean_gamma = mean(gamma)) %>% 
+  ungroup() %>% 
+  ggplot(aes(x = author, y = topic, fill = mean_gamma)) + 
+  geom_tile() + 
+  facet_wrap(~author_group, scales = "free") + 
+  scale_fill_viridis_c(option = "plasma") + 
+  scale_y_continuous(breaks = 1:75) + 
+  #geom_text(aes(label = #round(mean_gamma, 3)
+  #                #paste0(topic, "\n", round(mean_gamma, 3))
+  #                topic
+  #              ), colour = "white") + 
+  theme(axis.text.x = element_text(angle = 90))
+
+gamma75 %>% 
+  mutate(author = str_extract(document, "^\\w+\\s\\w\\.\\w?\\.?"),
+         author = str_remove_all(author, "_"),
+         author_group = str_extract(document, "__\\w+.\\w+_"),
+         author_group = str_remove_all(author_group, "_")) %>%  
+  group_by(author, author_group, topic) %>% 
+  summarise(mean_gamma = mean(gamma)) %>% 
+  ungroup() %>% 
+  group_by(author, author_group) %>% 
+  slice_max(n = 10, order_by = mean_gamma) %>% 
+  ggplot(aes(x = author, y = mean_gamma, fill = as.factor(topic))) + 
+  geom_col(position = "stack") + 
+  geom_text(aes(label = topic), position = position_stack(vjust = 0.5)) + 
+  theme(legend.position = "None") + 
+  facet_wrap(~author_group, scales = "free") 
+```
+
+```{r}
+glimpse(gamma75) 
+
+gamma_mtrx <- gamma75 %>% 
+  mutate(author = str_extract(document, "^\\w+\\s\\w\\.\\w?\\.?"),
+         author = str_remove_all(author, "_")) %>% 
+  select(author, topic, gamma) %>% 
+  group_by(author, topic) %>% 
+  summarise(gamma_mean = mean(gamma)) %>% 
+  ungroup() %>% 
+  pivot_wider(names_from = topic, values_from = gamma_mean)
+
+mtrx <- gamma_mtrx %>% 
+  select(-author)
+
+u <- umap(mtrx)
+
+dat <- tibble(x = u$layout[,1],
+       y = u$layout[,2],
+       author = gamma_mtrx$author) 
+
+dat %>% 
+  # mutate(sample_id = author,
+  #   author = str_remove(author, "_\\d+$")) %>% 
+  left_join(authors_lbl, by = "author") %>% 
+  mutate(author_group = ifelse(is.na(author_group), '"Другое"', author_group),
+         author_group = ifelse(author_group == '"Другое"', '"Другие"', author_group)) %>% 
+  ggplot(aes(x, y, color = author_group)) + 
+  #geom_point(size = 5, alpha = 0.6) + 
+  geom_text(aes(label = author), size = 4) + 
+  labs(title = "", x = "", y = "", color = "") + 
+  scale_color_manual(values = c(#"gray", 
+                                #met.brewer("Veronese")[3],
+                                #"gray30",
+                                #met.brewer("Derain")[5],
+                                met.brewer("Veronese")[3],
+                                met.brewer("Veronese")[5])) + 
+  theme(axis.text = element_blank(), 
+        legend.text = element_text(size = 12), 
+        legend.position = "bottom")
 ```

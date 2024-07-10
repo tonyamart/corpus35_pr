@@ -11,6 +11,8 @@ library(tidytext)
 
 library(stylo)
 
+library(topicmodels)
+
 library(umap)
 
 library(e1071)
@@ -343,6 +345,13 @@ metrical_mtrx <- corpus1835 %>%
   
   group_by(author_text) %>% 
   sample_n(1000) %>% # sample 1000 lines from each author
+  #ungroup() %>% 
+  
+  # create two samples of 500 lines for each author
+  mutate(sample_id = ceiling(1:1000),
+         sample_id = floor(sample_id/500)+1,
+         sample_id = ifelse(sample_id == 3, 1, sample_id),
+         author_text = paste0(author_text, "_", sample_id)) %>% 
   ungroup() %>% 
   
   # count number of lines of each meter
@@ -354,40 +363,30 @@ metrical_mtrx <- corpus1835 %>%
 metrical_mtrx
 ```
 
-    # A tibble: 52 × 28
+    # A tibble: 104 × 29
        author_text   Amphibrach_4 Amphibrach_other Anapest_2 Anapest_4 Iamb_4 Iamb_5
        <chr>                <int>            <int>     <int>     <int>  <int>  <int>
-     1 Алексеев П.Ф.           29               30        29        36    255     40
-     2 Бакунин И.М.            92               17         0         0    581      0
-     3 Баратынский …            0                0         0         0    655     84
-     4 Баратынский …           12               12         0         0    419     77
-     5 Батюшков К. …            0                0         0         0    133      0
-     6 Башкатов А.              0                0         0         0    698      0
-     7 Бенедиктов В…           93               88         0         0    220     94
-     8 Бернет Е.               54               15         0         0    194     35
-     9 Бороздна И.П.            0                0         0         0    948      5
-    10 Быстроглазов…           27               86         0         0    411     57
-    # ℹ 42 more rows
-    # ℹ 21 more variables: Iamb_6 <int>, Iamb_other <int>, Trochee_4 <int>,
+     1 Алексеев П.Ф…           12               14        15        20    125     25
+     2 Алексеев П.Ф…           22               15        12        22    120     20
+     3 Бакунин И.М.…           52               12         0         0    270      0
+     4 Бакунин И.М.…           58                8         0         0    272      0
+     5 Баратынский …            0                0         0         0    321     45
+     6 Баратынский …            0                0         0         0    312     48
+     7 Баратынский …            3                5         0         0    210     44
+     8 Баратынский …            6                4         0         0    192     52
+     9 Батюшков К. …            0                0         0         0     75      0
+    10 Батюшков К. …            0                0         0         0     76      0
+    # ℹ 94 more rows
+    # ℹ 22 more variables: Iamb_6 <int>, Iamb_other <int>, Trochee_4 <int>,
     #   Trochee_6 <int>, Trochee_other <int>, Amphibrach_2 <int>,
     #   Anapest_other <int>, Iamb_3 <int>, Amphibrach_3 <int>, Iamb_2 <int>,
     #   Dactyl_3 <int>, Anapest_3 <int>, Dactyl_other <int>, Trochee_5 <int>,
     #   Trochee_3 <int>, Anapest_5 <int>, Dactyl_6 <int>, Amphibrach_5 <int>,
-    #   Dactyl_4 <int>, Amphibrach_6 <int>, Dactyl_2 <int>
+    #   Dactyl_4 <int>, Amphibrach_6 <int>, Dactyl_2 <int>, Dactyl_5 <int>
 
 Metrical variations taken into account:
 
 ``` r
-# corpus1835 %>% 
-#   # select most represented authors
-#   filter(author_text %in% authors_lines$author_text) %>% 
-#   
-#   # leave only clearly detected meters
-#   filter(meter != "Other?" & feet %in% c(2, 3, 4, 5, 6, "other")) %>% 
-#   mutate(formula = paste0(meter, "_", feet)) %>% 
-#   distinct(formula) %>% 
-#   pull()
-
 colnames(metrical_mtrx)
 ```
 
@@ -398,6 +397,7 @@ colnames(metrical_mtrx)
     [17] "Iamb_2"           "Dactyl_3"         "Anapest_3"        "Dactyl_other"    
     [21] "Trochee_5"        "Trochee_3"        "Anapest_5"        "Dactyl_6"        
     [25] "Amphibrach_5"     "Dactyl_4"         "Amphibrach_6"     "Dactyl_2"        
+    [29] "Dactyl_5"        
 
 Projection
 
@@ -410,14 +410,15 @@ mtrx <- metrical_mtrx %>%
 dim(mtrx)
 ```
 
-    [1] 52 27
+    [1] 104  28
 
 ``` r
 u <- umap(mtrx)
 
 dat <- tibble(x = u$layout[,1],
        y = u$layout[,2],
-       author = metrical_mtrx$author_text) 
+       author_sample = metrical_mtrx$author_text) %>% 
+  mutate(author = str_remove(author_sample, "_\\d$"))
 ```
 
 ### author’s grouping
@@ -425,8 +426,29 @@ dat <- tibble(x = u$layout[,1],
 Some custom labeling according to grouping found in scholarship
 
 ``` r
-# unique(dat$author)
+unique(dat$author)
+```
 
+     [1] "Алексеев П.Ф."          "Бакунин И.М."           "Баратынский Е. А._НКРЯ"
+     [4] "Баратынский Е.А."       "Батюшков К. Н._НКРЯ"    "Башкатов А."           
+     [7] "Бенедиктов В.Г."        "Бернет Е."              "Бороздна И.П."         
+    [10] "Быстроглазов А."        "Вердеревский А."        "Глинка Ф.Н."           
+    [13] "Гребенка Е.П."          "Губер Э.И."             "Деларю М.Д."           
+    [16] "Дельвиг А. А._НКРЯ"     "Демидов М.А."           "Державин Г. Р._НКРЯ"   
+    [19] "Ершов П.П."             "Жуковский В.А."         "Зилов А.М."            
+    [22] "Карамзин Н. М._НКРЯ"    "Кашкин Д.Е."            "Козлов И.И."           
+    [25] "Кольцов А.В."           "Кони Ф.А."              "Кропоткин Д.А."        
+    [28] "Крылов И.А."            "Кульман Е.Б."           "Лермонтов М.Ю."        
+    [31] "Мартынов А.М."          "Мейснер А."             "Менцов Ф.Н."           
+    [34] "Мерзляков А. Ф._НКРЯ"   "Меркли М.М."            "Некрасов Н.А."         
+    [37] "Папкевич А."            "Подолинский А.И."       "Полежаев А.И."         
+    [40] "Пушкин А. С._НКРЯ"      "Пушкин А.С."            "Ростопчина Е.П."       
+    [43] "Слепушкин Ф.Н."         "Смирнова А."            "Суханов М.Д."          
+    [46] "Сушков Д.П."            "Теплова Н.С."           "Тепляков В.Г."         
+    [49] "Тимофеев А.В."          "Ушаков А.А."            "Шахова Е.Н."           
+    [52] "Якубович Л.А."         
+
+``` r
 authors_lbl <- tibble(
   author = unique(dat$author),
   author_group = c(
@@ -487,25 +509,50 @@ authors_lbl
 dat %>% 
   filter(author != "Кольцов А.В.") %>% 
   left_join(authors_lbl, by = "author") %>% 
+  mutate(author_group = ifelse(author_group == '"Другое"', 
+                               '"Другие"', author_group)) %>% 
   ggplot(aes(x, y, color = author_group)) + 
   #geom_point(size = 5, alpha = 0.6) + 
-  geom_text(aes(label = author)) + 
+  geom_text(aes(label = author_sample)) + 
   labs(title = "", x = "", y = "", color = "") + 
-  scale_color_manual(values = c("gray",
-                                 met.brewer("Veronese")[3],
-                                 "gray30", #met.brewer("Veronese")[4],
-                                 met.brewer("Veronese")[1],
-                                 met.brewer("Veronese")[5],
-                                 met.brewer("Veronese")[7])) + 
-  theme(axis.text = element_blank())
+  scale_color_manual(values = c("gray", 
+                                met.brewer("Veronese")[3],
+                                "gray30",
+                                met.brewer("Derain")[5],
+                                met.brewer("Veronese")[5],
+                                met.brewer("Veronese")[7])) + 
+  theme(axis.text = element_blank(), 
+        legend.text = element_text(size = 12), 
+        legend.position = "bottom")
 ```
 
 ![](03_5_authors.markdown_strict_files/figure-markdown_strict/unnamed-chunk-11-1.png)
 
 ``` r
-ggsave("metrical_profile_projection_md.png", plot = last_plot(),
-       bg = "white", dpi = 300, width = 8, height = 6)
+# ggsave("plots/Fig_3-2-2.png", plot = last_plot(),
+#        bg = "white", dpi = 300, width = 11, height = 7)
 ```
+
+``` r
+corpus1835 %>% 
+  filter(author_text == "Суханов М.Д.") %>% 
+  select(text_title, text_subtitle, source_text)
+```
+
+    # A tibble: 140 × 3
+       text_title         text_subtitle                            source_text      
+       <chr>              <chr>                                    <chr>            
+     1 "К другу"          ""                                       ЛПРИ. 1835. Ч. 1…
+     2 "Русская песня"    ""                                       ЛПРИ. 1835. Ч. 1…
+     3 "К соседу"         ""                                       ЛПРИ. 1835. Ч. 1…
+     4 "Затеи"            "Сказка"                                 ЛПРИ. 1836. Ч. 2…
+     5 "Змея и кролик"    ""                                       ЛПРИ. 1836. Ч. 2…
+     6 "Василек"          ""                                       ЛПРИ. 1836. Ч. 2…
+     7 "Русская песня"    ""                                       ЛПРИ. 1836. Ч. 2…
+     8 "Алмаз"            "Басня"                                  БдЧ. 1835. Т.12.…
+     9 "Василек "         "Басня. Не в пору счастье нам не впрок!" Суханов М.Д. Вре…
+    10 "Синица в клетке " "Басня"                                  Суханов М.Д. Вре…
+    # ℹ 130 more rows
 
 #### lineplot
 
@@ -524,7 +571,7 @@ mtrx %>%
   gghighlight(use_direct_label = FALSE#,
               #unhighlighted_params = list(colour = alpha("grey85", 1))
               ) + 
-  facet_wrap(~author_text) + 
+  facet_wrap(~author_text, ncol=8) + 
   geom_text(data = mtrx %>% cbind(metrical_mtrx %>% select(author_text)) %>% 
               pivot_longer(!author_text, names_to = "meter", values_to = "n") %>% 
               group_by(author_text) %>% 
@@ -532,6 +579,7 @@ mtrx %>%
             aes(y = n, label = meter),
             size = 3,
             vjust = -0.5,
+            hjust = 0.9,
             show.legend = FALSE
               ) +
   
@@ -542,7 +590,8 @@ mtrx %>%
             aes(y = n, label = meter),
             size = 3,
             vjust = 0.5,
-            show.legend = FALSE
+            show.legend = FALSE,
+            color = "blue"
               ) +
   
   scale_color_manual(values = c("gray9",
@@ -554,11 +603,11 @@ mtrx %>%
   theme(axis.text = element_blank())
 ```
 
-![](03_5_authors.markdown_strict_files/figure-markdown_strict/unnamed-chunk-12-1.png)
+![](03_5_authors.markdown_strict_files/figure-markdown_strict/unnamed-chunk-13-1.png)
 
 ``` r
-ggsave("metrical_profile_lineplot_md.png", plot = last_plot(),
-       bg = "white", dpi = 300, width = 14, height = 10)
+ggsave("plots/metrical_profile_lineplot_md.png", plot = last_plot(),
+       bg = "white", dpi = 300, width = 25, height = 15)
 ```
 
 ### MFW usage
@@ -569,7 +618,7 @@ Create MFW ranks based on the whole corpus
 ranks <- corpus1835 %>% 
   unnest_tokens(input = "text_lemm", output = word, token = "words") %>% 
   count(word, sort = T) %>% 
-  head(450) %>% 
+  head(350) %>% 
   # remove first 50 MFW
   mutate(rank = row_number()) %>% 
   filter(rank > 50)
@@ -594,18 +643,18 @@ tail(ranks)
     # A tibble: 6 × 3
       word          n  rank
       <chr>     <int> <int>
-    1 открывать   281   445
-    2 утро        281   446
-    3 желать      280   447
-    4 самый       280   448
-    5 седой       280   449
-    6 дрожать     279   450
+    1 унылый      356   345
+    2 цвести      356   346
+    3 глас        354   347
+    4 понимать    353   348
+    5 священный   353   349
+    6 жена        352   350
 
 ``` r
 nrow(ranks)
 ```
 
-    [1] 400
+    [1] 300
 
 #### select sample
 
@@ -645,18 +694,18 @@ counter %>% sample_n(10)
 ```
 
     # A tibble: 10 × 3
-       sample_id             word         n
-       <chr>                 <chr>    <int>
-     1 Крылов И.А._2         грустный     1
-     2 Демидов М.А._2        только       1
-     3 Крылов И.А._2         прежний      1
-     4 Батюшков К. Н._НКРЯ_1 меч          3
-     5 Пушкин А.С._2         какой        2
-     6 Баратынский Е.А._2    грозный      1
-     7 Некрасов Н.А._1       мука         2
-     8 Бакунин И.М._2        давно        1
-     9 Алексеев П.Ф._2       звать        1
-    10 Дельвиг А. А._НКРЯ_1  еще          2
+       sample_id                word          n
+       <chr>                    <chr>     <int>
+     1 Тепляков В.Г._2          же            8
+     2 Теплова Н.С._1           тень          5
+     3 Якубович Л.А._1          певец         1
+     4 Кольцов А.В._2           кровь         2
+     5 Деларю М.Д._2            глас          1
+     6 Баратынский Е. А._НКРЯ_2 цветок        3
+     7 Подолинский А.И._2       священный     1
+     8 Кольцов А.В._1           милый         3
+     9 Баратынский Е.А._1       встречать     1
+    10 Полежаев А.И._2          грозный       4
 
 #### UMAP projection
 
@@ -672,7 +721,7 @@ mtrx <- xxx %>%
 dim(mtrx)
 ```
 
-    [1] 112 400
+    [1] 112 300
 
 ``` r
 u <- umap(mtrx)
@@ -689,21 +738,29 @@ dat %>%
   mutate(sample_id = author,
     author = str_remove(author, "_\\d+$")) %>% 
   left_join(authors_lbl, by = "author") %>% 
-  mutate(author_group = ifelse(is.na(author_group), '"Другое"', author_group)) %>% 
+  mutate(author_group = ifelse(is.na(author_group), '"Другое"', author_group),
+         author_group = ifelse(author_group == '"Другое"', '"Другие"', author_group)) %>% 
   ggplot(aes(x, y, color = author_group)) + 
   #geom_point(size = 5, alpha = 0.6) + 
-  geom_text(aes(label = sample_id)) + 
+  geom_text(aes(label = sample_id), size = 4) + 
   labs(title = "", x = "", y = "", color = "") + 
   scale_color_manual(values = c("gray", 
                                 met.brewer("Veronese")[3],
                                 "gray30",
-                                met.brewer("Veronese")[1],
+                                met.brewer("Derain")[5],
                                 met.brewer("Veronese")[5],
                                 met.brewer("Veronese")[7])) + 
-  theme(axis.text = element_blank())
+  theme(axis.text = element_blank(), 
+        legend.text = element_text(size = 12), 
+        legend.position = "bottom")
 ```
 
-![](03_5_authors.markdown_strict_files/figure-markdown_strict/unnamed-chunk-16-1.png)
+![](03_5_authors.markdown_strict_files/figure-markdown_strict/unnamed-chunk-17-1.png)
+
+``` r
+# ggsave("plots/Fig_3-2-1.png", plot = last_plot(), dpi = 300,
+#        bg = "white", width = 11, height = 7)
+```
 
 ### zeta
 
@@ -744,7 +801,7 @@ str(corpus_prepared)
 
     tibble [20 × 4] (S3: tbl_df/tbl/data.frame)
      $ sample_id   : chr [1:20] "Круг Бенедиктова_1" "Круг Бенедиктова_10" "Круг Бенедиктова_2" "Круг Бенедиктова_3" ...
-     $ text        : chr [1:20] "конь вблизи играть; ------ хотеть сказать ты, о милый , ------ не принимать от он сердечный привет!  ------ сып"| __truncated__ "мой детский быт с его забава,  ------ пробивать за час час, исчезать за век век: ------ он ты нужный значит ста"| __truncated__ "кто мочь стоить чувство твой? ------ что в гроб единый в земля почивать, ------ под дубравный тень, ------ когд"| __truncated__ "и храбрый полк уснуть. ------ но он уже не муза подвижник ------ глубоко, до сердце он тронуть я, ------ трепет"| __truncated__ ...
+     $ text        : chr [1:20] "в волненеи бежать я до черный - море, ------ и чувство дивный закипать,  ------ когда умирать твой весна, -----"| __truncated__ "жить, не мыслить на о что ! ------ но на это вот ответ: ------ веять свежий воздух утро, ------ дорога чрез сел"| __truncated__ "над безыменный могила. ------ играть легкий весло,  ------ дико крикнуть сова;  ------ из туман, из огонь, ----"| __truncated__ "мой детский быт с его забава,  ------ и безответный, как могила ------ стремиться помысел к единый конец, -----"| __truncated__ ...
      $ author_group: chr [1:20] "Круг Бенедиктова" "Круг Бенедиктова" "Круг Бенедиктова" "Круг Бенедиктова" ...
      $ path        : chr [1:20] "zeta_tests/benediktov/primary_set/Круг Бенедиктова_1.txt" "zeta_tests/benediktov/primary_set/Круг Бенедиктова_10.txt" "zeta_tests/benediktov/primary_set/Круг Бенедиктова_2.txt" "zeta_tests/benediktov/primary_set/Круг Бенедиктова_3.txt" ...
 
@@ -794,43 +851,43 @@ oppose(
 
     Круг Бенедиктова_1
 
-        - text length (in words): 9173
+        - text length (in words): 9004
 
         - nr. of samples: 18
 
-        - nr. of words dropped at the end of the text: 173
+        - nr. of words dropped at the end of the text: 4
 
     Круг Бенедиктова_10
 
-        - text length (in words): 9084
+        - text length (in words): 9211
 
         - nr. of samples: 18
 
-        - nr. of words dropped at the end of the text: 84
+        - nr. of words dropped at the end of the text: 211
 
     Круг Бенедиктова_2
 
-        - text length (in words): 9090
+        - text length (in words): 9078
 
         - nr. of samples: 18
 
-        - nr. of words dropped at the end of the text: 90
+        - nr. of words dropped at the end of the text: 78
 
     Круг Бенедиктова_3
 
-        - text length (in words): 9040
+        - text length (in words): 8972
 
-        - nr. of samples: 18
+        - nr. of samples: 17
 
-        - nr. of words dropped at the end of the text: 40
+        - nr. of words dropped at the end of the text: 472
 
     Круг Бенедиктова_4
 
-        - text length (in words): 9174
+        - text length (in words): 9147
 
         - nr. of samples: 18
 
-        - nr. of words dropped at the end of the text: 174
+        - nr. of words dropped at the end of the text: 147
 
     Круг Бенедиктова_5
 
@@ -842,115 +899,115 @@ oppose(
 
     Круг Бенедиктова_6
 
-        - text length (in words): 9027
+        - text length (in words): 9010
 
         - nr. of samples: 18
 
-        - nr. of words dropped at the end of the text: 27
+        - nr. of words dropped at the end of the text: 10
 
     Круг Бенедиктова_7
 
-        - text length (in words): 9026
+        - text length (in words): 9104
 
         - nr. of samples: 18
 
-        - nr. of words dropped at the end of the text: 26
+        - nr. of words dropped at the end of the text: 104
 
     Круг Бенедиктова_8
 
-        - text length (in words): 9089
+        - text length (in words): 9071
 
         - nr. of samples: 18
 
-        - nr. of words dropped at the end of the text: 89
+        - nr. of words dropped at the end of the text: 71
 
     Круг Бенедиктова_9
 
-        - text length (in words): 9033
+        - text length (in words): 9102
 
         - nr. of samples: 18
 
-        - nr. of words dropped at the end of the text: 33
+        - nr. of words dropped at the end of the text: 102
 
     Пушкинский стиль_1
 
-        - text length (in words): 9445
+        - text length (in words): 9362
 
         - nr. of samples: 18
 
-        - nr. of words dropped at the end of the text: 445
+        - nr. of words dropped at the end of the text: 362
 
     Пушкинский стиль_10
 
-        - text length (in words): 9440
+        - text length (in words): 9297
 
         - nr. of samples: 18
 
-        - nr. of words dropped at the end of the text: 440
+        - nr. of words dropped at the end of the text: 297
 
     Пушкинский стиль_2
 
-        - text length (in words): 9436
+        - text length (in words): 9410
 
         - nr. of samples: 18
 
-        - nr. of words dropped at the end of the text: 436
+        - nr. of words dropped at the end of the text: 410
 
     Пушкинский стиль_3
 
-        - text length (in words): 9295
+        - text length (in words): 9336
 
         - nr. of samples: 18
 
-        - nr. of words dropped at the end of the text: 295
+        - nr. of words dropped at the end of the text: 336
 
     Пушкинский стиль_4
 
-        - text length (in words): 9455
+        - text length (in words): 9425
 
         - nr. of samples: 18
 
-        - nr. of words dropped at the end of the text: 455
+        - nr. of words dropped at the end of the text: 425
 
     Пушкинский стиль_5
 
-        - text length (in words): 9428
+        - text length (in words): 9443
 
         - nr. of samples: 18
 
-        - nr. of words dropped at the end of the text: 428
+        - nr. of words dropped at the end of the text: 443
 
     Пушкинский стиль_6
 
-        - text length (in words): 9436
+        - text length (in words): 9448
 
         - nr. of samples: 18
 
-        - nr. of words dropped at the end of the text: 436
+        - nr. of words dropped at the end of the text: 448
 
     Пушкинский стиль_7
 
-        - text length (in words): 9406
+        - text length (in words): 9328
 
         - nr. of samples: 18
 
-        - nr. of words dropped at the end of the text: 406
+        - nr. of words dropped at the end of the text: 328
 
     Пушкинский стиль_8
 
-        - text length (in words): 9399
+        - text length (in words): 9418
 
         - nr. of samples: 18
 
-        - nr. of words dropped at the end of the text: 399
+        - nr. of words dropped at the end of the text: 418
 
     Пушкинский стиль_9
 
-        - text length (in words): 9259
+        - text length (in words): 9479
 
         - nr. of samples: 18
 
-        - nr. of words dropped at the end of the text: 259
+        - nr. of words dropped at the end of the text: 479
 
     Extracting distinctive words... (this might take a while)
 
@@ -963,7 +1020,7 @@ oppose(
     No test set samples found (but this is totally OK in most cases!).
     Performing a simple comparison of the training samples...
 
-![](03_5_authors.markdown_strict_files/figure-markdown_strict/unnamed-chunk-19-1.png)
+![](03_5_authors.markdown_strict_files/figure-markdown_strict/unnamed-chunk-20-1.png)
 
     Function call:
 
@@ -1076,7 +1133,7 @@ str(corpus_prepared)
 
     tibble [200 × 3] (S3: tbl_df/tbl/data.frame)
      $ sample_id   : chr [1:200] "Круг Бенедиктова_1" "Круг Бенедиктова_10" "Круг Бенедиктова_100" "Круг Бенедиктова_11" ...
-     $ text        : chr [1:200] "вчера лишь спорить с гроза; ------ роса он вседневный поливать, ------ и туча долу понестись! ------ среди толп"| __truncated__ "громкий слава звать: ------ вздыхать, зевнуть и — снова спать. ------ через дымка ночь;  ------ зачем, ретивый,"| __truncated__ "когда б я ждать, что надо я ------ и мчаться за план, и плакать над пепел, ------ что ты , жавронок, уныло ----"| __truncated__ "хотеть помериться с судьба, ------ сказать, резвый блондинка, ------ и чем смиряться перед ты ниже, ------ чувс"| __truncated__ ...
+     $ text        : chr [1:200] "    II. ------ где ты, праздник песнопение ------ в любовь ль находить еще отрада?  ------ долго дух в оцепенен"| __truncated__ "мчаться мимо.... проскакать! ------ словно дева, словно полный , ------ конопляночка, касаточка, ------ петь пе"| __truncated__ "отдыхать природа ------ тяжело с каждый день. ------ для тело в немой такой же рай, ------ и твой сосед брага у"| __truncated__ "радостно солнце взыграть луч ; ------ так, и я наставать время: ------ друг мой! прежде то ли быть?  ------ вот"| __truncated__ ...
      $ author_group: chr [1:200] "Круг Бенедиктова" "Круг Бенедиктова" "Круг Бенедиктова" "Круг Бенедиктова" ...
 
 ``` r
@@ -1100,18 +1157,18 @@ freqs[1:10, 1:10]
 ```
 
     # A tibble: 10 × 10
-       sample_id       text_genre     а ангел     б  беда белый берег блеск блистать
-       <chr>           <chr>      <int> <int> <int> <int> <int> <int> <int>    <int>
-     1 Круг Бенедикто… Круг Бене…     6     1     2     1     1     1     1        1
-     2 Круг Бенедикто… Круг Бене…     1     0     0     1     1     0     1        1
-     3 Круг Бенедикто… Круг Бене…     4     0     3     0     1     0     1        2
-     4 Круг Бенедикто… Круг Бене…     2     0     0     1     2     0     0        1
-     5 Круг Бенедикто… Круг Бене…     2     1     1     1     0     0     1        1
-     6 Круг Бенедикто… Круг Бене…     1     0     2     0     1     1     0        1
-     7 Круг Бенедикто… Круг Бене…     4     1     0     0     1     0     1        0
-     8 Круг Бенедикто… Круг Бене…     3     2     0     1     0     0     0        0
-     9 Круг Бенедикто… Круг Бене…     2     1     1     0     0     3     3        0
-    10 Круг Бенедикто… Круг Бене…     1     0     1     1     0     0     1        1
+       sample_id      text_genre     а ангел     б  беда   без бездна белый блистать
+       <chr>          <chr>      <int> <int> <int> <int> <int>  <int> <int>    <int>
+     1 Круг Бенедикт… Круг Бене…     7     1     3     1     3      1     1        1
+     2 Круг Бенедикт… Круг Бене…     2     1     1     0     0      0     0        0
+     3 Круг Бенедикт… Круг Бене…     3     0     0     0     4      0     1        0
+     4 Круг Бенедикт… Круг Бене…     4     2     0     3     0      0     0        1
+     5 Круг Бенедикт… Круг Бене…     0     0     1     3     3      0     0        3
+     6 Круг Бенедикт… Круг Бене…     3     0     0     0     3      0     1        1
+     7 Круг Бенедикт… Круг Бене…     5     2     0     1     1      0     1        1
+     8 Круг Бенедикт… Круг Бене…     4     1     3     0     1      1     0        1
+     9 Круг Бенедикт… Круг Бене…     2     1     0     1     2      0     1        0
+    10 Круг Бенедикт… Круг Бене…     3     1     0     1     1      0     1        1
 
 ``` r
 freqs_scaled <- freqs %>% 
@@ -1129,18 +1186,18 @@ freqs_scaled[1:10, 1:10]
 ```
 
     # A tibble: 10 × 10
-             а  ангел      б   беда  белый  берег  блеск блистать    бог    бой
+             а  ангел      б   беда    без бездна  белый блистать    бог   брат
          <dbl>  <dbl>  <dbl>  <dbl>  <dbl>  <dbl>  <dbl>    <dbl>  <dbl>  <dbl>
-     1  1.67    0.533  1.31   0.782  0.759  0.597  0.439    0.344  1.41   2.79 
-     2 -1.14   -0.800 -0.883  0.782  0.759 -0.715  0.439    0.344 -1.08   1.10 
-     3  0.548  -0.800  2.41  -0.722  0.759 -0.715  0.439    1.55   3.08  -0.592
-     4 -0.576  -0.800 -0.883  0.782  2.26  -0.715 -0.780    0.344 -1.08   1.10 
-     5 -0.576   0.533  0.214  0.782 -0.744 -0.715  0.439    0.344 -1.08  -0.592
-     6 -1.14   -0.800  1.31  -0.722  0.759  0.597 -0.780    0.344  0.582 -0.592
-     7  0.548   0.533 -0.883 -0.722  0.759 -0.715  0.439   -0.863  1.41  -0.592
-     8 -0.0140  1.87  -0.883  0.782 -0.744 -0.715 -0.780   -0.863  1.41   1.10 
-     9 -0.576   0.533  0.214 -0.722 -0.744  3.22   2.88    -0.863  0.582 -0.592
-    10 -1.14   -0.800  0.214  0.782 -0.744 -0.715  0.439    0.344  0.582 -0.592
+     1  2.12    0.497  2.63   0.743  0.777  0.997  0.714    0.356  0.589  0.748
+     2 -0.516   0.497  0.266 -0.728 -1.10  -0.561 -0.774   -0.810  2.25   2.16 
+     3  0.0105 -0.794 -0.915 -0.728  1.40  -0.561  0.714   -0.810 -1.07  -0.664
+     4  0.537   1.79  -0.915  3.68  -1.10  -0.561 -0.774    0.356 -0.241 -0.664
+     5 -1.57   -0.794  0.266  3.68   0.777 -0.561 -0.774    2.69   0.589 -0.664
+     6  0.0105 -0.794 -0.915 -0.728  0.777 -0.561  0.714    0.356 -0.241 -0.664
+     7  1.06    1.79  -0.915  0.743 -0.476 -0.561  0.714    0.356  1.42  -0.664
+     8  0.537   0.497  2.63  -0.728 -0.476  0.997 -0.774    0.356 -0.241  0.748
+     9 -0.516   0.497 -0.915  0.743  0.150 -0.561  0.714   -0.810 -1.07  -0.664
+    10  0.0105  0.497 -0.915  0.743 -0.476 -0.561  0.714    0.356  0.589  0.748
 
 ``` r
 freqs_scaled <- tibble(sample_id = freqs$sample_id,
@@ -1196,7 +1253,7 @@ metrics
     # A tibble: 1 × 6
       .metric  .estimator  mean     n std_err .config             
       <chr>    <chr>      <dbl> <int>   <dbl> <chr>               
-    1 accuracy binary     0.988    10 0.00833 Preprocessor1_Model1
+    1 accuracy binary     0.973    10  0.0144 Preprocessor1_Model1
 
 ``` r
 svm_model <-svm(as.factor(text_genre)~.,  
@@ -1220,9 +1277,9 @@ summary(svm_model)
      SVM-Kernel:  linear 
            cost:  1 
 
-    Number of Support Vectors:  114
+    Number of Support Vectors:  109
 
-     ( 56 58 )
+     ( 56 53 )
 
 
     Number of Classes:  2 
@@ -1239,26 +1296,26 @@ confusionMatrix(prediction, as.factor(test_set$text_genre)) # NB check if the sa
 
                       Reference
     Prediction         Круг Бенедиктова Пушкинский стиль
-      Круг Бенедиктова               24                1
-      Пушкинский стиль                1               24
+      Круг Бенедиктова               25                0
+      Пушкинский стиль                0               25
                                               
-                   Accuracy : 0.96            
-                     95% CI : (0.8629, 0.9951)
+                   Accuracy : 1               
+                     95% CI : (0.9289, 1)     
         No Information Rate : 0.5             
-        P-Value [Acc > NIR] : 1.133e-12       
+        P-Value [Acc > NIR] : 8.882e-16       
                                               
-                      Kappa : 0.92            
+                      Kappa : 1               
                                               
-     Mcnemar's Test P-Value : 1               
+     Mcnemar's Test P-Value : NA              
                                               
-                Sensitivity : 0.96            
-                Specificity : 0.96            
-             Pos Pred Value : 0.96            
-             Neg Pred Value : 0.96            
-                 Prevalence : 0.50            
-             Detection Rate : 0.48            
-       Detection Prevalence : 0.50            
-          Balanced Accuracy : 0.96            
+                Sensitivity : 1.0             
+                Specificity : 1.0             
+             Pos Pred Value : 1.0             
+             Neg Pred Value : 1.0             
+                 Prevalence : 0.5             
+             Detection Rate : 0.5             
+       Detection Prevalence : 0.5             
+          Balanced Accuracy : 1.0             
                                               
            'Positive' Class : Круг Бенедиктова
                                               
@@ -1291,7 +1348,7 @@ tibble(weight=words_coefs[1,], word=colnames(words_coefs)) %>%
         axis.line.y = element_line(color="black"))
 ```
 
-![](03_5_authors.markdown_strict_files/figure-markdown_strict/unnamed-chunk-22-1.png)
+![](03_5_authors.markdown_strict_files/figure-markdown_strict/unnamed-chunk-23-1.png)
 
 ##### zeta words
 
@@ -1424,18 +1481,18 @@ freqs[1:10, 1:10]
 ```
 
     # A tibble: 10 × 10
-       sample_id          text_genre берег   бог  брег будто    во  вода  гора  гроб
-       <chr>              <chr>      <int> <int> <int> <int> <int> <int> <int> <int>
-     1 Круг Бенедиктова_1 Круг Бене…     1     3     1     1     1     1     2     1
-     2 Круг Бенедиктова_… Круг Бене…     0     0     0     0     1     0     0     0
-     3 Круг Бенедиктова_… Круг Бене…     0     5     0     0     2     0     0     0
-     4 Круг Бенедиктова_… Круг Бене…     0     0     0     0     0     0     2     2
-     5 Круг Бенедиктова_… Круг Бене…     0     0     0     0     2     1     0     0
-     6 Круг Бенедиктова_… Круг Бене…     1     2     1     2     0     1     1     1
-     7 Круг Бенедиктова_… Круг Бене…     0     3     0     0     0     1     0     0
-     8 Круг Бенедиктова_… Круг Бене…     0     3     0     1     0     1     1     0
-     9 Круг Бенедиктова_… Круг Бене…     3     2     0     1     1     0     2     0
-    10 Круг Бенедиктова_… Круг Бене…     0     2     0     0     1     0     2     0
+       sample_id  text_genre   без   бог будто вдохновение    во восторг  дева  дитя
+       <chr>      <chr>      <int> <int> <int>       <int> <int>   <int> <int> <int>
+     1 Круг Бене… Круг Бене…     3     2     1           2     1       1     1     1
+     2 Круг Бене… Круг Бене…     0     4     0           0     1       0     3     0
+     3 Круг Бене… Круг Бене…     4     0     1           0     1       1     0     0
+     4 Круг Бене… Круг Бене…     0     1     1           0     1       0     3     0
+     5 Круг Бене… Круг Бене…     3     2     0           1     2       2     0     0
+     6 Круг Бене… Круг Бене…     3     1     1           0     0       2     2     0
+     7 Круг Бене… Круг Бене…     1     3     0           0     1       0     1     0
+     8 Круг Бене… Круг Бене…     1     1     0           0     0       1     2     1
+     9 Круг Бене… Круг Бене…     2     0     0           0     0       0     2     0
+    10 Круг Бене… Круг Бене…     1     2     1           1     2       0     1     3
 
 ``` r
 freqs_scaled <- freqs %>% 
@@ -1448,18 +1505,18 @@ freqs_scaled[1:10, 1:10]
 ```
 
     # A tibble: 10 × 10
-        берег    бог   брег  будто     во   вода   гора   гроб   дева   дитя
-        <dbl>  <dbl>  <dbl>  <dbl>  <dbl>  <dbl>  <dbl>  <dbl>  <dbl>  <dbl>
-     1  0.597  1.41   1.06   0.422 -0.217  0.455  1.35   0.510  2.45   2.99 
-     2 -0.715 -1.08  -0.568 -0.820 -0.217 -0.846 -0.986 -0.705 -0.237  1.22 
-     3 -0.715  3.08  -0.568 -0.820  0.602 -0.846 -0.986 -0.705 -0.237 -0.559
-     4 -0.715 -1.08  -0.568 -0.820 -1.04  -0.846  1.35   1.73  -0.237 -0.559
-     5 -0.715 -1.08  -0.568 -0.820  0.602  0.455 -0.986 -0.705 -0.237  1.22 
-     6  0.597  0.582  1.06   1.67  -1.04   0.455  0.181  0.510 -0.237 -0.559
-     7 -0.715  1.41  -0.568 -0.820 -1.04   0.455 -0.986 -0.705  0.657 -0.559
-     8 -0.715  1.41  -0.568  0.422 -1.04   0.455  0.181 -0.705 -1.13   1.22 
-     9  3.22   0.582 -0.568  0.422 -0.217 -0.846  1.35  -0.705  1.55   1.22 
-    10 -0.715  0.582 -0.568 -0.820 -0.217 -0.846  1.35  -0.705  2.45  -0.559
+          без    бог  будто вдохновение     во восторг   дева   дитя      до   друг
+        <dbl>  <dbl>  <dbl>       <dbl>  <dbl>   <dbl>  <dbl>  <dbl>   <dbl>  <dbl>
+     1  0.777  0.589  0.495       1.56  -0.247   0.390 -0.231  1.22   1.05   -0.104
+     2 -1.10   2.25  -0.808      -0.794 -0.247  -0.811  1.45  -0.536 -0.935  -0.735
+     3  1.40  -1.07   0.495      -0.794 -0.247   0.390 -1.07  -0.536  1.05    1.16 
+     4 -1.10  -0.241  0.495      -0.794 -0.247  -0.811  1.45  -0.536 -0.935   1.16 
+     5  0.777  0.589 -0.808       0.382  0.604   1.59  -1.07  -0.536  1.05    2.42 
+     6  0.777 -0.241  0.495      -0.794 -1.10    1.59   0.609 -0.536  1.05    0.527
+     7 -0.476  1.42  -0.808      -0.794 -0.247  -0.811 -0.231 -0.536 -0.935   1.16 
+     8 -0.476 -0.241 -0.808      -0.794 -1.10    0.390  0.609  1.22  -0.935   0.527
+     9  0.150 -1.07  -0.808      -0.794 -1.10   -0.811  0.609 -0.536  0.0597 -0.104
+    10 -0.476  0.589  0.495       0.382  0.604  -0.811 -0.231  4.74   2.05    1.16 
 
 ``` r
 freqs_scaled <- tibble(sample_id = freqs$sample_id,
@@ -1515,7 +1572,7 @@ metrics
     # A tibble: 1 × 6
       .metric  .estimator  mean     n std_err .config             
       <chr>    <chr>      <dbl> <int>   <dbl> <chr>               
-    1 accuracy binary     0.993    10 0.00714 Preprocessor1_Model1
+    1 accuracy binary     0.981    10 0.00955 Preprocessor1_Model1
 
 ``` r
 svm_model <-svm(as.factor(text_genre)~.,  
@@ -1539,9 +1596,9 @@ summary(svm_model)
      SVM-Kernel:  linear 
            cost:  1 
 
-    Number of Support Vectors:  51
+    Number of Support Vectors:  49
 
-     ( 26 25 )
+     ( 23 26 )
 
 
     Number of Classes:  2 
@@ -1558,26 +1615,26 @@ confusionMatrix(prediction, as.factor(test_set$text_genre)) # NB check if the sa
 
                       Reference
     Prediction         Круг Бенедиктова Пушкинский стиль
-      Круг Бенедиктова               25                2
-      Пушкинский стиль                0               23
+      Круг Бенедиктова               25                0
+      Пушкинский стиль                0               25
                                               
-                   Accuracy : 0.96            
-                     95% CI : (0.8629, 0.9951)
+                   Accuracy : 1               
+                     95% CI : (0.9289, 1)     
         No Information Rate : 0.5             
-        P-Value [Acc > NIR] : 1.133e-12       
+        P-Value [Acc > NIR] : 8.882e-16       
                                               
-                      Kappa : 0.92            
+                      Kappa : 1               
                                               
-     Mcnemar's Test P-Value : 0.4795          
+     Mcnemar's Test P-Value : NA              
                                               
-                Sensitivity : 1.0000          
-                Specificity : 0.9200          
-             Pos Pred Value : 0.9259          
-             Neg Pred Value : 1.0000          
-                 Prevalence : 0.5000          
-             Detection Rate : 0.5000          
-       Detection Prevalence : 0.5400          
-          Balanced Accuracy : 0.9600          
+                Sensitivity : 1.0             
+                Specificity : 1.0             
+             Pos Pred Value : 1.0             
+             Neg Pred Value : 1.0             
+                 Prevalence : 0.5             
+             Detection Rate : 0.5             
+       Detection Prevalence : 0.5             
+          Balanced Accuracy : 1.0             
                                               
            'Positive' Class : Круг Бенедиктова
                                               
@@ -1610,4 +1667,267 @@ tibble(weight=words_coefs[1,], word=colnames(words_coefs)) %>%
         axis.line.y = element_line(color="black"))
 ```
 
-![](03_5_authors.markdown_strict_files/figure-markdown_strict/unnamed-chunk-24-1.png)
+![](03_5_authors.markdown_strict_files/figure-markdown_strict/unnamed-chunk-25-1.png)
+
+### tm
+
+#### prepare data
+
+``` r
+corpus_prepared <- corpus1835 %>% 
+  filter(author_text %in% authors_lines$author_text) %>% 
+  select(text_id, author_text, meter, text_lemm) %>% 
+  # separate_rows(text_lemm, sep = "\n") %>% 
+  # filter(text_lemm != "" & !str_detect(text_lemm, "^\\W+$|^\\s+$")) %>% 
+  
+  # attach lables
+  left_join(authors_lbl %>% rename(author_text = author), by = "author_text") %>%   filter(author_group == '"Пушкинский стиль"' | author_group == '"Круг Бенедиктова"') %>% 
+  
+  mutate(author_text = paste0(author_text, "__", author_group),
+         author_text = str_remove_all(author_text, '\\"')) %>% 
+  
+  group_by(author_text) %>% 
+  sample_n(20) %>% 
+  
+  
+  # create two samples of 500 lines for each author
+  # mutate(sample_id = ceiling(1:1000),
+  #        sample_id = floor(sample_id/50)+1,
+  #        sample_id = ifelse(sample_id == 21, 1, sample_id),
+  #        sample_id = paste0(author_text, "_", sample_id)) %>% 
+  # 
+  # ungroup() %>% 
+  # 
+  # group_by(sample_id) %>% 
+  
+  #summarise(text = paste0(text_lemm, collapse = " ----- ")) %>% 
+  ungroup() %>% 
+  mutate(doc_id = paste0(author_text, "__", author_group, "_", row_number()),
+         text = text_lemm) %>% 
+  select(doc_id, text)
+# samples of 1000 lines from each author, 20 samples of 50 lines for each author
+str(corpus_prepared)
+```
+
+    tibble [360 × 2] (S3: tbl_df/tbl/data.frame)
+     $ doc_id: chr [1:360] "Бенедиктов В.Г.__Круг Бенедиктова__\"Круг Бенедиктова\"_1" "Бенедиктов В.Г.__Круг Бенедиктова__\"Круг Бенедиктова\"_2" "Бенедиктов В.Г.__Круг Бенедиктова__\"Круг Бенедиктова\"_3" "Бенедиктов В.Г.__Круг Бенедиктова__\"Круг Бенедиктова\"_4" ...
+     $ text  : chr [1:360] "бездомный скиталец, пустынный певец, \nодин, с непогода в спор, \nон реять над бездна, певучий пловец \nбезъяко"| __truncated__ "звучать час медлительный удар, \nи новый год уже полувозникать; \nон близиться; и ты уходить, старый! \nступать"| __truncated__ "на восток засветлеть, \nотходить ночной тень; \nдень взлетать, как ангел белый... \nотчего ж ты грустный, день?"| __truncated__ "давно альбом уподоблять храм,\nкуда течь поклонник толпа,\nгде место и мольба и фимиам,\nвоздить усердный рука;"| __truncated__ ...
+
+Create a topic model to see the distribution of topics in the two
+classes of authors
+
+``` r
+stoplist <- c("и","в","во","не","что","он","на","я","с","со","как","а","то","все","она","так","его","но","ты","к","у","же","вы","за","бы","по","ее","мне","было","вот","от","меня","о","из","ему","теперь","даже","ну","ли","если","или","ни","быть","был","него","до","вас","нибудь","вам","сказал","себя","ей","может","они","есть","ней","для","мы","тебя","их","чем","была","сам","чтоб","без","будто","чего","себе","под","будет","ж","кто","этот","того","потому","этого","какой","ним","этом","мой","тем","чтобы","нее","были","куда","зачем","всех","можно","при","об","хоть","над","больше","тот","через","эти","нас","про","всего","них","какая","много","разве","сказала","три","эту","моя","свою","этой","перед","лучше","чуть","том","такой","им","более","всю","между","твой","весь", "елена")
+
+
+ranks <- corpus_prepared %>% 
+  unnest_tokens(input = text, output = word, token = "words") %>% 
+  count(word, sort = T) %>% 
+  
+  # remove words from the stoplist
+  filter(!word %in% stoplist) %>% 
+  head(3000)
+
+head(ranks)
+```
+
+    # A tibble: 6 × 2
+      word       n
+      <chr>  <int>
+    1 душа     447
+    2 свой     405
+    3 сердце   379
+    4 небо     313
+    5 день     308
+    6 где      290
+
+``` r
+tail(ranks)
+```
+
+    # A tibble: 6 × 2
+      word           n
+      <chr>      <int>
+    1 аюдаг          3
+    2 багряный       3
+    3 балкон         3
+    4 балованный     3
+    5 баркас         3
+    6 бегун          3
+
+``` r
+# total number of words in all samples
+corpus_prepared %>% 
+  unnest_tokens(input = text, output = word, token = "words") %>% nrow()
+```
+
+    [1] 89557
+
+``` r
+# number of texts
+length(unique(corpus_prepared$doc_id))
+```
+
+    [1] 360
+
+``` r
+dtm <- corpus_prepared %>% 
+  #rename(doc_id = sample_id) %>% 
+  unnest_tokens(input = text, output = word, token = "words") %>% 
+  filter(word %in% ranks$word) %>% 
+  count(doc_id, word) %>% 
+  cast_dtm(document = doc_id, term = word, value = n)
+
+
+
+# Create a model with 20 topics
+mod_75 <- LDA(dtm, k = 75, method = "Gibbs",
+              control = list(alpha = 0.5, delta = 0.1, 
+                             iter = 2000, seed = 1234, thin = 1))
+
+# Extract coefficients
+beta75 <- tidy(mod_75, matrix = "beta") 
+gamma75 <- tidy(mod_75, matrix = "gamma")
+
+save(beta75, gamma75, file = "lda_tm_authors_75.Rda")
+```
+
+``` r
+load("lda_tm_authors_75.Rda")
+```
+
+``` r
+#### Plot: words' probabilities in topics ####
+beta75 %>% 
+  group_by(topic) %>% 
+  top_n(10, beta) %>% 
+  ungroup() %>%
+  arrange(topic, desc(beta)) %>% 
+  ggplot(aes(reorder_within(term, beta, topic), beta, fill = factor(topic))) + 
+  geom_col(show.legend = FALSE) + 
+  facet_wrap(~topic, scales = "free") + 
+  coord_flip() + 
+  theme_minimal(base_size = 14) + 
+  scale_x_reordered() + 
+  labs(title = "Probability of top 10 words in topics",
+       subtitle = "LDA model build with 'topicmodels' r package, 40 topics, alpha = 0,5, 2000 iterations") + 
+  theme(axis.title.x = element_blank(),
+        axis.title.y = element_blank())
+```
+
+![](03_5_authors.markdown_strict_files/figure-markdown_strict/unnamed-chunk-31-1.png)
+
+``` r
+ggsave("plots/tm75_authors_beta.png", plot = last_plot(),
+       bg = "white", width = 20, height = 15)
+```
+
+Distribution of topics
+
+``` r
+# glimpse(gamma75)
+
+gamma75 %>% 
+  mutate(author = str_extract(document, "^\\w+\\s\\w\\.\\w?\\.?"),
+         author = str_remove_all(author, "_"),
+         author_group = str_extract(document, "__\\w+.\\w+_"),
+         author_group = str_remove_all(author_group, "_")) %>% 
+  group_by(author, author_group, topic) %>% 
+  summarise(mean_gamma = mean(gamma)) %>% 
+  ungroup() %>% 
+  ggplot(aes(x = author, y = topic, fill = mean_gamma)) + 
+  geom_tile() + 
+  facet_wrap(~author_group, scales = "free") + 
+  scale_fill_viridis_c(option = "plasma") + 
+  scale_y_continuous(breaks = 1:75) + 
+  #geom_text(aes(label = #round(mean_gamma, 3)
+  #                #paste0(topic, "\n", round(mean_gamma, 3))
+  #                topic
+  #              ), colour = "white") + 
+  theme(axis.text.x = element_text(angle = 90))
+```
+
+    `summarise()` has grouped output by 'author', 'author_group'. You can override
+    using the `.groups` argument.
+
+![](03_5_authors.markdown_strict_files/figure-markdown_strict/unnamed-chunk-32-1.png)
+
+``` r
+gamma75 %>% 
+  mutate(author = str_extract(document, "^\\w+\\s\\w\\.\\w?\\.?"),
+         author = str_remove_all(author, "_"),
+         author_group = str_extract(document, "__\\w+.\\w+_"),
+         author_group = str_remove_all(author_group, "_")) %>%  
+  group_by(author, author_group, topic) %>% 
+  summarise(mean_gamma = mean(gamma)) %>% 
+  ungroup() %>% 
+  group_by(author, author_group) %>% 
+  slice_max(n = 10, order_by = mean_gamma) %>% 
+  ggplot(aes(x = author, y = mean_gamma, fill = as.factor(topic))) + 
+  geom_col(position = "stack") + 
+  geom_text(aes(label = topic), position = position_stack(vjust = 0.5)) + 
+  theme(legend.position = "None") + 
+  facet_wrap(~author_group, scales = "free") 
+```
+
+    `summarise()` has grouped output by 'author', 'author_group'. You can override
+    using the `.groups` argument.
+
+![](03_5_authors.markdown_strict_files/figure-markdown_strict/unnamed-chunk-32-2.png)
+
+``` r
+glimpse(gamma75) 
+```
+
+    Rows: 27,000
+    Columns: 3
+    $ document <chr> "Бенедиктов В.Г.__Круг Бенедиктова__\"Круг Бенедиктова\"_1", …
+    $ topic    <int> 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1…
+    $ gamma    <dbl> 0.0087463557, 0.0049751244, 0.0124688279, 0.1979695431, 0.011…
+
+``` r
+gamma_mtrx <- gamma75 %>% 
+  mutate(author = str_extract(document, "^\\w+\\s\\w\\.\\w?\\.?"),
+         author = str_remove_all(author, "_")) %>% 
+  select(author, topic, gamma) %>% 
+  group_by(author, topic) %>% 
+  summarise(gamma_mean = mean(gamma)) %>% 
+  ungroup() %>% 
+  pivot_wider(names_from = topic, values_from = gamma_mean)
+```
+
+    `summarise()` has grouped output by 'author'. You can override using the
+    `.groups` argument.
+
+``` r
+mtrx <- gamma_mtrx %>% 
+  select(-author)
+
+u <- umap(mtrx)
+
+dat <- tibble(x = u$layout[,1],
+       y = u$layout[,2],
+       author = gamma_mtrx$author) 
+
+dat %>% 
+  # mutate(sample_id = author,
+  #   author = str_remove(author, "_\\d+$")) %>% 
+  left_join(authors_lbl, by = "author") %>% 
+  mutate(author_group = ifelse(is.na(author_group), '"Другое"', author_group),
+         author_group = ifelse(author_group == '"Другое"', '"Другие"', author_group)) %>% 
+  ggplot(aes(x, y, color = author_group)) + 
+  #geom_point(size = 5, alpha = 0.6) + 
+  geom_text(aes(label = author), size = 4) + 
+  labs(title = "", x = "", y = "", color = "") + 
+  scale_color_manual(values = c(#"gray", 
+                                #met.brewer("Veronese")[3],
+                                #"gray30",
+                                #met.brewer("Derain")[5],
+                                met.brewer("Veronese")[3],
+                                met.brewer("Veronese")[5])) + 
+  theme(axis.text = element_blank(), 
+        legend.text = element_text(size = 12), 
+        legend.position = "bottom")
+```
+
+![](03_5_authors.markdown_strict_files/figure-markdown_strict/unnamed-chunk-33-1.png)

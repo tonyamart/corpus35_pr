@@ -17,6 +17,11 @@ library(stylo)
 library(seetrees)
 library(tinytex)
 
+library(ape)
+library(ggtree)
+
+library(patchwork)
+
 theme_set(theme_minimal())
 library(MetBrewer)
 ```
@@ -108,6 +113,8 @@ diy_stylo <- function(folder = "corpus_sampled/",
 }
 
 ```
+
+## General Impostors 
 
 ## data preparation
 
@@ -432,4 +439,183 @@ imp_res %>%
   theme_bw() + 
   labs(subtitle = "Proportion of cases where a sample from an author\nwas the closest to Smirnova (all authors all meters)") +
   theme(axis.text.x = element_text(angle = 25))
+```
+
+## Clusterisation
+
+```{r}
+#### load prepared data ####
+
+# unzip the reshuffled and lemmatised corpus
+# unzip("data/corpus/corpus_chunks.zip", exdir = "data/corpus/corpus_chunks/")
+
+
+# one file - texts from one author for one decade
+
+files <- list.files(path = "corpus_chunks/", pattern = ".txt$", full.names = T)
+head(files)
+length(files) # 37 chunks
+```
+
+```{r}
+# read .txt files & compile the corpus
+
+fem_corpus <- tibble(textpath = files,
+                     texts = sapply(files, read_file))
+
+fem_corpus <- fem_corpus %>%
+  mutate(id = str_replace_all(textpath, "corpus_chunks//(.*?_\\d+).txt", "\\1")) %>% 
+  mutate(texts = str_remove_all(texts, "[[:punct:]]"))
+
+str(fem_corpus)
+```
+
+```{r}
+# Count number of tokens by each author 
+
+author_counter <- fem_corpus %>% 
+  unnest_tokens(input = texts, output = word, token = "words") %>% 
+  count(id, sort = T)
+
+head(author_counter)
+```
+
+```{r}
+word_counter <- fem_corpus %>% 
+  unnest_tokens(input = texts, output = word, token = "words") %>% 
+  count(word, sort = T)
+
+head(word_counter)
+```
+
+```{r, eval=FALSE}
+n_iterations <- 100
+list_of_trees <- vector(length=n_iterations, mode="list")
+matrices <- list()
+
+for(i in 1:n_iterations) {
+  
+  message(paste0("Iteration -- ", i))
+  
+  # random sampling; 8000 words were chosen from each author's corpus
+  sampled <- fem_corpus %>% # fem_corpus is the variable containing the data: id = author's name, texts = all texts by the author merged together as a character vector
+    unnest_tokens(input = texts, output = word, token = "words") %>% 
+    group_by(id) %>% 
+    sample_n(8000) %>% 
+    ungroup()
+  
+  # counting word frequencies
+  counted <- sampled %>% 
+    count(word, sort = T)
+  
+  # long table to matrix
+  wide <- sampled  %>% 
+    group_by(id)  %>% 
+    count(word) %>%
+    mutate(n=n/sum(n)) %>% 
+    spread(key=word, value=n, fill = 0)
+  
+  names <- wide$id
+  matrix <- wide[,-1]
+  
+  # normalization
+  mat_fin <- matrix[counted$word] %>% as.matrix() %>% scale()
+  rownames(mat_fin) <- names
+  
+  # counting distances for 250 MFW starting from the 50th
+  mat_fin <- mat_fin[,50:299]
+  
+  # store matrix
+  matrices[[i]] <- mat_fin
+  
+  # calculating distances
+  distances <- stylo::dist.wurzburg(mat_fin)
+  
+  # clusterisation 
+  list_of_trees[[i]] <- distances %>% 
+    hclust(method = "ward.D2") %>% 
+    as.phylo()
+  
+}
+```
+
+```{r, eval=FALSE}
+save(list_of_trees, file = "Smirnova_list_of_trees__wurzburg.Rda")
+save(matrices, file = "Smirnova_matrices__wurzburg.Rda")
+```
+
+Plots
+
+```{r}
+load("Smirnova_list_of_trees__wurzburg.Rda")
+```
+
+```{r}
+# creating the consensus tree with 50% agreement
+consensus = ape::consensus(list_of_trees, p=0.5)
+
+# making the main plot
+figure <- ggtree(consensus,
+            size=0.5) 
+
+# create a variable for adding additional colouring to tip.labels
+# take tip.labels
+tree_groups <- data.frame(
+  "id" = c(consensus$tip.label))
+
+# attach a grouping column
+tree_groups <- tree_groups %>% 
+  mutate(colour = ifelse(str_detect(id, "Бунина|Кульман|Ростопчина|Поспелова|Шахова"), 
+                         "f", 
+                         "m")) %>% 
+  mutate(colour = ifelse(id == "Смирнова_1830", 
+                         "target", 
+                         colour))
+
+head(tree_groups)
+```
+
+```{r}
+f2 <- figure %<+% tree_groups + 
+  scale_color_manual(values = c(
+    met.brewer("Veronese")[2], # female
+    met.brewer("Veronese")[5], # male 
+    met.brewer("Veronese")[1] # smirnova
+    )) +
+  geom_tiplab(aes(color = colour), size=7) + 
+  #guides(color=F) + 
+  theme(plot.margin = unit(rep(1,4), "cm"),
+       legend.position = "None") + 
+  xlim(0, 10) 
+
+print(f2)
+
+ggsave("../plots/Fig_3-3-1a.png", plot = last_plot(), width = 10, height = 10, dpi = 300, bg = "white")
+```
+
+```{r}
+clade <- f2
+
+f_zoom <- viewClade(clade, MRCA(clade, 
+                               "Смирнова_1830", "Карамзин_1790"
+                               ))
+
+print(f_zoom)
+
+ggsave("../plots/Fig_3-3-1b.png", plot = last_plot(), width = 5, height = 5, dpi = 300, bg = "white")
+```
+
+```{r}
+# plot merging and saving
+
+layout <- "
+AAA##
+AAABB
+AAA##
+"
+
+#f2 + f_zoom + plot_layout(design = layout)
+
+ggsave("../plots/Fig_3-3-1b.png", plot = last_plot(), width = 15, height = 11, dpi = 300, bg = "white")
+  
 ```

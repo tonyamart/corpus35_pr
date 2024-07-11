@@ -627,8 +627,8 @@ genres_sampled <- corpus_genres %>%
   group_by(genre) %>% 
   sample_n(1000) %>% 
   mutate(sample_id = ceiling(1:1000),
-         sample_id = floor(sample_id/20)+1,
-         sample_id = ifelse(sample_id == 51, 1, sample_id)) %>% 
+         sample_id = floor(sample_id/100)+1,
+         sample_id = ifelse(sample_id == 11, 1, sample_id)) %>% 
   ungroup() 
   
 # summarise lines in one cell according to sample ids
@@ -703,7 +703,7 @@ corpus split & tidymodels recipy
 ```{r}
 tidy_corpus <- f1 %>% 
   group_by(genre) %>% 
-  sample_n(50) %>%   # number of texts in the tested genre
+  sample_n(10) %>%   # number of texts in the tested genre
   ungroup() 
 
 ## split the data into training and test sets
@@ -804,6 +804,8 @@ head(ranks, 15)
 tail(ranks, 15)
 ```
 
+25 iterations for the longer samples: 10 samples of 100 lines
+
 ```{r, warning=FALSE, eval=FALSE}
 
 res_save <- NULL # classification results
@@ -848,8 +850,8 @@ for (j in 2:length(genre_list)) {
       group_by(genre) %>% 
       sample_n(1000) %>% 
       mutate(sample_id = ceiling(1:1000),
-             sample_id = floor(sample_id/20)+1,
-             sample_id = ifelse(sample_id == 51, 1, sample_id)) %>% 
+             sample_id = floor(sample_id/100)+1,
+             sample_id = ifelse(sample_id == 11, 1, sample_id)) %>% 
       ungroup() 
       
     # summarise lines in one cell according to sample ids
@@ -887,7 +889,7 @@ for (j in 2:length(genre_list)) {
       ## b) model settings
       tidy_corpus <- f %>% 
         group_by(genre) %>% 
-        sample_n(50) %>%   # number of texts in the tested genre
+        sample_n(10) %>%   # number of samples in the tested genre
         ungroup() 
       
       ## split the data into training and test sets
@@ -968,6 +970,8 @@ for (j in 2:length(genre_list)) {
 # save(res_save, x, file = "genre_classification_10.Rda") # save results from 10 iterations
 
 # save(res_save, x, file = "genre_classification_25.Rda") # save results from 25 iterations
+
+# save(res_save, x, file = "genre_classification_25_100lines.Rda") # save results from 25 iterations for longer samples
 ```
 
 ### 10-iterations results
@@ -1010,6 +1014,52 @@ res_save %>%
   labs(x = "",
        y = "Точность классификатора",
        subtitle = "1000 lines sampled from each genre and combined in 50 25-lines samples,\n300 MFW, lemmatized,\n25 iterations")
+
+for (i in 2:length(x)) {
+  print(x[[i]])
+}
+```
+
+### 25-iterations results
+
+Longer samples
+
+```{r}
+load("genre_classification_25_100lines.Rda")
+
+res_save %>% 
+  group_by(genre) %>% 
+  summarise(mean = mean(mean))
+
+res_save %>% 
+  ggplot(aes(x = genre, y = mean)) + 
+  geom_boxplot(color = met.brewer("Veronese")[7],
+               fill = met.brewer("Veronese")[4],
+               alpha = 0.7) + 
+  #geom_jitter(alpha = 0.4) + 
+  geom_hline(yintercept = 0.5, lty = 2, color = met.brewer("Veronese")[1],
+             linewidth = 1) + 
+  labs(x = "",
+       y = "Точность классификатора",
+       subtitle = "1000 lines sampled from each genre and combined in 50 25-lines samples,\n300 MFW, lemmatized,\n25 iterations") + 
+  theme(axis.text = element_text(size = 12),
+        axis.title = element_text(size = 12))
+
+
+
+# ggsave("plots/Fig_3-1-4.png", plot = last_plot(), dpi = 300,
+#       bg = "white", width = 8, height = 6)
+
+
+for (i in 2:length(x)) {
+  print(x[[i]])
+}
+```
+
+```{r}
+# save(res_save, x, file = "genre_classification_25_100lines-2.Rda") # save results from 25 iterations for longer samples - second trial
+
+load("genre_classification_25_100lines-2.Rda")
 
 for (i in 2:length(x)) {
   print(x[[i]])

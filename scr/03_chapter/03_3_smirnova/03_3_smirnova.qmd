@@ -114,7 +114,7 @@ diy_stylo <- function(folder = "corpus_sampled/",
 
 ```
 
-## General Impostors 
+## General Impostors
 
 ## data preparation
 

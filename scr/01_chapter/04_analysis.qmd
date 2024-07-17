@@ -1,7 +1,6 @@
 ---
 title: "04_analysis"
-author: "tonya"
-format: html
+format: md
 editor: visual
 ---
 
@@ -12,17 +11,25 @@ Analysis of poetry collections metadata (1835-1840)
 ```{r}
 library(tidyverse)
 
-library(patchwork)
+#library(patchwork)
+library(cowplot)
 library(wesanderson)
 library(MetBrewer)
 library(gghighlight)
 theme_set(theme_minimal())
 
-pal <- c(wes_palette("Chevalier1")[4], # sand
-         wes_palette("Royal1")[1], # grey
-         wes_palette("Zissou1")[4], # yellow
-         wes_palette("Royal1")[2] # red
-        ) 
+pal <- c(met.brewer("Veronese")[7],
+         met.brewer("Veronese")[3],
+         met.brewer("Veronese")[5],
+         met.brewer("Veronese")[1]
+)
+  
+  
+# pal <- c(wes_palette("Chevalier1")[4], # sand
+#          wes_palette("Royal1")[1], # grey
+#          wes_palette("Zissou1")[4], # yellow
+#          wes_palette("Royal1")[2] # red
+#         ) 
 ```
 
 ```{r}
@@ -51,7 +58,7 @@ pal <- c(wes_palette("Chevalier1")[4], # sand
 Load dataset:
 
 ```{r}
-pb_full <- read.csv("../../data/01_4_poetry_books_1835_1840.csv") %>% 
+pb_full <- read.csv("../../data/ch1/01_4_poetry_books_1835_1840.csv") %>% 
     select(-X) %>%
     mutate(year = as.numeric(year),
           group = paste0(book_type, "_", genre),
@@ -62,7 +69,7 @@ pb_full <- read.csv("../../data/01_4_poetry_books_1835_1840.csv") %>%
 glimpse(pb_full)
 ```
 
-#### Plot 1.4.0 - Digitisation
+#### Plot 1.4.1 - Digitisation
 
 ```{r}
 n_digit <- pb_full %>% 
@@ -85,7 +92,7 @@ n_digit <- pb_full %>%
                    scales = "free_x",
                    ncol = 4) + 
         scale_fill_manual(values = c(wes_palette("Chevalier1")[3],
-                             wes_palette("Chevalier1")[1])) + 
+                                     met.brewer("Veronese")[6])) + 
         scale_x_continuous(breaks = seq(1830, 1850, 5)) +
         labs(x = "",
              y = "Количество книг",
@@ -123,7 +130,7 @@ perc_digit <- pb_full %>%
                    scales = "free_x",
                    ncol = 4) + 
         scale_fill_manual(values = c(wes_palette("Chevalier1")[3],
-                             wes_palette("Chevalier1")[1])) + 
+                             met.brewer("Veronese")[6])) + 
         scale_x_continuous(breaks = seq(1830, 1850, 5)) +
         labs(x = "Год",
              y = "Процент книг",
@@ -142,10 +149,22 @@ perc_digit
 
 Combine two plots:
 
-```{r}
-digit <- n_digit / perc_digit
+```{r, warning=FALSE, message=FALSE}
+plot_grid(
+  n_digit, perc_digit,
+  ncol = 1,
+  labels = NULL
+)
 
-digit
+# ggsave("plots/Fig_1-4-1.png", plot = last_plot(), dpi = 300,
+#         width = 11, height = 7,
+#         bg = "white")
+```
+
+```{r}
+# digit <- n_digit / perc_digit
+# 
+# digit
 
 # ggsave("plots/Fig_1-4-0.png", plot = digit, dpi = 300,
 #        width = 11, height = 7,
@@ -189,12 +208,12 @@ pb %>%
 ```
 
 ```{r}
-# test how many books are containing prose (except for almanacks)
+# test how many books contain prose (except for almanacks)
 pb %>%
     filter(poetry_prose == "pr" & book_type != "alm")
 ```
 
-#### Plot 1.4.1. Number of books by category
+#### Plot 1.4.2.a. Number of books by category
 
 ```{r}
 pb %>% 
@@ -215,11 +234,11 @@ pb %>%
         ) + 
         labs(x = "Год", y = "Количество книг", fill = "")
 
-# ggsave(file = "plots/Fig_1-4-1.png", plot = last_plot(), dpi = 300,
+# ggsave(file = "plots/Fig_1-4-2-a.png", plot = last_plot(), dpi = 300,
 #     width = 10, height = 8, bg = "white")
 ```
 
-#### Plot 1.4.2. Boxplots w/ n of pages and size in cm
+#### Plot 1.4.2.b. Boxplots w/ n of pages and size in cm
 
 ```{r}
 p1 <- pb %>% 
@@ -231,7 +250,7 @@ p1 <- pb %>%
         facet_wrap(~group) + 
         
         scale_x_continuous(breaks = seq(1835, 1840, 1)) +
-        scale_fill_manual(values = pal) + 
+        scale_fill_manual(values = c(pal[4], pal[2:3])) + 
         theme(
             legend.position = "None",
             axis.text = element_text(size = 12),
@@ -246,7 +265,7 @@ p2 <- pb %>%
         geom_boxplot() + 
         facet_wrap(~group) + 
         scale_x_continuous(breaks = seq(1835, 1840, 1)) +
-        scale_fill_manual(values = pal) + 
+        scale_fill_manual(values = c(pal[4], pal[2:3])) + 
         theme(
             legend.position = "None",
             axis.text = element_text(size = 12),
@@ -254,12 +273,24 @@ p2 <- pb %>%
         ) + 
         labs(x = "Год", y = "Размер в сантиметрах")
 
-p3 <- p1 / p2
 
-p3
+p1
+p2
 
-# ggsave("plots/Fig_1-4-2.png", plot = p3, dpi = 300, bg = "white",
-#       width = 12, height = 8)
+# p3 <- p1 / p2
+# 
+# p3
+
+
+```
+
+```{r, warning=FALSE,message=FALSE}
+
+plot_grid(p1, p2, labels = NULL,
+          ncol=1)
+
+# ggsave("plots/Fig_1-4-2-b.png", plot = last_plot(), dpi = 300, bg = "white",
+#        width = 12, height = 8)
 ```
 
 Full version of the plot
@@ -320,13 +351,16 @@ p2 <- pb_full %>%
                  ymin = 0, ymax = Inf, 
                  alpha = 0.2)
 
+p1
+p2
 
-p3 <- p1 / p2
 
-p3
-
-ggsave("plots/Fig_1-4-2_full.png", plot = p3, dpi = 300, bg = "white",
-      width = 11, height = 8)
+# p3 <- p1 / p2
+# 
+# p3
+# 
+# ggsave("plots/Fig_1-4-2_full.png", plot = p3, dpi = 300, bg = "white",
+#       width = 11, height = 8)
 ```
 
 ```{r}
@@ -444,8 +478,6 @@ pb %>%
   pivot_wider(names_from = year, values_from = n)
 ```
 
-#### Plot 1.4.3
-
 ```{r}
 pb %>% 
   #filter(group_abbr == "col_lyr") %>% 
@@ -546,7 +578,7 @@ pb %>%
 publ_totals[1:12,]
 ```
 
-#### Plot 1.4.4
+#### Plot 1.4.3
 
 Full publishers' data
 
@@ -628,9 +660,68 @@ publ_plot_data %>%
                  ymin = 0, ymax = Inf, 
                  alpha = 0.1)
   
-# ggsave("plots/Fig_1-4-5.png", plot = last_plot(), dpi = 300,
+# ggsave("plots/Fig_1-4-3.png", plot = last_plot(), dpi = 300,
 #        height = 10, width = 8,
 #        bg = "white")
+```
+
+BW version
+
+```{r}
+publ_plot_data %>% 
+    ggplot(aes(x = as.factor(year), y = cum_sum, #color = typo_group, 
+               group = typo)) + 
+        geom_line(alpha = 0.6, linewidth = 1, colour = "grey10") + 
+        gghighlight(use_direct_label = FALSE,
+              unhighlighted_params = list(colour = alpha("grey70", 1))) + 
+        # scale_color_met_d(name = "Redon") + 
+        
+  
+        geom_point(data = publ_plot_data %>% 
+                     filter(year == 1835) %>% 
+                     group_by(typo) %>% 
+                     slice_max(cum_sum)
+                     ) + 
+        geom_text(data = publ_plot_data %>% 
+                     filter(year == 1835) %>% 
+                     group_by(typo) %>% 
+                     slice_max(cum_sum),
+                  aes(label = cum_sum),
+                  vjust = -1) + 
+  
+        geom_point(data = publ_plot_data %>% 
+                     filter(year == 1840) %>% 
+                     group_by(typo) %>% 
+                     slice_max(cum_sum)
+                     ) + 
+        geom_text(data = publ_plot_data %>% 
+                     filter(year == 1840) %>% 
+                     group_by(typo) %>% 
+                     slice_max(cum_sum),
+                  aes(label = cum_sum),
+                  vjust = -1) +
+        
+        facet_wrap(~factor(typo_group,
+                          levels = top_typos_35),
+                   ncol = 3) +
+        scale_x_discrete(breaks = seq(1830, 1850, 5)) +
+        labs(x = "",
+             y = "",
+             color = "") + 
+        theme(axis.text = element_text(size = 12),
+              #legend.text = element_text(size = 14),
+              strip.text = element_text(size = 14),
+              panel.spacing = unit(1.5, "lines"),
+              legend.position = "None") + 
+  
+        annotate("rect", 
+                 xmin = 6, xmax = 11, 
+                 ymin = 0, ymax = Inf, 
+                 alpha = 0.1)
+
+# ggsave("plots/bw/Fig_1-4-3.png", plot = last_plot(), dpi = 300,
+#         height = 10, width = 8,
+#         bg = "white")
 ```
 
 ```{r}

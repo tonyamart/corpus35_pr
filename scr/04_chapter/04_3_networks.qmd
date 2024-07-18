@@ -19,6 +19,7 @@ library(ggrepel)
 # basic colouring and layout options
 library(wesanderson)
 library(patchwork)
+library(cowplot)
 theme_set(theme_minimal())
 library(MetBrewer)
 ```
@@ -75,22 +76,16 @@ get_topic_labels = function(x, n_labels = 10) {
 # taken as input net, meter as a string & colour palette value
 network <- function(network, meter_value, palette_v) { 
   ggraph(network, layout = "stress") +
-    geom_edge_fan(aes(color = meter,
+    geom_edge_fan(aes(color = meter_r,
                       filter = meter %in% c(meter_value)
                       #,
                       #width = N_connections
                      ),
                       alpha = 0.6, width = 1) +
-    geom_node_point() +
-    #geom_node_text(aes(label=idn), 
-    #               hjust=0.1, 
-    #               vjust=-0.4, 
-    #               size=3, 
-    #               color="grey50") +
+    geom_node_point() + 
     theme_void() + 
     theme(strip.text = element_text(size = 12)) + 
-    scale_edge_color_manual(values = palette_v, aesthetics = "edge_colour") #+ 
-    #theme(legend.position = "None")
+    scale_edge_color_manual(values = palette_v, aesthetics = "edge_colour") 
 }
 
 network_compare <- function(network, meter_value, palette_v) {
@@ -141,7 +136,7 @@ glimpse(gamma)
 topic_labels <- get_topic_labels(beta, n_labels = 5)
 head(topic_labels)
 
-# write.csv(topic_labels, file = "data/topic_labels.csv")
+# write.csv(topic_labels, file = "../../data/ch4/topic_labels.csv")
 ```
 
 # demo plot
@@ -347,6 +342,14 @@ nodelist <- tibble(source = unique(c(links$target, links$source))) %>%
 head(edgelist)
 head(nodelist) 
 nrow(nodelist)
+
+
+edgelist <- edgelist %>% 
+  mutate(meter_r = str_replace(meter, "iamb", "ямб"),
+         meter_r = str_replace(meter_r, "trochee", "хорей"),
+         meter_r = str_replace(meter_r, "free", "вольн."),
+         meter_r = str_replace(meter_r, "amphibrach", "Амф")
+  ) 
 ```
 
 ## create network
@@ -357,7 +360,7 @@ net
 ```
 
 ```{r}
-unique(edgelist$meter)
+unique(edgelist$meter_r)
 ```
 
 ### all RNC net (check)
@@ -365,14 +368,6 @@ unique(edgelist$meter)
 Meters without Iamb-4
 
 ```{r}
-
-# plt <- c(met.brewer(name = "Veronese")[1], # 1 dark red
-#          met.brewer(name = "Veronese")[3], # 2 yellow
-#          met.brewer(name = "Veronese")[4], # 3 light blue
-#          met.brewer(name = "Veronese")[6], # 4 green
-#          met.brewer(name = "Veronese")[7] # 5 dark blue
-#          )
-
 all_nkrja <- network(net, c("iamb_4", 
                             "iamb_6", 
                             "iamb_free", 
@@ -390,7 +385,7 @@ all_nkrja + facet_wrap(~slice,
                         scales="free_x", 
                         drop=T,
                         ncol = 5) + 
-    labs(edge_colour = "Meter") + 
+    labs(edge_colour = "Метр") + 
     theme(strip.text = element_text(size = 16),
          legend.text = element_text(size = 14), 
          legend.title = element_text(size = 16),
@@ -414,7 +409,7 @@ all_nkrja + facet_wrap(~slice,
                         scales="free_x", 
                         drop=T,
                         ncol = 5) + 
-    labs(edge_colour = "Meter") + 
+    labs(edge_colour = "Метр") + 
     theme(strip.text = element_text(size = 16),
          legend.text = element_text(size = 14), 
          legend.title = element_text(size = 16),
@@ -427,7 +422,31 @@ ggsave(filename = "plots/Fig_4-2-2-b.png", plot = last_plot(),
        width = 9, height = 7, dpi = 300, bg = "white")
 ```
 
-### 
+BW variant
+
+```{r}
+# change alpha in fn if needed
+all_nkrja <- network(net, c("iamb_6", "iamb_free", #"iamb_4", 
+                            "trochee_4"), 
+                     c("gray80", 
+                       "black", 
+                       "gray50")) 
+                
+
+all_nkrja + facet_wrap(~slice, 
+                        scales="free_x", 
+                        drop=T,
+                        ncol = 5) + 
+    labs(edge_colour = "Метр") + 
+    theme(strip.text = element_text(size = 16),
+         legend.text = element_text(size = 14), 
+         legend.title = element_text(size = 16),
+         panel.spacing = unit(1.4, "lines"),
+         legend.position = "bottom")
+
+# ggsave(filename = "plots/bw/Fig_4-2-2-b.png", plot = last_plot(), 
+#       width = 9, height = 7, dpi = 300, bg = "white")
+```
 
 ### iamb-4
 
@@ -539,6 +558,7 @@ labels <- density_table %>%
 facet_labels <- setNames(as.character(labels$slice_d), labels$slice)
 
 # create network
+# change alpha in fn if needed
 iamb_4 <- network(net, c("iamb_4"), plt[4])
     
 iamb_4 + facet_wrap(~slice, 
@@ -554,6 +574,26 @@ iamb_4 + facet_wrap(~slice,
 
 ```{r, eval=FALSE}
 ggsave(filename = "plots/Fig_4-2-2-a.png", plot = last_plot(),
+       width = 9, height = 7, dpi = 300, bg = "white")
+```
+
+BW version
+
+```{r, eval=FALSE}
+# create network
+iamb_4 <- network(net, c("iamb_4"), "gray35")
+    
+iamb_4 + facet_wrap(~slice, 
+                 scales="free_x", 
+                 drop=T,
+                 ncol = 5, 
+                 labeller = as_labeller(facet_labels)) + # labels attached
+    theme(legend.position = "None",
+         strip.text = element_text(size = 16),
+         legend.text = element_text(size = 14), 
+         legend.title = element_text(size = 16))
+
+ggsave(filename = "plots/bw/Fig_4-2-2-a.png", plot = last_plot(),
        width = 9, height = 7, dpi = 300, bg = "white")
 ```
 
@@ -1300,10 +1340,10 @@ all_edges %>%
   left_join(transl_meters, by = "meter") %>% 
   mutate(corpus_r = ifelse(corpus == "M", "Корпус-1835", "НКРЯ")) %>% 
   ggplot(aes(x = meter_r, y = Freq, , fill = corpus_r)) + 
-  geom_boxplot() + 
+  geom_boxplot(alpha = 0.7) + 
   labs(y = "Стабильность связи",
        fill = "Корпус") + 
-  scale_fill_manual(values = c(plt[1], plt[2])) + 
+  scale_fill_manual(values = c(plt[4], plt[2])) + 
   theme(legend.position = "bottom", 
         axis.title.x = element_blank(),
         axis.text = element_text(size = 12),
@@ -1312,8 +1352,29 @@ all_edges %>%
 
 ```
 
-```{r}
+```{r, eval=FALSE}
 ggsave(filename = "plots/Fig_4-2-4.png", plot = last_plot(),
+       width = 7, height = 5, dpi = 300, bg = "white")
+```
+
+BW version
+
+```{r}
+all_edges %>% 
+  left_join(transl_meters, by = "meter") %>% 
+  mutate(corpus_r = ifelse(corpus == "M", "Корпус-1835", "НКРЯ")) %>% 
+  ggplot(aes(x = meter_r, y = Freq, , fill = corpus_r)) + 
+  geom_boxplot() + 
+  labs(y = "Стабильность связи",
+       fill = "Корпус") + 
+  scale_fill_manual(values = c("grey50", "grey80")) + 
+  theme(legend.position = "bottom", 
+        axis.title.x = element_blank(),
+        axis.text = element_text(size = 12),
+        axis.title = element_text(size = 14),
+        legend.text = element_text(size = 12))
+
+ggsave(filename = "plots/bw/Fig_4-2-4.png", plot = last_plot(),
        width = 7, height = 5, dpi = 300, bg = "white")
 ```
 
@@ -1759,7 +1820,7 @@ network_labels(network = net_comp,
                    color="grey20") 
 ```
 
-### figure
+### Fig 4.2.5
 
 ```{r}
 p_i4 / p_i6 / p_t4 + plot_annotation(
@@ -1773,437 +1834,33 @@ ggsave(file = "plots/Fig_4-0-0.png", plot = last_plot(),
       dpi = 300, width = 8, height = 16, bg = "white")
 ```
 
-## old code
+BW version
 
-Check distribution in number of texts
+```{r, warning=FALSE}
+p_i4 <- network_labels(network = net_comp, 
+                       meter_value = "iamb_4", 
+                       palette_v = c("grey25", "grey80")) + 
+  labs(title = "Корпус-1835            vs              НКРЯ",
+       subtitle = "4-ст. ямб") + 
+  theme(plot.title = element_text(size = 26),
+        plot.subtitle = element_text(size = 22, face = "bold"))
 
-```{r, eval = F}
-# number of texts by author in corpus-35
-gamma %>% 
-  select(author, year, corpus, index) %>% 
-  distinct() %>% 
-  count(author, corpus, sort = T) %>% 
-  filter(author != "" & corpus == "M")
+p_i6 <- network_labels(network = net_comp, 
+                       meter_value = "iamb_6", 
+                       palette_v = c("grey25", "grey80")) + 
+  labs(subtitle = "6-ст. ямб") + 
+  theme(plot.subtitle = element_text(size = 22, face = "bold"))
 
-# summary
-gamma %>% 
-  select(author, year, corpus, index) %>% 
-  distinct() %>% 
-  count(author, corpus, sort = T) %>% 
-  filter(author != "" & corpus == "M") %>% summary
+p_t4 <- network_labels(network = net_comp, 
+                       meter_value = "trochee_4", 
+                       palette_v = c("grey25", "grey80")) + 
+  labs(subtitle = "4-ст. хорей") + 
+  theme(plot.subtitle = element_text(size = 22, face = "bold"))
 
+plot_grid(p_i4, p_i6, p_t4, 
+          labels = NULL,
+          ncol=1)
 
-# number of texts by author in RNC
-gamma %>% 
-  select(author, year, corpus, index) %>% 
-  distinct() %>% 
-  count(author, corpus, sort = T) %>% 
-  filter(author != "" & corpus == "N")
-
-# distribution
-gamma %>% 
-  select(author, year, corpus, index) %>% 
-  distinct() %>% 
-  count(author, corpus, sort = T) %>% 
-  filter(author != "" & corpus == "N") %>% summary
+ggsave(file = "plots/bw/Fig_4-2-5.png", plot = last_plot(),
+      dpi = 300, width = 8, height = 16, bg = "white")
 ```
-
-Select top authors - rnc
-
-```{r, eval=FALSE}
-n_texts_rnc <- gamma %>% 
-  filter(corpus == "N") %>% 
-  mutate(decade = floor(as.numeric(year)/5)*5) %>% 
-  filter(decade %in% c(1830, 1835)) %>% 
-  select(index) %>% distinct() %>% nrow()
-
-rnc_authors <- gamma %>% 
-    filter(corpus == "N") %>% 
-    mutate(decade = floor(as.numeric(year)/5)*5) %>% 
-    filter(decade %in% c(1830, 1835)) %>% 
-    group_by(author) %>% 
-    summarise(n_gamma = sum(n()),
-             n_texts = n_gamma/75) %>% 
-    arrange(desc(n_texts))
-
-rnc_authors %>% 
-    ungroup() %>%
-    summarise(total_texts = sum(n_texts))
-
-rnc_authors <- rnc_authors %>% 
-    mutate(percentage = (n_texts/n_texts_rnc) *100)
-
-head(rnc_authors, 20)
-summary(rnc_authors$n_texts)
-```
-
-```{r, eval=FALSE}
-# filter overpresented authors
-top_authors <- rnc_authors %>% 
-    filter(n_texts > 30) %>% select(author) # 19 authors
-
-top_authors
-
-# randomly select 30 texts by each author
-sampled_id <- gamma %>% 
-    filter(corpus == "N") %>% 
-    # select slice
-    filter(year > 1829 & year < 1840) %>%
-    select(index, author) %>% 
-    distinct() %>% 
-    filter(author %in% top_authors$author) %>% 
-    group_by(author) %>% 
-    sample_n(30) %>% 
-    ungroup() %>%
-    select(-author)
-
-# retrieve gamma values for samples for these authors
-gamma_top <- inner_join(sampled_id, gamma, by = "index", multiple = "all")
-```
-
-Select top authors - corpus_1830
-
-```{r, eval=FALSE}
-
-m_authors <- gamma %>% 
-    filter(corpus == "M" & author != "") %>% 
-    mutate(decade = floor(as.numeric(year)/5)*5) %>% 
-    filter(decade %in% c(1830, 1835)) %>% 
-    group_by(author) %>% 
-    summarise(n_gamma = sum(n()),
-             n_texts = n_gamma/75) %>% 
-    arrange(desc(n_texts))
-
-m_authors %>% 
-    ungroup() %>%
-    summarise(total_texts = sum(n_texts))
-
-m_authors <- m_authors %>% 
-    mutate(percentage = n_texts/3739*100)
-
-head(m_authors, 20)
-summary(m_authors$n_texts)
-
-m_top_authors <- m_authors %>% 
-  filter(n_texts > 30) %>% select(author) # 30 authors
-
-sampled_id_m <- gamma %>% 
-    filter(corpus == "M") %>% 
-    # select slice
-    filter(year > 1829 & year < 1840) %>%
-    select(index, author) %>% 
-    distinct() %>% 
-    filter(author %in% m_top_authors$author) %>% 
-    group_by(author) %>% 
-    sample_n(30) %>% 
-    ungroup() %>%
-    select(-author)
-
-m_gamma_top <- inner_join(sampled_id_m, gamma, by = "index", multiple = "all")
-```
-
-Merging
-
-```{r, eval=FALSE}
-# select texts from RNC by non-prevalent authors
-gamma_nontop <- gamma %>% 
-    filter(corpus == "N" & !author %in% top_authors$author) %>% 
-    filter(year > 1829 & year < 1840)
-
-# retrieve all the gamma values for texts from periodicals
-m_gamma_nontop <- gamma %>%
-    filter(corpus == "M" & !author %in% m_top_authors$author) %>%
-    filter(year > 1829 & year < 1840)
-
-# merge the three together
-gamma1830 <- rbind(gamma_top, gamma_nontop, 
-                   m_gamma_top, m_gamma_nontop)
-
-head(gamma1830)
-
-print("Number of texts in each corpus after sampling:")
-gamma1830 %>% 
-    select(index, corpus) %>% 
-    distinct() %>% 
-    group_by(corpus) %>% 
-    count()
-```
-
-```{r, eval=FALSE}
-# initial number of texts (before sampling)
-gamma %>% 
-  filter(year > 1829 & year < 1840) %>% 
-  select(index, corpus) %>% 
-  distinct() %>% 
-  group_by(corpus) %>% 
-  count()
-```
-
-```{r, eval = F}
-saveRDS(gamma1830, file = "../../data/ch4/gamma_1830_sampled.Rds")
-```
-
-```{r, eval=FALSE}
-# temporary make all iamb_other == iamb_free
-
-counts_main <- gamma1830 %>% 
-    select(index, corpus, formula) %>% 
-    filter(formula %in% c("iamb_4", "iamb_6", "iamb_free", "trochee_4")) %>% 
-    distinct() %>% 
-    group_by(corpus, formula) %>% 
-    count(sort = T) %>% 
-    pivot_wider(names_from = formula, values_from = n)
-
-rnc_others <- gamma1830 %>% 
-    select(index, corpus, formula) %>% 
-    distinct() %>% 
-    filter(corpus == "N" & !formula %in% c("iamb_4", "iamb_6", "iamb_free", "trochee_4")) %>% 
-    count() %>% 
-    pull()
-
-m_others <- gamma1830 %>% 
-    select(index, corpus, formula) %>% 
-    distinct() %>% 
-    filter(corpus == "M" & !formula %in% c("iamb_4", "iamb_6", "iamb_free", "trochee_4")) %>% 
-    count() %>% 
-    pull()
-
-counts <- cbind(counts_main, other = c(rnc_others, m_others))
-
-counts_fin <- counts %>% 
-    ungroup() %>% 
-    rowwise(corpus) %>% mutate(total = sum(across(where(is.numeric))))
-
-counts_fin
-
-counts_fin[2,7][[1]]
-
-counts_fin %>% 
-    pivot_longer(!corpus, names_to = "formula", values_to = "n") %>% 
-    group_by(corpus, formula) %>% 
-    mutate(perc = ifelse(corpus == "N",
-               round(n/counts_fin[2,7][[1]]*100,1),
-               round(n/counts_fin[1,7][[1]]*100,1)))
-
-```
-
-Network
-
-topic labels & edges
-
-```{r, eval=FALSE}
-topic_labels <- get_topic_labels(beta, n_labels = 5)
-head(topic_labels)
-
-edges_1830 <- compute_edges(gamma1830,
-                           gamma_thresh = 0.05,
-                           time_slice = 5)
-
-head(edges_1830)
-```
-
-```{r, eval=FALSE}
-# select top meters
-meter_counts_1830 <- gamma1830 %>% 
-  rename("meter" = "formula") %>% 
-  filter(!str_detect(meter, "other") & meter != "NA") %>% 
-  group_by(meter, corpus) %>% 
-  count(sort = T) %>% 
-  mutate(n_texts = n/75) %>%
-  ungroup() %>% 
-  filter(n > 10)
-
-top_meters_1830 <- meter_counts_1830 %>% 
-  group_by(meter) %>%
-  summarise(total = sum(n)) %>% 
-  arrange(desc(total))
-
-top_meters_1830$meter[1:8]
-```
-
-```{r, eval=FALSE}
-links_1830 <- edges_1830 %>% 
-  mutate(meter = formula) %>%
-  # filter out only 8 most interesting meters
-  filter(meter %in% top_meters_1830$meter[1:8]) %>% 
-  # group and count edges
-  group_by(meter, corpus) %>% 
-  count(meter, edge_id, source, target, sort = T) %>% 
-  # filter non-frequent edges
-  filter(n > 2) %>% 
-  ungroup() 
-
-# quick check
-head(links_1830)
-```
-
-```{r, eval=FALSE}
-edges_rnc <- links_1830 %>% 
-    mutate(meter_edge = paste0(meter, "__", edge_id)) %>% 
-    filter(corpus == "N") %>% 
-    pull(meter_edge)
-
-edges_m <- links_1830 |> 
-    mutate(meter_edge = paste0(meter, "__", edge_id)) %>% 
-    filter(corpus == "M") %>% 
-    pull(meter_edge)
-
-head(edges_rnc)
-head(edges_m)
-
-edges_intersection <- intersect(edges_rnc, edges_m)
-print("Intersection between built edges:")
-head(edges_intersection)
-
-length(edges_rnc)
-length(edges_m)
-
-length(edges_intersection)
-```
-
-edgelist & nodelist
-
-```{r, eval=FALSE}
-
-edgelist <- links_1830 %>% 
-    mutate(meter_edge = paste0(meter, "__", edge_id),
-           # create a column indicating if an edge is present in both corpora
-          group = ifelse(meter_edge %in% edges_intersection, "Both corpora", "Unique edge")) %>% 
-    select(source, target, n, meter, corpus, group) %>% 
-    mutate(width = n/10,
-          corpus_fullname = ifelse(corpus == "M", "corpus_1830", "RNC"))
-
-nodelist <- tibble(source = unique(c(links_1830$target, links_1830$source))) %>% 
-  mutate(idn = as.numeric(str_replace(source, "^([0-9].*?)_.*", "\\1"))) 
-
-head(edgelist)
-head(nodelist) 
-nrow(nodelist)
-```
-
-network viz
-
-```{r, eval=FALSE}
-net1830 <- graph_from_data_frame(d = edgelist, vertices = nodelist, directed = F)
-net1830
-```
-
-viz fn
-
-```{r, eval=FALSE}
-# function for network visualisation
-
-# taken as input net, meter as a string & colour palette value
-
-network <- function(network, meter_value, palette_v) {
-  ggraph(network, layout = "kk") +
-    # one layer for edges which are unique for each corpus (RNC or Periodicals)
-    geom_edge_fan(aes(color = group,
-                      filter = meter %in% c(meter_value) & group == "Unique edge", 
-                      width = n), 
-                      alpha = 0.4) +
-    
-    # second layer for intersected edges
-    geom_edge_fan(aes(color = group,
-                      filter = meter %in% c(meter_value) & group == "Both corpora", 
-                      width = n), 
-                      alpha = 1) +
-    
-    geom_node_point() +
-    #geom_node_text(aes(label=idn), 
-    #               hjust=0.1, 
-    #               vjust=-0.4, 
-    #               size=3, 
-    #               color="grey50") +
-    theme_void() + 
-    theme(strip.text = element_text(size = 18)) +
-    facet_wrap(~corpus_fullname, 
-               scales="free_x", 
-               drop=T,
-               ncol = 2) + 
-    scale_edge_color_manual(values = palette_v) + 
-    #labs(title = meter_value) + 
-    theme(legend.position = "None")
-}
-```
-
-### 
-
-iamb-4
-
-```{r, eval=FALSE}
-network(net1830, "iamb_4", c(wes_palette("Darjeeling1")[2], wes_palette("Royal1")[1]))
-```
-
-### 
-
-iamb-6
-
-```{r, eval=FALSE}
-network(net1830, "iamb_6", c(wes_palette("Darjeeling1")[3], wes_palette("Royal1")[1]))
-```
-
-### 
-
-trochee-4
-
-```{r, eval=FALSE}
-network(net1830, "trochee_4", c(wes_palette("Darjeeling1")[1], wes_palette("Royal1")[1]))
-```
-
-### 
-
-comparison of connections
-
-```{r, eval=FALSE}
-links_n <- links_1830 %>% 
-  filter(corpus == "N" & meter %in% c("iamb_4", "iamb_6", "iamb_free", "trochee_4")) %>% 
-  mutate(connection = paste0(meter, "__", edge_id)) %>% 
-  select(connection) 
-
-links_m <- links_1830 %>% 
-  filter(corpus == "M" & meter %in% c("iamb_4", "iamb_6", "iamb_free", "trochee_4")) %>% 
-  mutate(connection = paste0(meter, "__", edge_id)) %>% 
-  select(connection) 
-  
-t <- intersect(links_n$connection, links_m$connection)
-
-head(t)
-length(t)
-
-
-```
-
-```{r, eval=FALSE}
-links_1830 %>% 
-  filter(meter %in% c("iamb_4", "iamb_6", "iamb_free", "trochee_4")) %>% 
-  mutate(connection = paste0(meter, "__", edge_id)) %>% 
-  mutate(corpus_new = ifelse(connection %in% t, "Both corpora", corpus)) %>% 
-  mutate(corpus_new = recode(corpus_new, 
-                           "N" = "National corpus only", 
-                           "M" = "Marginals only")) %>% 
-  # first select unique connections and assign to both/P/N
-  group_by(corpus_new, meter, edge_id) %>%
-  count() %>% 
-  select(-n) %>% 
-  distinct() %>%
-  # ungroup & count by large groups again
-  ungroup() %>% 
-  group_by(corpus_new, meter) %>% 
-  count(sort = T) %>% 
-  arrange(desc(meter)) %>% 
-  ggplot(aes(x = meter,
-           y = n,
-           group = corpus_new,
-           fill = corpus_new)) +
-  geom_col(position = "dodge") +
-  labs(x = "Meter",
-       y = "", 
-       fill = "Corpus",
-       subtitle = "Number of unique connections found in RNC vs Periodicals") + 
-  scale_fill_manual(values = c(wes_palette("Rushmore1")[3:5])) + 
-  theme(axis.text = element_text(size = 11), 
-        plot.subtitle = element_text(hjust = 0.5))
-```
-
-x

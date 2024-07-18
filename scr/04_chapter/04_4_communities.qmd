@@ -212,6 +212,12 @@ custom_nodelist <- function(source_vec, target_vec) {
 }
 ```
 
+### load data
+
+```{r}
+load("../../data/ch4/networks_data.Rda")
+```
+
 ### iamb 4 - freq=100, q=0.95
 
 #### rnc
@@ -286,7 +292,7 @@ t_community %>%
 labels <- tibble(
   community = c(1, 2, 3, 4
                 ),
-  label = c('"Ода"', '"Стихия"',  '"Идиллия"', '"Судьба"' 
+  label = c('"Ода"', '"Стихия"',  '"Идиллия"', '"Религия"' 
             ), 
   descr = c("59_царь народ слава великий россия\n73_зреть дух сие свет коль\n6_мир вечный природа творец земля\n23_правда закон зло суд истина", 
             
@@ -372,7 +378,7 @@ community_i4_rnc %>%
 ```
 
 ```{r, eval=FALSE}
-ggsave("plots/i4_rnc.png", plot = last_plot(),
+ggsave("plots/Fig_4-2-6-a.png", plot = last_plot(),
       bg = "white", width = 9, height = 7, dpi = 300)
 ```
 
@@ -521,7 +527,7 @@ community_i4_m %>%
 ```
 
 ```{r, eval=FALSE}
-ggsave("plots/i4_m.png", plot = last_plot(),
+ggsave("plots/Fig_4-2-6-b.png", plot = last_plot(),
       bg = "white", width = 9, height = 7, dpi = 300)
 ```
 
@@ -707,7 +713,7 @@ community_i6_rnc %>%
 ```
 
 ```{r, eval=FALSE}
-ggsave("plots/i6_rnc.png", plot = last_plot(),
+ggsave("plots/Fig_4-2-7-a.png", plot = last_plot(),
       bg = "white", width = 10, height = 8, dpi = 300)
 ```
 
@@ -927,7 +933,7 @@ community_i6_m %>%
 ```
 
 ```{r, eval=FALSE}
-ggsave("plots/i6_m.png", plot = last_plot(),
+ggsave("plots/Fig_4-2-7-b.png", plot = last_plot(),
        bg = "white", width = 9, height = 7, dpi = 300)
 ```
 
@@ -1060,7 +1066,7 @@ t_community %>%
 ```
 
 ```{r, eval=FALSE}
-ggsave("plots/tr4_rnc.png", plot = last_plot(), 
+ggsave("plots/Fig_4-2-8-a.png", plot = last_plot(), 
        bg = "white", width = 9, height = 7, dpi = 300)
 ```
 
@@ -1207,14 +1213,14 @@ community_t4_m %>%
 ```
 
 ```{r, eval=FALSE}
-ggsave("plots/tr4_m.png", plot = last_plot(), 
+ggsave("plots/Fig_4-2-8-b.png", plot = last_plot(), 
       bg = "white", width = 9, height = 7, dpi = 300)
 ```
 
 ```{r, eval=FALSE}
-save(community_i4_rnc, community_i4_m, 
-     community_i6_rnc, community_i6_m,
-     community_t4_rnc, community_t4_m,
-     file = "networks_data.Rda"
-     )
+# save(community_i4_rnc, community_i4_m, 
+#      community_i6_rnc, community_i6_m,
+#      community_t4_rnc, community_t4_m,
+#      file = "networks_data.Rda"
+#      )
 ```

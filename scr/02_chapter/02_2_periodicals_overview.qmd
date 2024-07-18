@@ -4,23 +4,16 @@ format: md
 editor: visual
 ---
 
-```{r}
+```{r, warning=FALSE}
 library(tidyverse)
 
 # library(treemap)
-# library(ggplotify)
-theme_set(theme_minimal())
-# library(wesanderson)
 library(MetBrewer)
-
-# fix problems with cyrillics
-# library(extrafont)
-# library(showtext)
-# font_add("Arial", "/Library/Fonts/Arial.ttf") 
-# showtext_auto()
+library(ggpattern)
+theme_set(theme_minimal())
 ```
 
-```{r}
+```{r, eval=FALSE}
 MetBrewer::colorblind_palettes
 
 met.brewer(MetBrewer::colorblind_palettes[24])
@@ -212,8 +205,8 @@ counter_1835 %>% pivot_wider(names_from = year, values_from = n)
 p2_2_1 <- counter_1835 %>%
     ggplot(aes(x = year, y = n, fill = group)) + 
     geom_col(position = "dodge", width = 0.6) + 
-    scale_fill_manual(values = c(met.brewer("Veronese")[7], # dark blue
-                                 met.brewer("Veronese")[4], # light blue
+    scale_fill_manual(values = c(met.brewer("Veronese")[5], # dark green
+                                 met.brewer("Veronese")[3], # light yellow
                                  met.brewer("Veronese")[1] # dark red
                                 )) + 
     scale_x_continuous(breaks = 1835:1840) +
@@ -228,8 +221,33 @@ p2_2_1 <- counter_1835 %>%
 p2_2_1
 ```
 
+#### bw version
+
+```{r}
+p2_2_1 <- counter_1835 %>%
+    ggplot(aes(x = year, y = n, fill = group)) + 
+    geom_col(position = "dodge", width = 0.6) + 
+    scale_fill_manual(values = c("grey40",
+                                 "grey75",
+                                 "grey20"
+                                )) + 
+    scale_x_continuous(breaks = 1835:1840) +
+    theme(axis.text = element_text(size = 14),
+         axis.title = element_text(size = 16),
+         legend.title = element_text(size = 16, face = "bold"),
+         legend.text = element_text(size = 14)) + 
+    labs(x = "Год",
+        y = "Количество текстов",
+        fill = "Корпус")
+
+p2_2_1
+```
+
 ```{r, eval=FALSE}
-ggsave(file = "plots/Fig_2_2_1.png", plot = p2_2_1, dpi = 300,
+ggsave(file = "plots/Fig_2-2-1.png", plot = p2_2_1, dpi = 300,
+      width = 8, height = 6, bg = "white")
+
+ggsave(file = "plots/bw/Fig_2-2-1.png", plot = p2_2_1, dpi = 300,
       width = 8, height = 6, bg = "white")
 ```
 
@@ -242,7 +260,7 @@ rm(c19, counter_1835, doubles_counts, doubles_id, nkrja19, p2_2_1, rnc_1835, rnc
 Analysis of poems published in different sources (journals & newspapers) and by different authors
 
 ```{r}
-glimpse(per)
+# glimpse(per)
 
 per <- per %>% 
   rename(PER_ID = book_title)
@@ -262,20 +280,31 @@ rm(names)
 ### Plot 2.2.2
 
 ```{r}
+lbl <- per %>% 
+  filter(!PER_ID %in% c("Молва", "Сев_пч", "Телескоп")) %>% 
+  group_by(per_name) %>% 
+  count() %>% 
+  mutate(lable = paste0(per_name, " (", n, ")")) %>% 
+  select(-n)
+```
+
+```{r}
 per %>% 
   filter(!PER_ID %in% c("Молва", "Сев_пч", "Телескоп")) %>% 
   group_by(year, per_name) %>% 
   count() %>% 
-  ggplot(aes(x = year, y = n, fill = per_name)) + 
+  left_join(lbl, by = "per_name") %>% 
+  ggplot(aes(x = year, y = n, fill = lable)) + 
   geom_col() + 
   geom_text(aes(x = year, y = n, label = n), 
             position = position_stack(vjust = .5), 
             color = "white") + 
   scale_x_continuous(breaks = 1835:1840) +
-  scale_fill_manual(values = c(met.brewer("Veronese")[1:2], 
+  scale_fill_manual(values = c(met.brewer("Veronese")[1], 
+                               met.brewer("Veronese")[3],
                                met.brewer("Veronese")[4:5],
                                met.brewer("Veronese")[7],
-                               met.brewer("Veronese")[3],
+                               met.brewer("Veronese")[2],
                                met.brewer("Johnson")[4],
                                met.brewer("Kandinsky")[3])) + 
   theme(axis.text = element_text(size = 14),
@@ -286,7 +315,52 @@ per %>%
 ```
 
 ```{r, eval=FALSE}
-ggsave(file = "plots/Fig_2_2_2.png", plot = last_plot(), dpi = 300,
+ggsave(file = "plots/Fig_2-2-2.png", plot = last_plot(), dpi = 300,
+      width = 8, height = 6, bg = "white")
+```
+
+#### bw version
+
+```{r}
+per %>% 
+  filter(!PER_ID %in% c("Молва", "Сев_пч", "Телескоп")) %>% 
+  group_by(year, per_name) %>% 
+  count() %>% 
+  left_join(lbl, by = "per_name") %>% 
+  #filter(per_name %in% c("БдЧ", "ЛПРИ/ЛГ", "Маяк", "МН", "ОЗ")) %>% 
+  ggplot(aes(x = year, y = n, fill = lable)) + 
+  geom_col_pattern(aes(pattern = lable, 
+                       pattern_angle = lable,
+                       pattern_density = lable),
+                   #pattern = 'pch',
+                   fill = 'white',
+                   colour = 'black', 
+                   #pattern_density = 0.5, 
+                   pattern_fill = 'white',
+                   pattern_colour  = 'black',
+                   pattern_spacing = 0.02) +
+  
+  scale_pattern_manual(values=c('stripe', 'circle', 'stripe', 'stripe', 'pch',
+                             'stripe', 'pch', 'stripe'
+                             )) +
+  # scale_pattern_type_manual(values=c(NA, NA, NA, 'triangle', 'sine')) 
+  # 
+  geom_label(aes(x = year, y = n, label = n, group = lable),
+            position = position_stack(vjust=0.5),
+            fill = "white"
+            ) +
+  scale_x_continuous(breaks = 1835:1840) +
+  #scale_fill_manual(values = c()) +
+  theme(axis.text = element_text(size = 14),
+         axis.title = element_text(size = 16),
+         #legend.title = element_text(size = 16, face = "bold"),
+         legend.title = element_blank(),
+         legend.text = element_text(size = 14)) +
+  labs(x = "Год", y = "Количество текстов")
+```
+
+```{r, eval=FALSE}
+ggsave(file = "plots/bw/Fig_2-2-2.png", plot = last_plot(), dpi = 300,
       width = 8, height = 6, bg = "white")
 ```
 

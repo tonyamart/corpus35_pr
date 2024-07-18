@@ -8,13 +8,17 @@ library(tidyverse)
 
     Warning: package 'ggplot2' was built under R version 4.3.1
 
+    Warning: package 'tidyr' was built under R version 4.3.1
+
+    Warning: package 'dplyr' was built under R version 4.3.1
+
     Warning: package 'lubridate' was built under R version 4.3.1
 
     ── Attaching core tidyverse packages ──────────────────────── tidyverse 2.0.0 ──
-    ✔ dplyr     1.1.3     ✔ readr     2.1.4
+    ✔ dplyr     1.1.4     ✔ readr     2.1.4
     ✔ forcats   1.0.0     ✔ stringr   1.5.0
-    ✔ ggplot2   3.4.4     ✔ tibble    3.2.1
-    ✔ lubridate 1.9.3     ✔ tidyr     1.3.0
+    ✔ ggplot2   3.5.1     ✔ tibble    3.2.1
+    ✔ lubridate 1.9.3     ✔ tidyr     1.3.1
     ✔ purrr     1.0.2     
     ── Conflicts ────────────────────────────────────────── tidyverse_conflicts() ──
     ✖ dplyr::filter() masks stats::filter()
@@ -50,56 +54,12 @@ theme_set(theme_minimal())
 #showtext_auto()
 ```
 
-Load RNC data
+Load RNC data (not publicly available)
 
 ``` r
 load("../../data/nkrja_19th_lem.Rda")
-glimpse(c19)
+# glimpse(c19)
 ```
-
-    Rows: 15,569
-    Columns: 41
-    $ Unnamed..0          <int> 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,…
-    $ path                <chr> "xix/1790-1810_poets/poets-001", "xix/1790-1810_po…
-    $ author              <chr> "С. С. Бобров", "С. С. Бобров", "С. С. Бобров", "С…
-    $ dub                 <lgl> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA…
-    $ original            <chr> "", "", "Гораций", "", "", "", "", "", "", "", "",…
-    $ language            <chr> "", "", "латинский", "", "", "", "", "", "", "", "…
-    $ header              <chr> "Царство всеобщей любви : «Еще вкруг солнцев не вр…
-    $ cyclus              <chr> "", "", "", "", "", "", "", "", "", "", "", "", ""…
-    $ liber               <chr> "", "", "", "", "", "", "", "", "", "", "", "", ""…
-    $ created             <chr> "1785", "1785", "1787", "1789", "1789", "1789", "1…
-    $ start               <dbl> 1785, 1785, 1787, 1789, 1789, 1789, 1792, 1800, 18…
-    $ end                 <dbl> NA, NA, NA, NA, NA, NA, 1800, NA, NA, 1803, 1803, …
-    $ exact               <chr> "неточная", "неточная", "неточная", "неточная", "н…
-    $ sphere              <chr> "художественная", "художественная", "художественна…
-    $ genre_fi            <chr> "стихотворение", "стихотворение", "стихотворение :…
-    $ audience_age        <chr> "н-возраст", "н-возраст", "н-возраст", "н-возраст"…
-    $ audience_level      <chr> "н-уровень", "н-уровень", "н-уровень", "н-уровень"…
-    $ audience_size       <chr> "большая", "большая", "большая", "большая", "больш…
-    $ source              <chr> "Поэты 1790-1810-х годов. Библиотека поэта. Второе…
-    $ publication         <chr> "", "", "", "", "", "", "", "", "", "", "", "", ""…
-    $ publisher           <chr> "", "", "", "", "", "", "", "", "", "", "", "", ""…
-    $ publ_year           <chr> "", "", "", "", "", "", "", "", "", "", "", "", ""…
-    $ medium              <chr> "книга", "книга", "книга", "книга", "книга", "книг…
-    $ subcorpus           <chr> "поэтический", "поэтический", "поэтический", "поэт…
-    $ meter               <chr> "Я", "Я", "Я", "Я", "Я", "Я", "Я", "Х", "Я", "Я", …
-    $ feet                <chr> "4", "6", "4", "4", "4", "6", "4(5)", "4", "4", "4…
-    $ clausula            <chr> "регулярная : жмжм жж мжжм", "регулярная : жм", "р…
-    $ strophe             <chr> "10 : одическая строфа", "4", "4", "10 : одическая…
-    $ gr_strophe          <chr> "", "", "8", "", "", "вольная", "", "", "", "вольн…
-    $ rhyme               <chr> "сложная : абаб вв гддг", "перекрестная : абаб", "…
-    $ formula             <chr> "Я4жм", "Я6жм", "Я4жм", "Я4жм", "Я4жм", "Я6жжмм", …
-    $ extra               <chr> "", "", "", "", "", "нарушения строфики", "", "", …
-    $ verses              <dbl> 110, 36, 32, 70, 144, 56, 216, 8, 335, 66, 195, 23…
-    $ location            <chr> "", "", "", "", "", "", "", "", "", "", "", "", ""…
-    $ location_normalized <chr> "", "", "", "", "", "", "", "", "", "", "", "", ""…
-    $ paths_tidy          <chr> "texts_plain/xix/1790-1810_poets/poets-001.txt", "…
-    $ diff                <int> 0, 0, 0, 0, 0, 0, 8, 0, 0, 1, 1, 0, 0, 0, 0, 0, 9,…
-    $ year                <int> 1785, 1785, 1787, 1789, 1789, 1789, 1800, 1800, 18…
-    $ year_start          <int> 1785, 1785, 1787, 1789, 1789, 1789, 1792, 1800, 18…
-    $ text_raw            <chr> "Еще вкруг солнцев не вращались \n В превыспренних…
-    $ lemma               <chr> "еще вкруг солнцев не вращаться \n в превыспренний…
 
 Create 1830-1840 and 1835-1840 sets
 
@@ -954,11 +914,7 @@ per_authors %>%
     19 Клюшников И.П.     21    19 Периодика  1.1 
     20 Гребенка Е.П.      20    20 Периодика  1.05
 
-### Plot 2.1
-
--   retrieve data from periodicals;
--   bind rows from all groups
--   create plot
+### Plot 2.1.1
 
 ``` r
 rankings_full <- rbind(per_authors, rankings_nkrja)
@@ -967,10 +923,11 @@ rankings_full <- rbind(per_authors, rankings_nkrja)
 ``` r
 p1 <- rankings_full %>% 
     ggplot(aes(x = rank, y = n, group = group, color = group)) + 
-    geom_line(linewidth = 1.2, alpha = 0.8) + 
+    geom_line(aes(lty = group), linewidth = 1.2, alpha = 0.8,
+              show.legend = T) + 
     scale_color_manual(values = c(met.brewer("Veronese")[1], 
                                   met.brewer("Veronese")[3], 
-                                  met.brewer("Veronese")[4])) +
+                                  met.brewer("Veronese")[6])) +
     theme(axis.text = element_text(size = 14), 
           axis.title = element_text(size = 16),
           legend.text = element_text(size = 14), 
@@ -1011,8 +968,15 @@ p_ru <- p1 + geom_label_repel(data = top3, aes(x = rank, y = n, label = author),
     geom_point(data = top3) + 
     labs(x = "Ранг автора (по количеству текстов)", 
          y = "Количество текстов", 
-         color = "Корпус")
+         color = "",
+         lty = "") + 
+  theme(legend.position = "bottom") + 
+  guides(colour = guide_legend(show = TRUE))
+
+p_ru
 ```
+
+![](02_1_nkrja_comparison.markdown_strict_files/figure-markdown_strict/unnamed-chunk-23-1.png)
 
 ``` r
 ggsave(file = "plots/Fig_2-1-1.png", plot = p_ru, 
@@ -1024,6 +988,44 @@ p_ru
 ```
 
 ![](02_1_nkrja_comparison.markdown_strict_files/figure-markdown_strict/unnamed-chunk-25-1.png)
+
+#### Plot 2.1.1. bw version
+
+``` r
+p1 <- rankings_full %>% 
+    ggplot(aes(x = rank, y = n, group = group, color = group)) + 
+    geom_line(aes(lty = group), linewidth = 1.2, alpha = 0.8,
+              show.legend = T) + 
+    scale_color_manual(values = c("gray60",
+                                  "gray80",
+                                  "gray10")) +
+    theme(axis.text = element_text(size = 14), 
+          axis.title = element_text(size = 16),
+          legend.text = element_text(size = 14), 
+          legend.title = element_text(size = 14, face = "bold")) 
+
+p_ru <- p1 + geom_label_repel(data = top3, aes(x = rank, y = n, label = author),
+                      size = 5,
+                      point.padding = 0.5, 
+                     nudge_x = 80, nudge_y = -10, 
+                     arrow = arrow(length = unit(0.015, 'npc'))) + 
+    geom_point(data = top3) + 
+    labs(x = "Ранг автора (по количеству текстов)", 
+         y = "Количество текстов", 
+         color = "",
+         lty = "") + 
+  theme(legend.position = "bottom") + 
+  guides(colour = guide_legend(show = TRUE))
+
+p_ru
+```
+
+![](02_1_nkrja_comparison.markdown_strict_files/figure-markdown_strict/unnamed-chunk-26-1.png)
+
+``` r
+# ggsave(file = "plots/bw/Fig_2-1-1.png", plot = p_ru, 
+#       dpi = 300, height = 7, width = 10, bg = "white")
+```
 
 ### Distribution of texts in periodicals
 
@@ -1169,7 +1171,7 @@ p2 + geom_label_repel(data = top5, aes(x = rank, y = n, label = author),
          color = "Corpus")
 ```
 
-![](02_1_nkrja_comparison.markdown_strict_files/figure-markdown_strict/unnamed-chunk-30-1.png)
+![](02_1_nkrja_comparison.markdown_strict_files/figure-markdown_strict/unnamed-chunk-31-1.png)
 
 ``` r
 head(t_per)

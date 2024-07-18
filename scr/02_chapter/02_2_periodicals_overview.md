@@ -4,15 +4,11 @@
 library(tidyverse)
 ```
 
-    Warning: package 'ggplot2' was built under R version 4.3.1
-
-    Warning: package 'lubridate' was built under R version 4.3.1
-
     ── Attaching core tidyverse packages ──────────────────────── tidyverse 2.0.0 ──
-    ✔ dplyr     1.1.3     ✔ readr     2.1.4
+    ✔ dplyr     1.1.4     ✔ readr     2.1.4
     ✔ forcats   1.0.0     ✔ stringr   1.5.0
-    ✔ ggplot2   3.4.4     ✔ tibble    3.2.1
-    ✔ lubridate 1.9.3     ✔ tidyr     1.3.0
+    ✔ ggplot2   3.5.1     ✔ tibble    3.2.1
+    ✔ lubridate 1.9.3     ✔ tidyr     1.3.1
     ✔ purrr     1.0.2     
     ── Conflicts ────────────────────────────────────────── tidyverse_conflicts() ──
     ✖ dplyr::filter() masks stats::filter()
@@ -21,33 +17,16 @@ library(tidyverse)
 
 ``` r
 # library(treemap)
-# library(ggplotify)
-theme_set(theme_minimal())
-# library(wesanderson)
 library(MetBrewer)
-
-# fix problems with cyrillics
-# library(extrafont)
-# library(showtext)
-# font_add("Arial", "/Library/Fonts/Arial.ttf") 
-# showtext_auto()
+library(ggpattern)
+theme_set(theme_minimal())
 ```
 
 ``` r
 MetBrewer::colorblind_palettes
-```
 
-     [1] "Archambault" "Cassatt1"    "Cassatt2"    "Demuth"      "Derain"     
-     [6] "Egypt"       "Greek"       "Hiroshige"   "Hokusai2"    "Hokusai3"   
-    [11] "Ingres"      "Isfahan1"    "Isfahan2"    "Java"        "Johnson"    
-    [16] "Kandinsky"   "Morgenstern" "OKeeffe1"    "OKeeffe2"    "Pillement"  
-    [21] "Tam"         "Troy"        "VanGogh3"    "Veronese"   
-
-``` r
 met.brewer(MetBrewer::colorblind_palettes[24])
 ```
-
-![](02_2_periodicals_overview.markdown_strict_files/figure-markdown_strict/unnamed-chunk-2-1.png)
 
 ## Data compilation
 
@@ -396,8 +375,8 @@ counter_1835 %>% pivot_wider(names_from = year, values_from = n)
 p2_2_1 <- counter_1835 %>%
     ggplot(aes(x = year, y = n, fill = group)) + 
     geom_col(position = "dodge", width = 0.6) + 
-    scale_fill_manual(values = c(met.brewer("Veronese")[7], # dark blue
-                                 met.brewer("Veronese")[4], # light blue
+    scale_fill_manual(values = c(met.brewer("Veronese")[5], # dark green
+                                 met.brewer("Veronese")[3], # light yellow
                                  met.brewer("Veronese")[1] # dark red
                                 )) + 
     scale_x_continuous(breaks = 1835:1840) +
@@ -414,8 +393,35 @@ p2_2_1
 
 ![](02_2_periodicals_overview.markdown_strict_files/figure-markdown_strict/unnamed-chunk-14-1.png)
 
+#### bw version
+
 ``` r
-ggsave(file = "plots/Fig_2_2_1.png", plot = p2_2_1, dpi = 300,
+p2_2_1 <- counter_1835 %>%
+    ggplot(aes(x = year, y = n, fill = group)) + 
+    geom_col(position = "dodge", width = 0.6) + 
+    scale_fill_manual(values = c("grey40",
+                                 "grey75",
+                                 "grey20"
+                                )) + 
+    scale_x_continuous(breaks = 1835:1840) +
+    theme(axis.text = element_text(size = 14),
+         axis.title = element_text(size = 16),
+         legend.title = element_text(size = 16, face = "bold"),
+         legend.text = element_text(size = 14)) + 
+    labs(x = "Год",
+        y = "Количество текстов",
+        fill = "Корпус")
+
+p2_2_1
+```
+
+![](02_2_periodicals_overview.markdown_strict_files/figure-markdown_strict/unnamed-chunk-15-1.png)
+
+``` r
+ggsave(file = "plots/Fig_2-2-1.png", plot = p2_2_1, dpi = 300,
+      width = 8, height = 6, bg = "white")
+
+ggsave(file = "plots/bw/Fig_2-2-1.png", plot = p2_2_1, dpi = 300,
       width = 8, height = 6, bg = "white")
 ```
 
@@ -429,32 +435,8 @@ Analysis of poems published in different sources (journals & newspapers)
 and by different authors
 
 ``` r
-glimpse(per)
-```
+# glimpse(per)
 
-    Rows: 1,905
-    Columns: 19
-    $ text_id       <chr> "P_1", "P_10", "P_100", "P_1000", "P_1001", "P_1002", "P…
-    $ source_id     <chr> "Per_1", "Per_2", "Per_3", "Per_4", "Per_4", "Per_4", "P…
-    $ A_ID          <chr> "", "A_50", "A_7", "A_41", "A_139", "A_11", "A_163", "A_…
-    $ text_title    <chr> "Солдатская песня", "Молния", "Ночлег чумаков", "Утешите…
-    $ text_subtitle <chr> "", "", "Сельские картины", "", "", "", "", "", "", "", …
-    $ first_line    <chr> "Ох жизнь, молодецкая", "Зачем с небесной высоты", "В бл…
-    $ text_page     <chr> "C. 46", "C. 21", "C. 9-12", "C. 172-174", "C. 175-176",…
-    $ corpus        <chr> "per", "per", "per", "per", "per", "per", "per", "per", …
-    $ meter         <chr> "Other", "Iamb", "Iamb", "Iamb", "Trochee", "Iamb", "Tro…
-    $ feet          <chr> "other", "3", "4", "4", "4", "4", "other", "4", "6", "5"…
-    $ n_lines       <int> 38, 16, 98, 77, 28, 12, 44, 25, 31, 28, 100, 16, 17, 60,…
-    $ book_title    <chr> "Сев_пч", "БдЧ", "БдЧ", "Совр", "Совр", "Совр", "Совр", …
-    $ year          <int> 1835, 1835, 1836, 1838, 1838, 1838, 1838, 1838, 1838, 18…
-    $ text_lemm     <chr> "ох, жизнь молодецкий,\nбравый, солдатский!\nкак осенний…
-    $ author_text   <chr> "", "Якубович Л.А.", "Кольцов А.В.", "Глинка Ф.Н.", "Про…
-    $ RP_loc        <chr> "", "", "3-33", "1-578", "5-151", "5", "2-13", "1-578", …
-    $ author_sex    <chr> "", "m", "m", "m", "m", "m", "m", "m", "m", "m", "m", "f…
-    $ year_birth    <chr> "", "1805", "1809", "1786", "1810", "1799", "1812", "178…
-    $ year_death    <chr> "", "1839", "1842", "1880", "1857", "1837", "1848", "188…
-
-``` r
 per <- per %>% 
   rename(PER_ID = book_title)
 
@@ -478,20 +460,31 @@ rm(names)
 ### Plot 2.2.2
 
 ``` r
+lbl <- per %>% 
+  filter(!PER_ID %in% c("Молва", "Сев_пч", "Телескоп")) %>% 
+  group_by(per_name) %>% 
+  count() %>% 
+  mutate(lable = paste0(per_name, " (", n, ")")) %>% 
+  select(-n)
+```
+
+``` r
 per %>% 
   filter(!PER_ID %in% c("Молва", "Сев_пч", "Телескоп")) %>% 
   group_by(year, per_name) %>% 
   count() %>% 
-  ggplot(aes(x = year, y = n, fill = per_name)) + 
+  left_join(lbl, by = "per_name") %>% 
+  ggplot(aes(x = year, y = n, fill = lable)) + 
   geom_col() + 
   geom_text(aes(x = year, y = n, label = n), 
             position = position_stack(vjust = .5), 
             color = "white") + 
   scale_x_continuous(breaks = 1835:1840) +
-  scale_fill_manual(values = c(met.brewer("Veronese")[1:2], 
+  scale_fill_manual(values = c(met.brewer("Veronese")[1], 
+                               met.brewer("Veronese")[3],
                                met.brewer("Veronese")[4:5],
                                met.brewer("Veronese")[7],
-                               met.brewer("Veronese")[3],
+                               met.brewer("Veronese")[2],
                                met.brewer("Johnson")[4],
                                met.brewer("Kandinsky")[3])) + 
   theme(axis.text = element_text(size = 14),
@@ -501,10 +494,52 @@ per %>%
   labs(x = "Год", y = "Количество текстов", fill = "")
 ```
 
-![](02_2_periodicals_overview.markdown_strict_files/figure-markdown_strict/unnamed-chunk-18-1.png)
+![](02_2_periodicals_overview.markdown_strict_files/figure-markdown_strict/unnamed-chunk-20-1.png)
+
+#### bw version
 
 ``` r
-ggsave(file = "plots/Fig_2_2_2.png", plot = last_plot(), dpi = 300,
+per %>% 
+  filter(!PER_ID %in% c("Молва", "Сев_пч", "Телескоп")) %>% 
+  group_by(year, per_name) %>% 
+  count() %>% 
+  left_join(lbl, by = "per_name") %>% 
+  #filter(per_name %in% c("БдЧ", "ЛПРИ/ЛГ", "Маяк", "МН", "ОЗ")) %>% 
+  ggplot(aes(x = year, y = n, fill = lable)) + 
+  geom_col_pattern(aes(pattern = lable, 
+                       pattern_angle = lable,
+                       pattern_density = lable),
+                   #pattern = 'pch',
+                   fill = 'white',
+                   colour = 'black', 
+                   #pattern_density = 0.5, 
+                   pattern_fill = 'white',
+                   pattern_colour  = 'black',
+                   pattern_spacing = 0.02) +
+  
+  scale_pattern_manual(values=c('stripe', 'circle', 'stripe', 'stripe', 'pch',
+                             'stripe', 'pch', 'stripe'
+                             )) +
+  # scale_pattern_type_manual(values=c(NA, NA, NA, 'triangle', 'sine')) 
+  # 
+  geom_label(aes(x = year, y = n, label = n, group = lable),
+            position = position_stack(vjust=0.5),
+            fill = "white"
+            ) +
+  scale_x_continuous(breaks = 1835:1840) +
+  #scale_fill_manual(values = c()) +
+  theme(axis.text = element_text(size = 14),
+         axis.title = element_text(size = 16),
+         #legend.title = element_text(size = 16, face = "bold"),
+         legend.title = element_blank(),
+         legend.text = element_text(size = 14)) +
+  labs(x = "Год", y = "Количество текстов")
+```
+
+![](02_2_periodicals_overview.markdown_strict_files/figure-markdown_strict/unnamed-chunk-21-1.png)
+
+``` r
+ggsave(file = "plots/bw/Fig_2-2-2.png", plot = last_plot(), dpi = 300,
       width = 8, height = 6, bg = "white")
 ```
 
@@ -1690,7 +1725,7 @@ per %>%
     geom_col(position = "dodge")
 ```
 
-![](02_2_periodicals_overview.markdown_strict_files/figure-markdown_strict/unnamed-chunk-46-1.png)
+![](02_2_periodicals_overview.markdown_strict_files/figure-markdown_strict/unnamed-chunk-49-1.png)
 
 ``` r
 per %>% 

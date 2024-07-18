@@ -23,11 +23,11 @@ theme_set(theme_minimal())
 #showtext_auto()
 ```
 
-Load RNC data
+Load RNC data (not publicly available)
 
 ```{r}
 load("../../data/nkrja_19th_lem.Rda")
-glimpse(c19)
+# glimpse(c19)
 ```
 
 Create 1830-1840 and 1835-1840 sets
@@ -288,7 +288,7 @@ per_authors %>%
     mutate(perc = round( n/nrow(per)*100 ,2)) %>% head(20)
 ```
 
-### Plot 2.1
+### Plot 2.1.1
 
 ```{r}
 rankings_full <- rbind(per_authors, rankings_nkrja)
@@ -297,10 +297,11 @@ rankings_full <- rbind(per_authors, rankings_nkrja)
 ```{r}
 p1 <- rankings_full %>% 
     ggplot(aes(x = rank, y = n, group = group, color = group)) + 
-    geom_line(linewidth = 1.2, alpha = 0.8) + 
+    geom_line(aes(lty = group), linewidth = 1.2, alpha = 0.8,
+              show.legend = T) + 
     scale_color_manual(values = c(met.brewer("Veronese")[1], 
                                   met.brewer("Veronese")[3], 
-                                  met.brewer("Veronese")[4])) +
+                                  met.brewer("Veronese")[6])) +
     theme(axis.text = element_text(size = 14), 
           axis.title = element_text(size = 16),
           legend.text = element_text(size = 14), 
@@ -332,7 +333,12 @@ p_ru <- p1 + geom_label_repel(data = top3, aes(x = rank, y = n, label = author),
     geom_point(data = top3) + 
     labs(x = "Ранг автора (по количеству текстов)", 
          y = "Количество текстов", 
-         color = "Корпус")
+         color = "",
+         lty = "") + 
+  theme(legend.position = "bottom") + 
+  guides(colour = guide_legend(show = TRUE))
+
+p_ru
 ```
 
 ```{r, eval=FALSE}
@@ -340,10 +346,42 @@ ggsave(file = "plots/Fig_2-1-1.png", plot = p_ru,
       dpi = 300, height = 7, width = 10, bg = "white")
 ```
 
-nb: probably paste the legend inside plot area? (upper right corner)
-
 ```{r}
 p_ru
+```
+
+#### Plot 2.1.1. bw version
+
+```{r}
+p1 <- rankings_full %>% 
+    ggplot(aes(x = rank, y = n, group = group, color = group)) + 
+    geom_line(aes(lty = group), linewidth = 1.2, alpha = 0.8,
+              show.legend = T) + 
+    scale_color_manual(values = c("gray60",
+                                  "gray80",
+                                  "gray10")) +
+    theme(axis.text = element_text(size = 14), 
+          axis.title = element_text(size = 16),
+          legend.text = element_text(size = 14), 
+          legend.title = element_text(size = 14, face = "bold")) 
+
+p_ru <- p1 + geom_label_repel(data = top3, aes(x = rank, y = n, label = author),
+                      size = 5,
+                      point.padding = 0.5, 
+                     nudge_x = 80, nudge_y = -10, 
+                     arrow = arrow(length = unit(0.015, 'npc'))) + 
+    geom_point(data = top3) + 
+    labs(x = "Ранг автора (по количеству текстов)", 
+         y = "Количество текстов", 
+         color = "",
+         lty = "") + 
+  theme(legend.position = "bottom") + 
+  guides(colour = guide_legend(show = TRUE))
+
+p_ru
+
+# ggsave(file = "plots/bw/Fig_2-1-1.png", plot = p_ru, 
+#       dpi = 300, height = 7, width = 10, bg = "white")
 ```
 
 ### Distribution of texts in periodicals

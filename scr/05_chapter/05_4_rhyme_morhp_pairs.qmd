@@ -13,7 +13,8 @@ library(tidyverse)
 library(tidytext)
 
 library(MetBrewer)
-library(patchwork)
+# library(patchwork)
+library(cowplot)
 theme_set(theme_minimal())
 ```
 
@@ -60,7 +61,7 @@ glimpse(rhyme_pairs)
 Rhyme words
 
 ```{r}
-rhyme_words <- read.csv("../../data/corpus1835/sql_db/rhyme_words_upd.csv", 
+rhyme_words <- read.csv("../../data/corpus1835/sql_db/rhyme_words.csv", 
                         
                         # DON'T LET R EAT IAMBS AND DO INTEGER 01 => 1
                         colClasses = c("stress_pattern" = "character",
@@ -683,7 +684,7 @@ cor(r$rank_tr[1:90], r$rnc_rank_tr[1:90], method = "kendall")
 
 Network:
 
-from, to, corpus, meter, clausula(?)
+from, to, corpus, meter, clausula
 
 NOUN_2 - NOUN_3 , filter n = 1
 
@@ -701,7 +702,7 @@ summary(all_masc_ranks)
 
 Rename nodes
 
-```{r, eval=FALSE}
+```{r, eval=FALSE, include=FALSE}
 all_fem_ranks %>% 
   select(pos_pair) %>% 
   mutate(pos_pair = ifelse(str_detect(pos_pair, "NOUN"), 
@@ -887,6 +888,34 @@ net_t %>%
 
 ```{r, eval=FALSE}
 ggsave("plots/fig_5-2-1.png", plot = last_plot(), dpi = 300, 
+       bg = "white", width = 16, height = 14)
+```
+
+BW
+
+```{r, eval=FALSE}
+net_t %>% 
+  ggraph(layout = 'linear', circular = TRUE) +
+  #ggraph(layout = "kk") + 
+  geom_edge_arc(aes(width = value, #color = corpus, 
+                     color = value,
+                     alpha = value)) + 
+  geom_edge_loop(aes(width = value, #color = corpus, 
+                     color = value,
+                     alpha = value)) + 
+  geom_node_point(
+    size = 4,
+    color = "grey8"
+    ) + 
+  geom_node_text(aes(label = source), vjust = 1.5, hjust = -0.1,
+                 size = 6, fontface = "bold") + 
+  facet_wrap(~corpus_r) + 
+  scale_edge_color_continuous(low = "grey60", high = "grey10") + 
+  theme(legend.position = "None",
+        text = element_text(size = 28),
+        panel.spacing.y = unit(6, "lines"))
+
+ggsave("plots/bw/fig_5-2-1.png", plot = last_plot(), dpi = 300, 
        bg = "white", width = 16, height = 14)
 ```
 

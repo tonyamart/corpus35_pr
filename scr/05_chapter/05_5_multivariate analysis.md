@@ -8,13 +8,17 @@ library(tidyverse)
 
     Warning: package 'ggplot2' was built under R version 4.3.1
 
+    Warning: package 'tidyr' was built under R version 4.3.1
+
+    Warning: package 'dplyr' was built under R version 4.3.1
+
     Warning: package 'lubridate' was built under R version 4.3.1
 
     ── Attaching core tidyverse packages ──────────────────────── tidyverse 2.0.0 ──
-    ✔ dplyr     1.1.3     ✔ readr     2.1.4
+    ✔ dplyr     1.1.4     ✔ readr     2.1.4
     ✔ forcats   1.0.0     ✔ stringr   1.5.0
-    ✔ ggplot2   3.4.4     ✔ tibble    3.2.1
-    ✔ lubridate 1.9.3     ✔ tidyr     1.3.0
+    ✔ ggplot2   3.5.1     ✔ tibble    3.2.1
+    ✔ lubridate 1.9.3     ✔ tidyr     1.3.1
     ✔ purrr     1.0.2     
     ── Conflicts ────────────────────────────────────────── tidyverse_conflicts() ──
     ✖ dplyr::filter() masks stats::filter()
@@ -37,7 +41,7 @@ theme_set(theme_minimal())
 ### Corpus-1835
 
 ``` r
-rhyme_words <- read.csv("../../data/corpus1835/sql_db/rhyme_words_upd.csv", 
+rhyme_words <- read.csv("../../data/corpus1835/sql_db/rhyme_words.csv", 
                         
                         # DON'T LET R EAT IAMBS AND DO INTEGER 01 => 1
                         colClasses = c("stress_pattern" = "character",
@@ -127,18 +131,18 @@ c35_rw <- rw %>%
 sample_n(c35_rw, 5)
 ```
 
-       text_id  corpus      meter    author_name      word      lemma closure
-    1 C_142__3 c1835_C       Iamb  Бороздна И.П.  покорный   покорный     fem
-    2 C_92__45 c1835_C       Iamb Жуковский В.А.    таится    таиться     fem
-    3    P_574 c1835_P       Iamb   Хомяков А.С.      уста       уста    masc
-    4    P_533 c1835_P    Trochee  Якубович Л.А.    горела     гореть     fem
-    5   P_1902 c1835_P Amphibrach           <NA> склонился склоняться     fem
+       text_id  corpus   meter     author_name        word       lemma closure
+    1 C_101__3 c1835_C    Iamb     Кашкин Д.Е.       своей        свой    masc
+    2   P_1352 c1835_P    Iamb            <NA>     прольет   проливать    masc
+    3     P_93 c1835_P Trochee Бенедиктов В.Г.       брошу     бросать     fem
+    4   P_1247 c1835_P Trochee  Кронеберг А.И.    скрывала    скрывать     fem
+    5 C_92__47 c1835_C    Iamb  Жуковский В.А. примиритель примиритель     fem
       ending_st pos_syl
-    1    о'рный   ADJ_3
-    2     и'тся  VERB_3
-    3       та'  NOUN_2
-    4      е'ла  VERB_3
-    5     и'лся  VERB_3
+    1       е'й  PRON_2
+    2       ё'т  VERB_2
+    3      о'шу  VERB_2
+    4      а'ла  VERB_3
+    5    и'тель  NOUN_4
 
 ``` r
 rm(authors_meta, lemm, meta, pos_transl, w, w1, w2, rhyme_pairs, rhyme_words, rw)
@@ -361,9 +365,11 @@ s <- rhyme_words %>%
   sample_n(10000)
 
 mfw <- s %>% 
-  filter(word %in% masc_MFW_50$word | word %in% fem_MFW_50$word) %>% 
-  count(word) %>% 
-  pivot_wider(names_from = word, values_from = n, values_fill = 0)
+  filter(word %in% masc_MFW_50$lemma | word %in% fem_MFW_50$lemma) %>% 
+  count(lemma) %>% 
+  pivot_wider(names_from = lemma, values_from = n, values_fill = 0)
+
+# mfw
 
 mfw[,1:7]
 ```
@@ -663,25 +669,25 @@ x
 
     # A tibble: 60 × 237
     # Groups:   author_name [20]
-       author_name        блистать   бог   век венец  взор внимать  вода волна    вы
-       <chr>                 <int> <int> <int> <int> <int>   <int> <int> <int> <int>
-     1 "Батюшков К. Н. "         2     1     2     1     2       1     2     1     3
-     2 "Бенедиктов В.Г."         2     0     1     6     3       0     2     5     2
-     3 "Бернет Е."               2     3     3     2     0       0     3     7     0
-     4 "Бороздна И.П."           1     1     4     0     4       1     5     3     1
-     5 "Дельвиг А. А. "          1     9     1     2     1       0     1     1     8
-     6 "Державин Г. Р. "         2     6     3     1     8       2     1     5     1
-     7 "Дмитриев И. И. "         1     7     0     2     4       1     2     0     5
-     8 "Крылов И. А. "           0     3     0     0     1       0     6     0     2
-     9 "Мейснер А."              1     4     2     0     2       0     1     1     0
-    10 "Мерзляков А. Ф. "        3     6     4     1     3       3     0     2     1
+       author_name    бог  быть   век венец внимать  вода волна    вы говорить   год
+       <chr>        <int> <int> <int> <int>   <int> <int> <int> <int>    <int> <int>
+     1 "Батюшков К…     3     1     1     1       1     2     5     2        4     1
+     2 "Бенедиктов…     0     1     2     2       2     2     4     0        0     0
+     3 "Бернет Е."      4     5     1     2       1     2     1     1        6     9
+     4 "Бороздна И…     0     3     1     0       1     5     1     1        0     1
+     5 "Дельвиг А.…     5     1     0     2       1     0     2     2        4     6
+     6 "Державин Г…     6     5     2     3       1     4     3     0        1     1
+     7 "Дмитриев И…     4     8     1     2       1     5     0     6        4     8
+     8 "Крылов И. …     3    11     0     0       0     2     1     1        3     3
+     9 "Мейснер А."     4     5     2     0       1     2     3     1        0     8
+    10 "Мерзляков …     6     6     1     0       3     0     2     3        5     3
     # ℹ 50 more rows
-    # ℹ 227 more variables: говорить <int>, год <int>, гора <int>, грудь <int>,
-    #   день <int>, дорога <int>, друг <int>, душа <int>, желать <int>, жить <int>,
-    #   земля <int>, знать <int>, красота <int>, лететь <int>, любить <int>,
-    #   любовь <int>, мечта <int>, мечтание <int>, мир <int>, могила <int>,
-    #   мой <int>, молодой <int>, море <int>, мы <int>, наслаждение <int>,
-    #   небесный <int>, небо <int>, нет <int>, огонь <int>, один <int>, …
+    # ℹ 226 more variables: гора <int>, грудь <int>, давать <int>, день <int>,
+    #   дорога <int>, друг <int>, душа <int>, желать <int>, забывать <int>,
+    #   земля <int>, знать <int>, золотой <int>, красота <int>, лететь <int>,
+    #   любить <int>, любовь <int>, мечта <int>, мечтание <int>, мир <int>,
+    #   могила <int>, мой <int>, молодой <int>, море <int>, мы <int>,
+    #   наслаждение <int>, небо <int>, нет <int>, ночь <int>, огонь <int>, …
 
 ``` r
 dim(x)
@@ -736,6 +742,7 @@ Same without words
 
 ``` r
 x <- NULL
+s <- NULL
 
 for (i in 1:3) {
   # take a sample
@@ -748,12 +755,6 @@ for (i in 1:3) {
     group_by(author_name) %>% 
     sample_n(1000)
 
-  # calculate inside the sample:
-  # mfw <- s %>% 
-  #   filter(lemma %in% masc_MFW_50$lemma | lemma %in% fem_MFW_50$lemma) %>% 
-  #   count(lemma) %>% 
-  #   pivot_wider(names_from = lemma, values_from = n, values_fill = 0)
-  # 
   mf_endings <- s %>% 
     filter(ending_st %in% masc_ending_50$ending_st | 
              ending_st %in% fem_ending_50$ending_st) %>% 
@@ -798,7 +799,11 @@ mtrx <- xxx %>%
   select(-author_name, -smpl) #%>% 
   #scale()
 
-u <- umap(mtrx)
+# u <- umap(mtrx)
+```
+
+``` r
+u <- readRDS("../../data/ch5/fig_5-3-1.Rds") # load projection used as Fig_5-3-1
 
 tibble(x = u$layout[,1],
        y = u$layout[,2],
@@ -822,11 +827,42 @@ tibble(x = u$layout[,1],
         legend.text = element_text(size = 12)) 
 ```
 
-![](05_5_multivariate-analysis.markdown_strict_files/figure-markdown_strict/unnamed-chunk-21-1.png)
+![](05_5_multivariate-analysis.markdown_strict_files/figure-markdown_strict/unnamed-chunk-22-1.png)
 
 ``` r
-ggsave("plots/fig_5-3-1_gr_nsc_fin.png", plot = last_plot(), dpi = 300, bg = "white",
+ggsave("plots/fig_5-3-1.png", plot = last_plot(), dpi = 300, bg = "white",
        width = 10, height = 7)
+```
+
+#### BW
+
+``` r
+tibble(x = u$layout[,1],
+       y = u$layout[,2],
+       author_name = xxx$author_name) %>%
+  left_join(authors_slctd %>% mutate(author_name = str_replace(author_name, 
+                                     "(^\\w\\. \\w\\. )(\\w+)$",
+                                     "\\2 \\1"
+                                     )), 
+            by = "author_name") %>% 
+  ggplot(aes(x, y, color = corpus)) + 
+  geom_text(aes(label = author_name), 
+            size = 4) + 
+  theme_bw() + 
+  scale_color_manual(values = c("black", "grey70")) + 
+  labs(x = "", y = "", color = "") + 
+  theme(legend.position = "bottom",
+        axis.title.x = element_blank(), 
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        legend.text = element_text(size = 12)) 
+
+ggsave("plots/bw/fig_5-3-1.png", plot = last_plot(), dpi = 300, bg = "white",
+       width = 10, height = 7)
+```
+
+``` r
+#saveRDS(u, file = "../../data/ch5/fig_5-3-1.Rds")
 ```
 
 ### MFW 200
@@ -867,6 +903,10 @@ head(fem_MFW_200)
 
 ``` r
 x <- NULL
+s <- NULL
+xxx <- NULL
+u <- NULL
+f <- NULL
 
 for (i in 1:3) {
   # take a sample
@@ -886,37 +926,6 @@ for (i in 1:3) {
      pivot_wider(names_from = lemma, values_from = n, values_fill = 0)
   
   
-  # mfw <- s %>%
-  #   filter(word %in% masc_MFW_100$word | word %in% fem_MFW_100$word) %>%
-  #   count(word) %>%
-  #   pivot_wider(names_from = word, values_from = n, values_fill = 0)
-
-  # mf_endings <- s %>% 
-  #   filter(ending_st %in% masc_ending_50$ending_st | 
-  #            ending_st %in% fem_ending_50$ending_st) %>% 
-  #   count(ending_st) %>% 
-  #   pivot_wider(names_from = ending_st, values_from = n, values_fill = 0)
-  # 
-  # mf_possyl_masc <- s %>% 
-  #   filter(closure == "masc") %>% 
-  #   mutate(pos_syl = paste0(pos_syl, "_masc")) %>% 
-  #   filter(pos_syl %in% masc_possyl_25$pos_syl) %>% 
-  #   count(pos_syl) %>% 
-  #   pivot_wider(names_from = pos_syl, values_from = n, values_fill = 0)
-  # 
-  # mf_possyl_fem <- s %>% 
-  #   filter(closure == "fem") %>% 
-  #   mutate(pos_syl = paste0(pos_syl, "_fem")) %>% 
-  #   filter(pos_syl %in% fem_possyl_25$pos_syl) %>% 
-  #   count(pos_syl) %>% 
-  #   pivot_wider(names_from = pos_syl, values_from = n, values_fill = 0)
-  
-  
-  # bind together
-  # f <- cbind(#mfw, 
-  #   mf_endings, mf_possyl_masc[, -1], mf_possyl_fem[, -1])
-  
-  
   f <- mfw %>% 
     mutate(smpl = i)
   
@@ -927,11 +936,8 @@ for (i in 1:3) {
   
 x[is.na(x)] <- 0
 dim(x)
-```
 
-    [1]  60 336
 
-``` r
 xxx <- x
   
 # matrix
@@ -940,7 +946,11 @@ mtrx <- xxx %>%
   select(-author_name, -smpl) #%>% 
   #scale()
 
-u <- umap(mtrx)
+# u <- umap(mtrx)
+```
+
+``` r
+u <- readRDS("../../data/ch5/fig_5-3-2.Rds") # load projection used as Fig_5-3-2
 
 tibble(x = u$layout[,1],
        y = u$layout[,2],
@@ -963,14 +973,40 @@ tibble(x = u$layout[,1],
         legend.text = element_text(size = 12)) 
 ```
 
-![](05_5_multivariate-analysis.markdown_strict_files/figure-markdown_strict/unnamed-chunk-24-1.png)
+![](05_5_multivariate-analysis.markdown_strict_files/figure-markdown_strict/unnamed-chunk-28-1.png)
 
 ``` r
-ggsave("plots/fig_5-3-1_lemmata_nsc_fin.png", plot = last_plot(), dpi = 300, bg = "white",
+ggsave("plots/fig_5-3-2.png", plot = last_plot(), dpi = 300, bg = "white",
        width = 10, height = 7)
 ```
 
-### 
+#### BW
+
+``` r
+tibble(x = u$layout[,1],
+       y = u$layout[,2],
+       author_name = xxx$author_name) %>%
+  left_join(authors_slctd %>% mutate(author_name = str_replace(author_name, 
+                                     "(^\\w\\. \\w\\. )(\\w+)$",
+                                     "\\2 \\1"
+                                     )) , by = "author_name") %>% 
+  ggplot(aes(x, y, color = corpus)) + 
+  geom_text(aes(label = author_name), 
+            size = 4) + 
+  theme_bw() + 
+  scale_color_manual(values = c("black", "grey70")) + 
+  labs(x = "", y = "", color = "") + 
+  theme(legend.position = "bottom",
+        axis.title.x = element_blank(), 
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        legend.text = element_text(size = 12)) 
+
+ggsave("plots/bw/fig_5-3-2.png", plot = last_plot(), dpi = 300, bg = "white",
+       width = 10, height = 7)
+
+# saveRDS(u, file = "../../data/ch5/fig_5-3-2.Rds")
+```
 
 ## Larger set of authors
 
@@ -1101,7 +1137,7 @@ tibble(x = u$layout[,1],
         legend.text = element_text(size = 12)) 
 ```
 
-![](05_5_multivariate-analysis.markdown_strict_files/figure-markdown_strict/unnamed-chunk-27-1.png)
+![](05_5_multivariate-analysis.markdown_strict_files/figure-markdown_strict/unnamed-chunk-32-1.png)
 
 Words
 
@@ -1197,7 +1233,7 @@ tibble(x = u$layout[,1],
         legend.text = element_text(size = 12))
 ```
 
-![](05_5_multivariate-analysis.markdown_strict_files/figure-markdown_strict/unnamed-chunk-28-1.png)
+![](05_5_multivariate-analysis.markdown_strict_files/figure-markdown_strict/unnamed-chunk-33-1.png)
 
 all
 
@@ -1259,25 +1295,25 @@ x
 
     # A tibble: 54 × 227
     # Groups:   author_name [27]
-       author_name      бог  быть вдохновение   век  взор  вода волна говорить грудь
-       <chr>          <int> <int>       <int> <int> <int> <int> <int>    <int> <int>
-     1 Алексеев П.Ф.      3     3           1     2     4     6     7        5     4
-     2 Анонимы            3     4           1     2     3     7     5        2     1
-     3 Бакунин И.М.       1     4           2     3     2     0    14        3     0
-     4 Баратынский Е…     4     1           2     1     2     3     2        2     0
-     5 Башкатов А.        3     7           0     5     1     1     0        2     1
-     6 Бенедиктов В.…     0     2           2     3     3     3     2        1     7
-     7 Бернет Е.          2     2           0     4     1     0     5        8     2
-     8 Бороздна И.П.      0     3           3     5     4     5     1        1     0
-     9 Быстроглазов …     0     6           0     2     4     0     1        0     0
-    10 Демидов М.А.       0     6           6     0     1     2     3        0     1
+       author_name      бог  быть вдохновение   век венец  взор  вода волна говорить
+       <chr>          <int> <int>       <int> <int> <int> <int> <int> <int>    <int>
+     1 Алексеев П.Ф.      4     3           1     1     1     4     1     5        3
+     2 Анонимы            5     1           0     1     0     2     1     6        3
+     3 Бакунин И.М.       1     4           0     6     2     3     1     8        3
+     4 Баратынский Е…     3     0           2     1     2     3     2     0        2
+     5 Башкатов А.        4     9           0     5     3     3     2     0        1
+     6 Бенедиктов В.…     1     1           1     1     4     2     3     5        1
+     7 Бернет Е.          1     4           1     3     0     1     2     5        2
+     8 Бороздна И.П.      2     2           2     4     0     8     6     2        0
+     9 Быстроглазов …     1     7           0     0     1     3     1     3        1
+    10 Демидов М.А.       1     1           8     1     0     2     1     3        0
     # ℹ 44 more rows
-    # ℹ 217 more variables: давать <int>, день <int>, дорога <int>, друг <int>,
-    #   душа <int>, земля <int>, золотой <int>, красота <int>, лететь <int>,
-    #   лира <int>, любить <int>, любовь <int>, мечта <int>, мир <int>,
-    #   могила <int>, мой <int>, молодой <int>, море <int>, небесный <int>,
-    #   небо <int>, ночь <int>, огонь <int>, один <int>, око <int>, он <int>,
-    #   она <int>, петь <int>, печаль <int>, покой <int>, поле <int>, …
+    # ℹ 217 more variables: грудь <int>, давать <int>, день <int>, дорога <int>,
+    #   друг <int>, душа <int>, забывать <int>, земля <int>, знать <int>,
+    #   золотой <int>, красота <int>, лететь <int>, лира <int>, любить <int>,
+    #   любовь <int>, мечта <int>, мир <int>, могила <int>, мой <int>,
+    #   молодой <int>, море <int>, небесный <int>, небо <int>, ночь <int>,
+    #   огонь <int>, один <int>, око <int>, он <int>, она <int>, петь <int>, …
 
 ``` r
 dim(x)
@@ -1294,7 +1330,13 @@ mtrx <- xxx %>%
   select(-author_name, -smpl) %>% 
   scale()
 
-u <- umap(mtrx)
+# u <- umap(mtrx)
+
+# saveRDS(u, file = "../../data/ch5/fig_5-3-3.Rds")
+```
+
+``` r
+u <- readRDS("../../data/ch5/fig_5-3-3.Rds")
 
 tibble(x = u$layout[,1],
        y = u$layout[,2],
@@ -1319,9 +1361,38 @@ tibble(x = u$layout[,1],
         legend.text = element_text(size = 12))
 ```
 
-![](05_5_multivariate-analysis.markdown_strict_files/figure-markdown_strict/unnamed-chunk-29-1.png)
+![](05_5_multivariate-analysis.markdown_strict_files/figure-markdown_strict/unnamed-chunk-35-1.png)
 
 ``` r
-ggsave("plots/fig_5-3-3_b.png", plot = last_plot(), dpi = 300, bg = "white",
+ggsave("plots/fig_5-3-3.png", plot = last_plot(), dpi = 300, bg = "white",
+       width = 10, height = 7)
+```
+
+#### BW
+
+``` r
+tibble(x = u$layout[,1],
+       y = u$layout[,2],
+       author_name = xxx$author_name) %>%
+  left_join(authors_slctd #%>% mutate(author_name = str_replace(author_name, 
+                                     #"(^\\w\\. \\w\\. )(\\w+)$",
+                                     #"\\2 \\1"
+                                     #))
+            , 
+            by = "author_name") %>% 
+  ggplot(aes(x, y, color = corpus)) + 
+  geom_text(aes(label = author_name), 
+            size = 4) + 
+  theme_bw() + 
+  scale_color_manual(values = c("grey70",
+                                "black")) +
+  labs(x = "", y = "", color = "") + 
+  theme(legend.position = "None",
+        axis.title.x = element_blank(), 
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        legend.text = element_text(size = 12))
+
+ggsave("plots/bw/fig_5-3-3.png", plot = last_plot(), dpi = 300, bg = "white",
        width = 10, height = 7)
 ```

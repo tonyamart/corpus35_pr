@@ -11,7 +11,8 @@ library(tidyverse)
 library(tidytext)
 
 library(MetBrewer)
-library(patchwork)
+# library(patchwork)
+library(cowplot)
 theme_set(theme_minimal())
 ```
 
@@ -111,7 +112,18 @@ glimpse(rhymes)
 table(rhymes$corpus) # quick check in the number of rhymes found
 ```
 
-### table 5-1-1: Pull top 5 rhymes in each year
+### Overview
+
+#### most frequent rhymes
+
+```{r}
+rhymes_1835 %>% 
+  count(rhyme_alph, sort = T) %>% 
+  mutate(perc = round((n / nrow(rhymes_1835)) * 100, 3 )) %>% 
+  head(10)
+```
+
+#### top 5 rhymes in each year
 
 ```{r}
 total_year <- rhymes_1835 %>% 
@@ -183,7 +195,7 @@ rhyme_words <- rbind(w1, w2)
 Attach data about rhyme words endings
 
 ```{r}
-rhyme_words_meta <- read_csv("../../data/corpus1835/sql_db/rhyme_words_upd.csv")
+rhyme_words_meta <- read_csv("../../data/corpus1835/sql_db/rhyme_words.csv")
 
 rhyme_words <- rhyme_words %>% 
   left_join(rhyme_words_meta %>% select(word, closure), by = "word") 
@@ -193,7 +205,7 @@ rm(rhyme_words_meta, w1, w2)
 
 Count percent of pairs in each poem
 
-```{r}
+```{r, eval=FALSE}
 # calculate total number of FOUND rhymes in each poem
 
 total_id <- rhyme_words %>% 
@@ -251,7 +263,7 @@ rhyme_words %>%
 
 Text ids for mostly feminine rhymes
 
-```{r}
+```{r, eval=FALSE}
 rhyme_words %>% 
   filter(!is.na(closure) & closure != "other") %>% 
   # attach total number of lines in the poem
@@ -294,7 +306,7 @@ write.csv(s, file = "mostly_fem_clausula.csv")
 
 Mostly masculine rhymes
 
-```{r}
+```{r, eval=FALSE}
 rhyme_words %>% 
   filter(!is.na(closure) & closure != "other") %>% 
   # attach total number of lines in the poem
@@ -378,25 +390,25 @@ w_freq <- rbind(unigram_freq_full, unigram_freq_rhymes,
       bigram_freq_full, bigram_freq_rhymes) %>% 
   group_by(group) %>% 
   mutate(rank = row_number()) %>% 
-  slice_head(n = 1000) %>% 
-  ggplot(aes(x = rank, y = n, group = group, color = group)) + 
-  geom_line() + 
+  #slice_head(n = 1000) %>% 
+  ggplot(aes(x = log(rank), y = log(n), group = group, color = group)) + 
+  geom_line(linewidth = 1) + 
   facet_wrap(~group, scales = "free") + 
   theme(legend.position = "None") + 
-  labs(x = "Ранг", y = "Частотность", 
+  labs(x = "Ранг (log)", y = "Частотность (log)", 
        title = "A. Распределение абсолютных частот") + 
-  scale_x_continuous(breaks = c(1, seq(250, 1000, 250))) + 
+  #scale_x_continuous(breaks = c(1, seq(250, 1000, 250))) + 
   scale_color_manual(values = c(met.brewer(name = "Veronese")[1],
                                 met.brewer(name = "Veronese")[2],
                                 met.brewer(name = "Veronese")[4],
                                 met.brewer(name = "Veronese")[6])) + 
   
-  # fill the area under the curve with colour
-  geom_area(aes(fill = group, group = group), alpha = 0.3) + 
-  scale_fill_manual(values = c(met.brewer(name = "Veronese")[1],
-                                met.brewer(name = "Veronese")[2],
-                                met.brewer(name = "Veronese")[4],
-                                met.brewer(name = "Veronese")[6])) + 
+  # # fill the area under the curve with colour
+  # geom_area(aes(fill = group, group = group), alpha = 0.3) + 
+  # scale_fill_manual(values = c(met.brewer(name = "Veronese")[1],
+  #                               met.brewer(name = "Veronese")[2],
+  #                               met.brewer(name = "Veronese")[4],
+  #                               met.brewer(name = "Veronese")[6])) + 
   theme(text = element_text(size = 12))
 
 w_freq
@@ -406,7 +418,7 @@ w_freq
 
 Rhyme words
 
-```{r}
+```{r, warning=FALSE}
 all_ranks <- rhyme_words %>% 
   count(word, sort = T) %>% 
   mutate(rel_freq_total = n / nrow(rhyme_words))
@@ -444,18 +456,6 @@ res <- as.data.frame(do.call(cbind, v)) %>%
 
 res %>% 
   select(V1:V5, word, Mean, SD, CV) %>% head()
-
-# cv_rhyme <- res %>% 
-#   #filter(rank < 2001) %>% 
-#   ggplot(aes(x = rank, y = CV)) + 
-#   geom_point(shape = 1, colour = met.brewer("Veronese")[6], alpha = 0.6) + 
-#   geom_vline(xintercept = 300, lty = 3) + 
-#   geom_smooth(colour = met.brewer("Veronese")[3]) + 
-#   labs(x = "", y = "Коэффициент вариации") + 
-#   scale_x_continuous(breaks = c(1, seq(1000, 4000, 1000))) + 
-#   theme(axis.line.x.bottom = element_line(colour = "black"),
-#         axis.line.y.left = element_line(colour = "black"), 
-#         text = element_text(size = 12))
 
 # subset for plot
 cv_rhymes <- res %>% 
@@ -516,7 +516,7 @@ cv_plt <- rbind(cv_rhymes, cv_all) %>%
   ggplot(aes(x = rank, y = CV, color = corpus)) + 
   geom_point(shape = 1, alpha = 0.6) + 
   geom_vline(xintercept = 300, lty = 3) + 
-  geom_smooth(color = met.brewer("Veronese")[3]) + 
+  geom_smooth(color = met.brewer("Veronese")[3], lty = 2) + 
   labs(x = "Ранг", y = "Коэффициент вариации",
        title = "Б. Коэффициент вариации") + 
   facet_wrap(~corpus, scales = "free", ncol = 1) + 
@@ -531,19 +531,68 @@ cv_plt <- rbind(cv_rhymes, cv_all) %>%
 cv_plt
 ```
 
-```{r}
-layout <- "
-AAAAAAA#BBBB
-AAAAAAA#BBBB
-AAAAAAA#BBBB
-AAAAAAA#BBBB
-"
+```{r, warning=FALSE}
+# layout <- "
+# AAAAAAA#BBBB
+# AAAAAAA#BBBB
+# AAAAAAA#BBBB
+# AAAAAAA#BBBB
+# "
+# 
+# w_freq + cv_plt + plot_layout(design = layout)
 
-w_freq + cv_plt + plot_layout(design = layout)
+plot_grid(w_freq, cv_plt, 
+          labels = NULL,
+          rel_widths = c(2,1),
+          ncol=2)
 ```
 
 ```{r, eval=FALSE}
 ggsave("plots/fig_5-1-1.png", plot = last_plot(), dpi = 300,
+       width = 10, height = 6, bg = "white")
+```
+
+#### bw version
+
+```{r, warning=FALSE, eval=FALSE}
+w_freq <- rbind(unigram_freq_full, unigram_freq_rhymes,
+      bigram_freq_full, bigram_freq_rhymes) %>% 
+  group_by(group) %>% 
+  mutate(rank = row_number()) %>% 
+  #slice_head(n = 1000) %>% 
+  ggplot(aes(x = log(rank), y = log(n), group = group, color = group)) + 
+  geom_line(linewidth = 1) + 
+  facet_wrap(~group, scales = "free") + 
+  theme(legend.position = "None") + 
+  labs(x = "Ранг (log)", y = "Частотность (log)", 
+       title = "A. Распределение абсолютных частот") + 
+  #scale_x_continuous(breaks = c(1, seq(250, 1000, 250))) + 
+  scale_color_manual(values = c("grey10", "grey10", "grey30", "grey30")) + 
+  
+  theme(text = element_text(size = 12))
+
+
+cv_plt <- rbind(cv_rhymes, cv_all) %>% 
+  ggplot(aes(x = rank, y = CV, color = corpus)) + 
+  geom_point(shape = 1, alpha = 0.6) + 
+  geom_vline(xintercept = 300, lty = 3) + 
+  geom_smooth(color = "grey80", lty = 2) + 
+  labs(x = "Ранг", y = "Коэффициент вариации",
+       title = "Б. Коэффициент вариации") + 
+  facet_wrap(~corpus, scales = "free", ncol = 1) + 
+  scale_x_continuous(breaks = c(1, seq(1000, 4000, 1000))) + 
+  scale_color_manual(values = c("grey10", "grey20")) + 
+  theme(# axis.line.x.bottom = element_line(colour = "black"),
+        # axis.line.y.left = element_line(colour = "black"), 
+        text = element_text(size = 12), 
+        legend.position = "None")
+
+plot_grid(w_freq, cv_plt, 
+          labels = NULL,
+          rel_widths = c(2,1),
+          ncol=2)
+
+ggsave("plots/bw/fig_5-1-1.png", plot = last_plot(), dpi = 300,
        width = 10, height = 6, bg = "white")
 ```
 
@@ -578,7 +627,7 @@ rhymes %>%
 
 Number of hapax legomena in each 5-year period in RNC
 
-```{r, message=FALSE, warning=FALSE}
+```{r, message=FALSE, warning=FALSE, eval=FALSE, include=FALSE}
 library(wesanderson)
 
 total_count <- rnc_rhymes %>% 
@@ -640,10 +689,10 @@ hapax_archive <- hapax_per_year %>%
 hapax_archive
 ```
 
-```{r}
+```{r, warning=FALSE, include=FALSE}
 # Discard unused vars
 rm(bigram_freq_full, bigram_freq_rhymes, hapax_archive, hapax_per_year,
-   total, total_count, unigram_freq_full, unigram_freq_rhymes)
+   total, total_count, unigram_freq_full, unigram_freq_rhymes, s)
 ```
 
 ## Fig. 5-1-2. RNC / C1835 - Random samples rhyme intersection
@@ -897,6 +946,34 @@ df %>%
 
 ```{r, eval=FALSE}
 ggsave(filename = "plots/fig_5-1-2.png", plot = last_plot(), dpi = 300,
+       width = 8, height = 6, bg = "white")
+```
+
+#### bw
+
+```{r, eval=FALSE}
+df %>% 
+  select(-rhymes_top, -a) %>% 
+  pivot_longer(!year_count) %>% 
+  mutate(name = ifelse(name == "n", "Всего пересечений", "Пересечений среди частотных рифм НКРЯ")) %>% 
+  ggplot(aes(x = as.factor(year_count), 
+             y = value, color = name)) + 
+  
+  geom_boxplot(position = "dodge") + 
+  
+  geom_point(position = position_jitterdodge(), alpha = 0.2) + 
+  
+  scale_color_manual(values = c("grey5", "grey70")) + 
+  expand_limits(y = c(0, 100)) + 
+  labs(x = "Год", 
+       y = "Число пересечений (из 100 возможных)",
+       color = "") +
+  theme(legend.position = "bottom", 
+        axis.text = element_text(size = 10),
+        axis.title = element_text(size = 12),
+        legend.text = element_text(size = 12))
+
+ggsave(filename = "plots/bw/fig_5-1-2.png", plot = last_plot(), dpi = 300,
        width = 8, height = 6, bg = "white")
 ```
 

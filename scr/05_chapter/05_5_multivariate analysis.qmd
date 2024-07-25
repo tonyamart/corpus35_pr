@@ -18,7 +18,7 @@ theme_set(theme_minimal())
 ### Corpus-1835
 
 ```{r}
-rhyme_words <- read.csv("../../data/corpus1835/sql_db/rhyme_words_upd.csv", 
+rhyme_words <- read.csv("../../data/corpus1835/sql_db/rhyme_words.csv", 
                         
                         # DON'T LET R EAT IAMBS AND DO INTEGER 01 => 1
                         colClasses = c("stress_pattern" = "character",
@@ -242,9 +242,11 @@ s <- rhyme_words %>%
   sample_n(10000)
 
 mfw <- s %>% 
-  filter(word %in% masc_MFW_50$word | word %in% fem_MFW_50$word) %>% 
-  count(word) %>% 
-  pivot_wider(names_from = word, values_from = n, values_fill = 0)
+  filter(word %in% masc_MFW_50$lemma | word %in% fem_MFW_50$lemma) %>% 
+  count(lemma) %>% 
+  pivot_wider(names_from = lemma, values_from = n, values_fill = 0)
+
+# mfw
 
 mfw[,1:7]
 ```
@@ -525,6 +527,7 @@ Same without words
 
 ```{r}
 x <- NULL
+s <- NULL
 
 for (i in 1:3) {
   # take a sample
@@ -537,12 +540,6 @@ for (i in 1:3) {
     group_by(author_name) %>% 
     sample_n(1000)
 
-  # calculate inside the sample:
-  # mfw <- s %>% 
-  #   filter(lemma %in% masc_MFW_50$lemma | lemma %in% fem_MFW_50$lemma) %>% 
-  #   count(lemma) %>% 
-  #   pivot_wider(names_from = lemma, values_from = n, values_fill = 0)
-  # 
   mf_endings <- s %>% 
     filter(ending_st %in% masc_ending_50$ending_st | 
              ending_st %in% fem_ending_50$ending_st) %>% 
@@ -587,7 +584,13 @@ mtrx <- xxx %>%
   select(-author_name, -smpl) #%>% 
   #scale()
 
-u <- umap(mtrx)
+# u <- umap(mtrx)
+
+
+```
+
+```{r}
+u <- readRDS("../../data/ch5/fig_5-3-1.Rds") # load projection used as Fig_5-3-1
 
 tibble(x = u$layout[,1],
        y = u$layout[,2],
@@ -612,8 +615,39 @@ tibble(x = u$layout[,1],
 ```
 
 ```{r, eval=FALSE}
-ggsave("plots/fig_5-3-1_gr_nsc_fin.png", plot = last_plot(), dpi = 300, bg = "white",
+ggsave("plots/fig_5-3-1.png", plot = last_plot(), dpi = 300, bg = "white",
        width = 10, height = 7)
+```
+
+#### BW
+
+```{r, eval=FALSE}
+tibble(x = u$layout[,1],
+       y = u$layout[,2],
+       author_name = xxx$author_name) %>%
+  left_join(authors_slctd %>% mutate(author_name = str_replace(author_name, 
+                                     "(^\\w\\. \\w\\. )(\\w+)$",
+                                     "\\2 \\1"
+                                     )), 
+            by = "author_name") %>% 
+  ggplot(aes(x, y, color = corpus)) + 
+  geom_text(aes(label = author_name), 
+            size = 4) + 
+  theme_bw() + 
+  scale_color_manual(values = c("black", "grey70")) + 
+  labs(x = "", y = "", color = "") + 
+  theme(legend.position = "bottom",
+        axis.title.x = element_blank(), 
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        legend.text = element_text(size = 12)) 
+
+ggsave("plots/bw/fig_5-3-1.png", plot = last_plot(), dpi = 300, bg = "white",
+       width = 10, height = 7)
+```
+
+```{r, eval=FALSE}
+#saveRDS(u, file = "../../data/ch5/fig_5-3-1.Rds")
 ```
 
 ### MFW 200
@@ -633,8 +667,12 @@ head(masc_MFW_200)
 head(fem_MFW_200)
 ```
 
-```{r}
+```{r, eval=FALSE}
 x <- NULL
+s <- NULL
+xxx <- NULL
+u <- NULL
+f <- NULL
 
 for (i in 1:3) {
   # take a sample
@@ -652,37 +690,6 @@ for (i in 1:3) {
      filter(lemma %in% masc_MFW_200$lemma | lemma %in% fem_MFW_200$lemma) %>%
      count(lemma) %>%
      pivot_wider(names_from = lemma, values_from = n, values_fill = 0)
-  
-  
-  # mfw <- s %>%
-  #   filter(word %in% masc_MFW_100$word | word %in% fem_MFW_100$word) %>%
-  #   count(word) %>%
-  #   pivot_wider(names_from = word, values_from = n, values_fill = 0)
-
-  # mf_endings <- s %>% 
-  #   filter(ending_st %in% masc_ending_50$ending_st | 
-  #            ending_st %in% fem_ending_50$ending_st) %>% 
-  #   count(ending_st) %>% 
-  #   pivot_wider(names_from = ending_st, values_from = n, values_fill = 0)
-  # 
-  # mf_possyl_masc <- s %>% 
-  #   filter(closure == "masc") %>% 
-  #   mutate(pos_syl = paste0(pos_syl, "_masc")) %>% 
-  #   filter(pos_syl %in% masc_possyl_25$pos_syl) %>% 
-  #   count(pos_syl) %>% 
-  #   pivot_wider(names_from = pos_syl, values_from = n, values_fill = 0)
-  # 
-  # mf_possyl_fem <- s %>% 
-  #   filter(closure == "fem") %>% 
-  #   mutate(pos_syl = paste0(pos_syl, "_fem")) %>% 
-  #   filter(pos_syl %in% fem_possyl_25$pos_syl) %>% 
-  #   count(pos_syl) %>% 
-  #   pivot_wider(names_from = pos_syl, values_from = n, values_fill = 0)
-  
-  
-  # bind together
-  # f <- cbind(#mfw, 
-  #   mf_endings, mf_possyl_masc[, -1], mf_possyl_fem[, -1])
   
   
   f <- mfw %>% 
@@ -705,7 +712,13 @@ mtrx <- xxx %>%
   select(-author_name, -smpl) #%>% 
   #scale()
 
-u <- umap(mtrx)
+# u <- umap(mtrx)
+
+
+```
+
+```{r}
+u <- readRDS("../../data/ch5/fig_5-3-2.Rds") # load projection used as Fig_5-3-2
 
 tibble(x = u$layout[,1],
        y = u$layout[,2],
@@ -729,11 +742,37 @@ tibble(x = u$layout[,1],
 ```
 
 ```{r, eval=FALSE}
-ggsave("plots/fig_5-3-1_lemmata_nsc_fin.png", plot = last_plot(), dpi = 300, bg = "white",
+ggsave("plots/fig_5-3-2.png", plot = last_plot(), dpi = 300, bg = "white",
        width = 10, height = 7)
 ```
 
-### 
+#### BW
+
+```{r, eval=FALSE}
+tibble(x = u$layout[,1],
+       y = u$layout[,2],
+       author_name = xxx$author_name) %>%
+  left_join(authors_slctd %>% mutate(author_name = str_replace(author_name, 
+                                     "(^\\w\\. \\w\\. )(\\w+)$",
+                                     "\\2 \\1"
+                                     )) , by = "author_name") %>% 
+  ggplot(aes(x, y, color = corpus)) + 
+  geom_text(aes(label = author_name), 
+            size = 4) + 
+  theme_bw() + 
+  scale_color_manual(values = c("black", "grey70")) + 
+  labs(x = "", y = "", color = "") + 
+  theme(legend.position = "bottom",
+        axis.title.x = element_blank(), 
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        legend.text = element_text(size = 12)) 
+
+ggsave("plots/bw/fig_5-3-2.png", plot = last_plot(), dpi = 300, bg = "white",
+       width = 10, height = 7)
+
+# saveRDS(u, file = "../../data/ch5/fig_5-3-2.Rds")
+```
 
 ## Larger set of authors
 
@@ -1008,7 +1047,14 @@ mtrx <- xxx %>%
   select(-author_name, -smpl) %>% 
   scale()
 
-u <- umap(mtrx)
+# u <- umap(mtrx)
+
+# saveRDS(u, file = "../../data/ch5/fig_5-3-3.Rds")
+```
+
+```{r}
+
+u <- readRDS("../../data/ch5/fig_5-3-3.Rds")
 
 tibble(x = u$layout[,1],
        y = u$layout[,2],
@@ -1034,6 +1080,35 @@ tibble(x = u$layout[,1],
 ```
 
 ```{r, eval=FALSE}
-ggsave("plots/fig_5-3-3_b.png", plot = last_plot(), dpi = 300, bg = "white",
+ggsave("plots/fig_5-3-3.png", plot = last_plot(), dpi = 300, bg = "white",
+       width = 10, height = 7)
+```
+
+#### BW
+
+```{r, eval=FALSE}
+tibble(x = u$layout[,1],
+       y = u$layout[,2],
+       author_name = xxx$author_name) %>%
+  left_join(authors_slctd #%>% mutate(author_name = str_replace(author_name, 
+                                     #"(^\\w\\. \\w\\. )(\\w+)$",
+                                     #"\\2 \\1"
+                                     #))
+            , 
+            by = "author_name") %>% 
+  ggplot(aes(x, y, color = corpus)) + 
+  geom_text(aes(label = author_name), 
+            size = 4) + 
+  theme_bw() + 
+  scale_color_manual(values = c("grey70",
+                                "black")) +
+  labs(x = "", y = "", color = "") + 
+  theme(legend.position = "None",
+        axis.title.x = element_blank(), 
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        legend.text = element_text(size = 12))
+
+ggsave("plots/bw/fig_5-3-3.png", plot = last_plot(), dpi = 300, bg = "white",
        width = 10, height = 7)
 ```

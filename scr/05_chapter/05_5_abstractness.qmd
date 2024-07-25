@@ -42,7 +42,7 @@ dictionaries %>% arrange(-desc(index_c_a)) %>% head()
 Words
 
 ```{r}
-rhyme_words <- read.csv("../../data/corpus1835/sql_db/rhyme_words_upd.csv", 
+rhyme_words <- read.csv("../../data/corpus1835/sql_db/rhyme_words.csv", 
                         
                         # DON'T LET R EAT IAMBS AND DO INTEGER 01 => 1
                         colClasses = c("stress_pattern" = "character",
@@ -251,7 +251,7 @@ Collections VS periodicals
 
 ### avg abstractness / concreteness
 
-```{r, warning=FALSE, message=FALSE}
+```{r, warning=FALSE, message=FALSE, eval=FALSE}
 x <- NULL
 y <- NULL
 
@@ -404,6 +404,34 @@ x %>%
 
 ```{r, eval=F}
 ggsave("plots/fig_5-2-3.png", plot = last_plot(), dpi = 300,
+       height = 5, width = 7, bg = "white")
+```
+
+#### BW
+
+```{r, eval=FALSE}
+x %>% 
+  filter(!corpus %in% c(
+    #"RNC_1810-1830", 
+    "RNC_after 1840")) %>% 
+  left_join(labels, by = "corpus") %>% 
+  left_join(pos_labels, by = "pos") %>% 
+  ggplot(aes(x = perc, y = ica, color = corpus_label, shape = pos_label)) + 
+  geom_point(alpha = 0.7, size = 2) + 
+  geom_hline(yintercept = 0, linewidth = 0.1) + 
+  #facet_wrap(~pos) + 
+  labs(x = "Доля части речи от всех слов (100%)",
+       y = "Средний коэф. абстрактности",
+       color = "Корпус",
+       shape = "Часть речи"
+       #title = "More nouns -- more abstractions?",
+       #subtitle = "Each dot is a random sample of 1000 rhyme words"
+       ) + 
+  scale_color_manual(values = c("grey20", "grey10", 
+                                "grey85", "grey65")) + 
+  scale_x_continuous(breaks = seq(0,60,10))
+
+ggsave("plots/bw/fig_5-2-3.png", plot = last_plot(), dpi = 300,
        height = 5, width = 7, bg = "white")
 ```
 
@@ -568,4 +596,13 @@ rhyme_words %>%
   filter(!is.na(index_c_a) & index_c_a > 0.15) %>% 
   select(word, index_c_a) %>% 
   arrange(desc(index_c_a)) %>% head(20)
+```
+
+```{r}
+rhyme_words %>% 
+  filter(pos %in% c("ADJ", "NOUN")) %>%
+  filter(author_name == "Бенедиктов В.Г.") %>% 
+  filter(!is.na(index_c_a) & index_c_a > 0.15) %>% 
+  select(word, index_c_a) %>% 
+  arrange(desc(index_c_a)) #%>% head(70)
 ```

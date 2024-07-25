@@ -1032,10 +1032,12 @@ rhyme_words_upd %>%
 
 ### upd save
 
-```{r}
+```{r, eval=F}
 write.csv(rhyme_words_upd, 
           "../../data/corpus1835/sql_db/rhyme_words_upd.csv", 
           row.names = FALSE)
+
+# nb fixed naming: this latest version is saved as rhyme_words.csv
 ```
 
 ## RNC rhymes

@@ -7,6 +7,8 @@ library(tidyverse)
 library(tidytext)
 
 library(MetBrewer)
+# library(patchwork)
+library(cowplot)
 theme_set(theme_minimal())
 ```
 
@@ -40,23 +42,6 @@ glimpse(rhymes_1835)
     $ to         <chr> "небеса", "земным", "красавице", "высоко", "легки", "догони…
     $ rhyme_alph <chr> "краса небеса", "земным огневым", "красавице красавицей", "…
 
-``` r
-# rhymes_1835 <- read.csv("../../data/ch5/rhymes_parsed.csv") %>% 
-#   select(-X) %>% distinct() %>% # fix bag 
-#   mutate(corpus = "M",
-#          id = str_remove(id, "M__")) %>% 
-#   # fix lowering everything
-#   mutate(rhyme_alph = tolower(rhyme_alph),
-#          rhyme_pair = tolower(rhyme_pair),
-#          from = tolower(from),
-#          to = tolower(to)) %>% 
-#   # fix typo
-#   mutate(from = ifelse(from == "искуства", "искусства", from),
-#          to = ifelse(to == "искуства", "искусства", to))
-# 
-# glimpse(rhymes_1835)
-```
-
 #### C-35 metadata
 
 ``` r
@@ -67,10 +52,6 @@ rhymes_1835 <- rhymes_1835 %>%
   left_join(corpus_1835 %>% 
               select(text_id, year), by = "text_id") %>% 
   mutate(corpus = "M")
-
-# select & reorder columns for merge
-# rhymes_1835 <- rhymes_1835 %>% 
-#   select(corpus, id, year, rhyme_pair, rhyme_alph, from, to)
 ```
 
 Number of lines to the number of rhymes (% of rhymed lines detected)
@@ -150,6 +131,8 @@ rm(rhymes_t)
 
 #### RNC
 
+Load RNC rhymes data
+
 ``` r
 # load already parsed data
 rnc_rhymes <- read.csv("../../data/ch5/rnc_rhymes.csv") %>% select(-X)
@@ -207,7 +190,32 @@ table(rhymes$corpus) # quick check in the number of rhymes found
          M    RNC 
      81247 146159 
 
-### table 5-1-1: Pull top 5 rhymes in each year
+### Overview
+
+#### most frequent rhymes
+
+``` r
+rhymes_1835 %>% 
+  count(rhyme_alph, sort = T) %>% 
+  mutate(perc = round((n / nrow(rhymes_1835)) * 100, 3 )) %>% 
+  head(10)
+```
+
+    # A tibble: 10 × 3
+       rhyme_alph       n  perc
+       <chr>        <int> <dbl>
+     1 ночи очи       173 0.213
+     2 нет свет       126 0.155
+     3 грудь путь     107 0.132
+     4 мечты ты       102 0.126
+     5 вновь любовь   100 0.123
+     6 день тень       99 0.122
+     7 моя я           96 0.118
+     8 кровь любовь    88 0.108
+     9 дня меня        86 0.106
+    10 бытия я         85 0.105
+
+#### top 5 rhymes in each year
 
 ``` r
 total_year <- rhymes_1835 %>% 
@@ -278,6 +286,215 @@ rhymes_1835 %>%
     5 1839      1.34
     6 1840      1.05
 
+## 5.1. stats
+
+Number of hapax legomena in C-35
+
+``` r
+rhymes_1835 %>% 
+  count(rhyme_alph, sort = T) %>% 
+  filter(n == 1) %>% 
+  count() %>% 
+  mutate(perc_total = n/nrow(rhymes_1835)*100)
+```
+
+    # A tibble: 1 × 2
+          n perc_total
+      <int>      <dbl>
+    1 43533       53.6
+
+Number of rhyme pairs repeated \>=10 times
+
+``` r
+rhymes_1835 %>% 
+  count(rhyme_alph, sort = T) %>% 
+  filter(n >= 10) %>% nrow()
+```
+
+    [1] 545
+
+### Number of only masc / only fem rhymes poems
+
+Separate words from pairs
+
+``` r
+w1 <- rhymes_1835 %>% 
+  select(text_id, from) %>% 
+  rename(word = from)
+
+w2 <- rhymes_1835 %>% 
+  select(text_id, to) %>% 
+  rename(word = to)
+
+rhyme_words <- rbind(w1, w2)
+```
+
+Attach data about rhyme words endings
+
+``` r
+rhyme_words_meta <- read_csv("../../data/corpus1835/sql_db/rhyme_words_upd.csv")
+```
+
+    Rows: 34801 Columns: 8
+    ── Column specification ────────────────────────────────────────────────────────
+    Delimiter: ","
+    chr (7): word, word_acc, stress_pattern, closure, pos, feats, ending_st
+    dbl (1): closure_pattern
+
+    ℹ Use `spec()` to retrieve the full column specification for this data.
+    ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
+
+``` r
+rhyme_words <- rhyme_words %>% 
+  left_join(rhyme_words_meta %>% select(word, closure), by = "word") 
+
+rm(rhyme_words_meta, w1, w2)
+```
+
+Count percent of pairs in each poem
+
+``` r
+# calculate total number of FOUND rhymes in each poem
+
+total_id <- rhyme_words %>% 
+  group_by(text_id) %>% 
+  count() %>% ungroup() %>% rename(n_lines = n)
+
+rhyme_words %>% 
+  filter(!is.na(closure) & closure != "other") %>% 
+  # attach total number of lines in the poem
+  left_join(total_id, by = "text_id") %>% 
+  group_by(text_id) %>% 
+  count(closure, n_lines) %>% 
+  ungroup() %>% 
+  mutate(perc_closure = round((n/n_lines)*100, 1)) %>% 
+  #filter(perc_closure < 100) %>% 
+  ggplot(aes(x = perc_closure, fill = closure)) + geom_boxplot()
+
+
+# find statistics for the most of the mass 
+rhyme_words %>% 
+  filter(!is.na(closure) & closure != "other") %>% 
+  # attach total number of lines in the poem
+  left_join(total_id, by = "text_id") %>% 
+  group_by(text_id) %>% 
+  count(closure, n_lines) %>% 
+  ungroup() %>% 
+  mutate(perc_closure = round((n/n_lines)*100, 1)) %>% 
+  
+  # control for non-rhymed texts:
+  left_join(corpus_1835 %>% 
+              select(text_id, text_raw, n_lines) %>% 
+              rename(n_lines_total = n_lines), by = "text_id") %>% 
+  mutate(perc_rhymed = round((n_lines / n_lines_total) * 100, 1)) %>%
+  
+  filter(closure == "masc" & perc_rhymed > 50) %>% 
+  summary()
+
+rhyme_words %>% 
+  filter(!is.na(closure) & closure != "other") %>% 
+  # attach total number of lines in the poem
+  left_join(total_id, by = "text_id") %>% 
+  group_by(text_id) %>% 
+  count(closure, n_lines) %>% 
+  ungroup() %>% 
+  mutate(perc_closure = round((n/n_lines)*100, 1)) %>% 
+  # control for non-rhymed texts:
+  left_join(corpus_1835 %>% 
+              select(text_id, text_raw, n_lines) %>% 
+              rename(n_lines_total = n_lines), by = "text_id") %>% 
+  mutate(perc_rhymed = round((n_lines / n_lines_total) * 100, 1)) %>%
+  
+  filter(closure == "fem" & perc_rhymed > 50) %>% 
+  summary()
+```
+
+Text ids for mostly feminine rhymes
+
+``` r
+rhyme_words %>% 
+  filter(!is.na(closure) & closure != "other") %>% 
+  # attach total number of lines in the poem
+  left_join(total_id, by = "text_id") %>% 
+  group_by(text_id) %>% 
+  count(closure, n_lines) %>% 
+  ungroup() %>% 
+  mutate(perc_closure = round((n/n_lines)*100, 1)) %>% 
+  filter(closure == "fem" & perc_closure > 85) %>% 
+  # control for non-rhymed texts:
+  left_join(corpus_1835 %>% 
+              select(text_id, text_raw, n_lines) %>% 
+              rename(n_lines_total = n_lines), by = "text_id") %>% 
+  mutate(perc_rhymed = round((n_lines / n_lines_total) * 100, 1)) %>%
+  filter(perc_rhymed > 50) %>% 
+  select(text_id) %>% distinct() %>% 
+  nrow() # number of potentionally only-fem rhyme poems?
+
+# sample
+s <- rhyme_words %>% 
+  filter(!is.na(closure) & closure != "other") %>% 
+  # attach total number of lines in the poem
+  left_join(total_id, by = "text_id") %>% 
+  group_by(text_id) %>% 
+  count(closure, n_lines) %>% 
+  ungroup() %>% 
+  mutate(perc_closure = round((n/n_lines)*100, 1)) %>% 
+  filter(closure == "fem" & perc_closure > 85) %>% 
+  # control for non-rhymed texts:
+  left_join(corpus_1835 %>% 
+              select(text_id, text_raw, n_lines) %>% 
+              rename(n_lines_total = n_lines), by = "text_id") %>% 
+  mutate(perc_rhymed = round((n_lines / n_lines_total) * 100, 1)) %>%
+  filter(perc_rhymed > 50) %>% 
+  select(text_id, text_raw) %>% distinct() #%>% 
+  #sample_n(20)
+
+write.csv(s, file = "mostly_fem_clausula.csv")
+```
+
+Mostly masculine rhymes
+
+``` r
+rhyme_words %>% 
+  filter(!is.na(closure) & closure != "other") %>% 
+  # attach total number of lines in the poem
+  left_join(total_id, by = "text_id") %>% 
+  group_by(text_id) %>% 
+  count(closure, n_lines) %>% 
+  ungroup() %>% 
+  mutate(perc_closure = round((n/n_lines)*100, 1)) %>% 
+  filter(closure == "masc" & perc_closure > 85) %>% 
+  # control for non-rhymed texts:
+  left_join(corpus_1835 %>% 
+              select(text_id, text_raw, n_lines) %>% 
+              rename(n_lines_total = n_lines), by = "text_id") %>% 
+  mutate(perc_rhymed = round((n_lines / n_lines_total) * 100, 1)) %>%
+  filter(perc_rhymed > 50) %>%  # select only at least halfly rhyme-detected texts
+  select(text_id) %>% distinct() %>% 
+  nrow() # number of potentionally only-masc rhyme poems?
+
+# sample
+s <- rhyme_words %>% 
+  filter(!is.na(closure) & closure != "other") %>% 
+  # attach total number of lines in the poem
+  left_join(total_id, by = "text_id") %>% 
+  group_by(text_id) %>% 
+  count(closure, n_lines) %>% 
+  ungroup() %>% 
+  mutate(perc_closure = round((n/n_lines)*100, 1)) %>% 
+  filter(closure == "masc" & perc_closure > 85) %>% 
+  # control for non-rhymed texts:
+  left_join(corpus_1835 %>% 
+              select(text_id, text_raw, n_lines) %>% 
+              rename(n_lines_total = n_lines), by = "text_id") %>% 
+  mutate(perc_rhymed = round((n_lines / n_lines_total) * 100, 1)) %>%
+  filter(perc_rhymed > 50) %>% 
+  select(text_id, text_raw) %>% distinct() #%>% 
+  #sample_n(20)
+
+write.csv(s, file = "mostly_masc_clausula.csv")
+```
+
 ## Fig. 5-1-1. Bigram freq
 
 Count frequencies in Corpus-1835 in general
@@ -288,14 +505,14 @@ unigram_freq_full <- corpus_1835 %>%
   unnest_tokens(input = text_raw, output = word, token = "words") %>% 
   group_by(word) %>% 
   count(sort = T) %>% 
-  mutate(group = "Корпус-1835: отд. слова")
+  mutate(group = "Корпус-1835: отд. слова (все)")
 
 # count bigram frequencies
 bigram_freq_full <- corpus_1835 %>% 
   unnest_tokens(input = text_raw, output = bigram, token = "ngrams", n = 2) %>% 
   group_by(bigram) %>% 
   count(sort = T) %>% 
-  mutate(group = "Корпус-1835: словосочетания")
+  mutate(group = "Корпус-1835: словосочетания (все)")
 ```
 
 Count unigram & bigram freq in rhyme data
@@ -317,43 +534,284 @@ bigram_freq_rhymes <- rhymes_1835 %>%
 Plot
 
 ``` r
-rbind(unigram_freq_full, unigram_freq_rhymes,
+w_freq <- rbind(unigram_freq_full, unigram_freq_rhymes,
       bigram_freq_full, bigram_freq_rhymes) %>% 
   group_by(group) %>% 
   mutate(rank = row_number()) %>% 
-  slice_head(n = 1000) %>% 
-  ggplot(aes(x = rank, y = n, group = group, color = group)) + 
-  geom_line() + 
+  #slice_head(n = 1000) %>% 
+  ggplot(aes(x = log(rank), y = log(n), group = group, color = group)) + 
+  geom_line(linewidth = 1) + 
   facet_wrap(~group, scales = "free") + 
   theme(legend.position = "None") + 
-  labs(x = "Ранг", y = "Частотность") + 
+  labs(x = "Ранг (log)", y = "Частотность (log)", 
+       title = "A. Распределение абсолютных частот") + 
+  #scale_x_continuous(breaks = c(1, seq(250, 1000, 250))) + 
   scale_color_manual(values = c(met.brewer(name = "Veronese")[1],
                                 met.brewer(name = "Veronese")[2],
                                 met.brewer(name = "Veronese")[4],
                                 met.brewer(name = "Veronese")[6])) + 
   
-  # fill the area under the curve with colour
-  geom_area(aes(fill = group, group = group), alpha = 0.3) + 
-  scale_fill_manual(values = c(met.brewer(name = "Veronese")[1],
-                                met.brewer(name = "Veronese")[2],
-                                met.brewer(name = "Veronese")[4],
-                                met.brewer(name = "Veronese")[6])) + 
+  # # fill the area under the curve with colour
+  # geom_area(aes(fill = group, group = group), alpha = 0.3) + 
+  # scale_fill_manual(values = c(met.brewer(name = "Veronese")[1],
+  #                               met.brewer(name = "Veronese")[2],
+  #                               met.brewer(name = "Veronese")[4],
+  #                               met.brewer(name = "Veronese")[6])) + 
   theme(text = element_text(size = 12))
+
+w_freq
 ```
 
-![](05_3_rhyme-bigrams.markdown_strict_files/figure-markdown_strict/unnamed-chunk-11-1.png)
+![](05_3_rhyme-bigrams.markdown_strict_files/figure-markdown_strict/unnamed-chunk-18-1.png)
+
+### Coefficient of variation
+
+Rhyme words
+
+``` r
+all_ranks <- rhyme_words %>% 
+  count(word, sort = T) %>% 
+  mutate(rel_freq_total = n / nrow(rhyme_words))
+
+all_ranks
+```
+
+    # A tibble: 34,510 × 3
+       word      n rel_freq_total
+       <chr> <int>          <dbl>
+     1 я       766        0.00471
+     2 меня    531        0.00327
+     3 она     521        0.00321
+     4 свет    471        0.00290
+     5 мне     409        0.00252
+     6 моей    401        0.00247
+     7 нет     393        0.00242
+     8 ты      392        0.00241
+     9 тобой   387        0.00238
+    10 мечты   371        0.00228
+    # ℹ 34,500 more rows
+
+``` r
+v <- NULL
+
+for (i in 1:100) {
+  sample_rhymes <- rhyme_words %>% 
+    sample_n(20000) %>% 
+    count(word, sort = T) %>% 
+    mutate(rel_freq = n / 20000) %>% 
+    select(-n) 
+  
+  x <- all_ranks %>% 
+    left_join(sample_rhymes, by = "word") %>% 
+    mutate(rel_freq = ifelse(is.na(rel_freq), 0, rel_freq)) %>% 
+    pull(rel_freq)
+  
+  v[[i]] <- x
+  
+}
+
+res <- as.data.frame(do.call(cbind, v)) %>% 
+  cbind(all_ranks$word) %>% 
+  rename(word = `all_ranks$word`) %>% 
+  head(4000) %>% # top 1000 ranked words
+  rowwise() %>% 
+  mutate(Mean = mean(c_across(V1:V10)),
+         SD = sd(c_across(V1:V10)),
+         CV = SD/Mean)  %>% 
+  ungroup() %>% 
+  mutate(rank = row_number())
+
+res %>% 
+  select(V1:V5, word, Mean, SD, CV) %>% head()
+```
+
+    # A tibble: 6 × 9
+           V1      V2      V3      V4      V5 word     Mean       SD     CV
+        <dbl>   <dbl>   <dbl>   <dbl>   <dbl> <chr>   <dbl>    <dbl>  <dbl>
+    1 0.0045  0.00505 0.0043  0.0044  0.0047  я     0.00462 0.000263 0.0568
+    2 0.003   0.00265 0.00295 0.003   0.00255 меня  0.00304 0.000313 0.103 
+    3 0.00345 0.00365 0.0033  0.00265 0.00335 она   0.00316 0.000317 0.100 
+    4 0.00275 0.0029  0.00305 0.00335 0.003   свет  0.00302 0.000206 0.0681
+    5 0.002   0.00275 0.00295 0.0024  0.00285 мне   0.00257 0.000354 0.138 
+    6 0.0019  0.0023  0.0028  0.0025  0.00245 моей  0.00239 0.000400 0.167 
+
+``` r
+# subset for plot
+cv_rhymes <- res %>% 
+  select(rank, CV) %>% 
+  mutate(corpus = "Рифмы: отд. слова")
+```
+
+Inline words
+
+``` r
+total_ranks <- corpus_1835 %>% 
+  unnest_tokens(input = text_raw, output = word, token = "words") %>% 
+  group_by(word) %>% 
+  count(sort = T)
+
+head(total_ranks)
+```
+
+    # A tibble: 6 × 2
+    # Groups:   word [6]
+      word      n
+      <chr> <int>
+    1 и     38471
+    2 в     26913
+    3 не    14983
+    4 на    11840
+    5 с     11215
+    6 я     10971
+
+``` r
+v <- NULL
+
+for (i in 1:100) {
+  sample_words <- corpus_1835 %>% 
+    unnest_tokens(input = text_raw, output = word, token = "words") %>% 
+    sample_n(20000) %>% 
+    count(word) %>% 
+    mutate(rel_freq = n / 20000) %>% 
+    select(-n) 
+  
+  x <- total_ranks %>% 
+    left_join(sample_words, by = "word") %>% 
+    mutate(rel_freq = ifelse(is.na(rel_freq), 0, rel_freq)) %>% 
+    pull(rel_freq)
+  
+  v[[i]] <- x
+  
+}
+
+res_all <- as.data.frame(do.call(cbind, v)) %>% 
+  cbind(total_ranks$word) %>% 
+  rename(word = `total_ranks$word`) %>% 
+  head(4000) %>% # top 1000 ranked words
+  rowwise() %>% 
+  mutate(Mean = mean(c_across(V1:V10)),
+         SD = sd(c_across(V1:V10)),
+         CV = SD/Mean)  %>% 
+  ungroup() %>% 
+  mutate(rank = row_number())
+
+res_all %>%  
+  select(V1:V5, word, Mean, SD, CV) %>% head()
+```
+
+    # A tibble: 6 × 9
+          V1     V2     V3     V4     V5 word    Mean       SD     CV
+       <dbl>  <dbl>  <dbl>  <dbl>  <dbl> <chr>  <dbl>    <dbl>  <dbl>
+    1 0.0422 0.0452 0.0432 0.0426 0.0402 и     0.0433 0.00176  0.0406
+    2 0.0322 0.0293 0.0295 0.032  0.0316 в     0.0306 0.00147  0.0481
+    3 0.0170 0.0171 0.0162 0.019  0.0166 не    0.0172 0.000916 0.0533
+    4 0.0137 0.0138 0.0140 0.0139 0.0143 на    0.0135 0.000961 0.0713
+    5 0.0127 0.0126 0.0136 0.0130 0.0134 с     0.0127 0.000605 0.0476
+    6 0.0124 0.0128 0.012  0.0114 0.0121 я     0.0124 0.00100  0.0806
+
+``` r
+# subset for plot & merge with rhymes CV data
+cv_all <- res_all %>% 
+  select(rank, CV) %>% 
+  mutate(corpus = "Корпус-1835: отд. слова (все)") 
+  
+  
+cv_plt <- rbind(cv_rhymes, cv_all) %>% 
+  ggplot(aes(x = rank, y = CV, color = corpus)) + 
+  geom_point(shape = 1, alpha = 0.6) + 
+  geom_vline(xintercept = 300, lty = 3) + 
+  geom_smooth(color = met.brewer("Veronese")[3], lty = 2) + 
+  labs(x = "Ранг", y = "Коэффициент вариации",
+       title = "Б. Коэффициент вариации") + 
+  facet_wrap(~corpus, scales = "free", ncol = 1) + 
+  scale_x_continuous(breaks = c(1, seq(1000, 4000, 1000))) + 
+  scale_color_manual(values = c(met.brewer("Veronese")[1],
+                                met.brewer("Veronese")[5])) + 
+  theme(axis.line.x.bottom = element_line(colour = "black"),
+        axis.line.y.left = element_line(colour = "black"), 
+        text = element_text(size = 12), 
+        legend.position = "None")
+
+cv_plt
+```
+
+    `geom_smooth()` using method = 'gam' and formula = 'y ~ s(x, bs = "cs")'
+
+![](05_3_rhyme-bigrams.markdown_strict_files/figure-markdown_strict/unnamed-chunk-20-1.png)
+
+``` r
+# layout <- "
+# AAAAAAA#BBBB
+# AAAAAAA#BBBB
+# AAAAAAA#BBBB
+# AAAAAAA#BBBB
+# "
+# 
+# w_freq + cv_plt + plot_layout(design = layout)
+
+plot_grid(w_freq, cv_plt, 
+          labels = NULL,
+          rel_widths = c(2,1),
+          ncol=2)
+```
+
+    `geom_smooth()` using method = 'gam' and formula = 'y ~ s(x, bs = "cs")'
+
+![](05_3_rhyme-bigrams.markdown_strict_files/figure-markdown_strict/unnamed-chunk-21-1.png)
 
 ``` r
 ggsave("plots/fig_5-1-1.png", plot = last_plot(), dpi = 300,
-       width = 8, height = 6, bg = "white")
+       width = 10, height = 6, bg = "white")
 ```
 
-Q: would it be feasible to try to fit the zipfR model ?
+#### bw version
 
-<https://zipfr.r-forge.r-project.org>
+``` r
+w_freq <- rbind(unigram_freq_full, unigram_freq_rhymes,
+      bigram_freq_full, bigram_freq_rhymes) %>% 
+  group_by(group) %>% 
+  mutate(rank = row_number()) %>% 
+  #slice_head(n = 1000) %>% 
+  ggplot(aes(x = log(rank), y = log(n), group = group, color = group)) + 
+  geom_line(linewidth = 1) + 
+  facet_wrap(~group, scales = "free") + 
+  theme(legend.position = "None") + 
+  labs(x = "Ранг (log)", y = "Частотность (log)", 
+       title = "A. Распределение абсолютных частот") + 
+  #scale_x_continuous(breaks = c(1, seq(250, 1000, 250))) + 
+  scale_color_manual(values = c("grey10", "grey10", "grey30", "grey30")) + 
+  
+  theme(text = element_text(size = 12))
 
-Number of rhymes found in the two corpora is very different (considerbly
-more texts in corpus-1835 for the respective years)
+
+cv_plt <- rbind(cv_rhymes, cv_all) %>% 
+  ggplot(aes(x = rank, y = CV, color = corpus)) + 
+  geom_point(shape = 1, alpha = 0.6) + 
+  geom_vline(xintercept = 300, lty = 3) + 
+  geom_smooth(color = "grey80", lty = 2) + 
+  labs(x = "Ранг", y = "Коэффициент вариации",
+       title = "Б. Коэффициент вариации") + 
+  facet_wrap(~corpus, scales = "free", ncol = 1) + 
+  scale_x_continuous(breaks = c(1, seq(1000, 4000, 1000))) + 
+  scale_color_manual(values = c("grey10", "grey20")) + 
+  theme(# axis.line.x.bottom = element_line(colour = "black"),
+        # axis.line.y.left = element_line(colour = "black"), 
+        text = element_text(size = 12), 
+        legend.position = "None")
+
+plot_grid(w_freq, cv_plt, 
+          labels = NULL,
+          rel_widths = c(2,1),
+          ncol=2)
+
+ggsave("plots/bw/fig_5-1-1.png", plot = last_plot(), dpi = 300,
+       width = 10, height = 6, bg = "white")
+```
+
+### C-1835 vs RNC comparison
+
+Number of rhymes found in the RNC & Corpus-1835 is very different
+(considerbly more texts in corpus-1835 for the respective years)
 
 ``` r
 rhymes %>% 
@@ -365,7 +823,7 @@ rhymes %>%
                                met.brewer(name = "Veronese")[7]))
 ```
 
-![](05_3_rhyme-bigrams.markdown_strict_files/figure-markdown_strict/unnamed-chunk-13-1.png)
+![](05_3_rhyme-bigrams.markdown_strict_files/figure-markdown_strict/unnamed-chunk-24-1.png)
 
 ## Hapax richness
 
@@ -389,39 +847,6 @@ rhymes %>%
     2 RNC    76086     52.1      93.6
 
 Number of hapax legomena in each 5-year period in RNC
-
-``` r
-library(wesanderson)
-
-total_count <- rnc_rhymes %>% 
-  mutate(decade = floor( as.numeric(year) / 5) * 5) %>% 
-  count(decade) %>% 
-  rename(Total = n)
-
-rnc_rhymes %>% 
-  mutate(decade = floor( as.numeric(year) / 5) * 5) %>% 
-  select(rhyme_alph, decade) %>% 
-  distinct() %>%
-  count(decade) %>% 
-  rename(`Unique rhymes` = n) %>% 
-  left_join(total_count, by = "decade") %>% 
-  pivot_longer(!decade, names_to = "group") %>% 
-  ggplot(aes(x = decade, y = value, fill = group)) +
-    geom_col(width = 3, position = "dodge") +
-    scale_fill_manual(values = c(wes_palette("Royal1")[1],
-                                 wes_palette("Royal1")[2])) + 
-    scale_x_continuous(breaks = seq(1775, 1845, 10)) +
-    labs(
-         y = "Number of rhymes detected",
-         fill = "",
-         title = "Number of rhymes per period",
-         subtitle = "Canonical corpus") + 
-  theme(legend.position = "bottom",
-        axis.title.x = element_blank(),
-        legend.text = element_text(size = 14))
-```
-
-![](05_3_rhyme-bigrams.markdown_strict_files/figure-markdown_strict/unnamed-chunk-15-1.png)
 
 Hapax richness in each year in corpus-1835
 
@@ -475,12 +900,6 @@ hapax_archive
     4 1838   9778 11257         86.9
     5 1839   6175  6867         89.9
     6 1840   9262 10463         88.5
-
-``` r
-# Discard unused vars
-rm(bigram_freq_full, bigram_freq_rhymes, hapax_archive, hapax_per_year,
-   total, total_count, unigram_freq_full, unigram_freq_rhymes)
-```
 
 ## Fig. 5-1-2. RNC / C1835 - Random samples rhyme intersection
 
@@ -761,12 +1180,12 @@ head(df)
     # A tibble: 6 × 5
           a year_count     n perc_top rhymes_top                                    
       <int> <chr>      <int>    <int> <chr>                                         
-    1     1 1840          27        5 меня_тебя богу_дорогу ненастья_счастья поэта_…
-    2     1 1837          30        4 семья_я бед_след прах_страх глаза_слеза       
-    3     1 1838          34        4 звезд_мест мне_стране звуки_муки взор_приговор
-    4     1 1836          34        7 день_сень очах_устах своей_царей неволе_поле …
-    5     1 1835          33        6 меня_тебя глубине_мне нет_ответ взор_хор руко…
-    6     1 1839          30        4 будь_грудь взор_укор живет_нет мой_покой      
+    1     1 1840          36        6 ночи_очи милой_силой покой_твой боязни_казни …
+    2     1 1837          28        2 дышит_пишет дышит_слышит                      
+    3     1 1838          33        4 волен_доволен голова_слова ответа_поэта певца…
+    4     1 1836          34        6 их_своих жестокой_одинокой мной_собой мои_стр…
+    5     1 1835          32        5 народа_природа вод_свод лет_свет небесах_прах…
+    6     1 1839          35        6 воды_свободы перуны_струны собой_тобой певца_…
 
 ``` r
 glimpse(df)
@@ -776,9 +1195,9 @@ glimpse(df)
     Columns: 5
     $ a          <int> 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4,…
     $ year_count <chr> "1840", "1837", "1838", "1836", "1835", "1839", "1840", "18…
-    $ n          <int> 27, 30, 34, 34, 33, 30, 30, 31, 33, 33, 35, 37, 25, 31, 27,…
-    $ perc_top   <int> 5, 4, 4, 7, 6, 4, 4, 2, 3, 5, 6, 14, 2, 6, 4, 2, 6, 5, 6, 0…
-    $ rhymes_top <chr> "меня_тебя богу_дорогу ненастья_счастья поэта_света воля_до…
+    $ n          <int> 36, 28, 33, 34, 32, 35, 34, 29, 33, 31, 34, 35, 37, 34, 36,…
+    $ perc_top   <int> 6, 2, 4, 6, 5, 6, 5, 5, 3, 4, 2, 11, 7, 2, 5, 9, 2, 8, 5, 3…
+    $ rhymes_top <chr> "ночи_очи милой_силой покой_твой боязни_казни готово_слово …
 
 Look into the top-freq RNC pairs which were found in trials most
 frequently
@@ -793,28 +1212,28 @@ df %>%
 ```
 
     # A tibble: 20 × 2
-       rhymes_top            n
-       <chr>             <int>
-     1 свет_след            14
-     2 вышине_мне           13
-     3 их_моих              13
-     4 кровь_любовь         13
-     5 века_человека        12
-     6 мне_сне              12
-     7 радость_сладость     12
-     8 бури_лазури          11
-     9 вдохновений_гений    11
-    10 глаз_раз             11
-    11 глаза_слеза          11
-    12 голова_слова         11
-    13 дар_жар              11
-    14 ей_своей             11
-    15 забавы_славы         11
-    16 красоты_ты           11
-    17 мечты_суеты          11
-    18 мною_рукою           11
-    19 могилы_силы          11
-    20 себе_судьбе          11
+       rhymes_top         n
+       <chr>          <int>
+     1 моей_твоей        15
+     2 милой_силой       13
+     3 власть_страсть    12
+     4 нас_час           12
+     5 природы_своды     12
+     6 бед_свет          11
+     7 богу_дорогу       11
+     8 быть_жить         11
+     9 глуши_души        11
+    10 дух_слух          11
+    11 его_своего        11
+    12 камень_пламень    11
+    13 любви_мои         11
+    14 ныне_пустыне      11
+    15 очах_устах        11
+    16 раз_час           11
+    17 сон_стон          11
+    18 весна_она         10
+    19 глубине_мне       10
+    20 девы_напевы       10
 
 ``` r
 # distribution
@@ -826,7 +1245,7 @@ df %>%
   ggplot(aes(x = rank, y = n)) + geom_col() + theme(axis.text.x = element_blank())
 ```
 
-![](05_3_rhyme-bigrams.markdown_strict_files/figure-markdown_strict/unnamed-chunk-25-1.png)
+![](05_3_rhyme-bigrams.markdown_strict_files/figure-markdown_strict/unnamed-chunk-36-1.png)
 
 Create a boxplot for percentage of intersections
 
@@ -838,9 +1257,9 @@ glimpse(df)
     Columns: 5
     $ a          <int> 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4,…
     $ year_count <chr> "1840", "1837", "1838", "1836", "1835", "1839", "1840", "18…
-    $ n          <int> 27, 30, 34, 34, 33, 30, 30, 31, 33, 33, 35, 37, 25, 31, 27,…
-    $ perc_top   <int> 5, 4, 4, 7, 6, 4, 4, 2, 3, 5, 6, 14, 2, 6, 4, 2, 6, 5, 6, 0…
-    $ rhymes_top <chr> "меня_тебя богу_дорогу ненастья_счастья поэта_света воля_до…
+    $ n          <int> 36, 28, 33, 34, 32, 35, 34, 29, 33, 31, 34, 35, 37, 34, 36,…
+    $ perc_top   <int> 6, 2, 4, 6, 5, 6, 5, 5, 3, 4, 2, 11, 7, 2, 5, 9, 2, 8, 5, 3…
+    $ rhymes_top <chr> "ночи_очи милой_силой покой_твой боязни_казни готово_слово …
 
 ``` r
 df %>% 
@@ -866,10 +1285,38 @@ df %>%
         legend.text = element_text(size = 12))
 ```
 
-![](05_3_rhyme-bigrams.markdown_strict_files/figure-markdown_strict/unnamed-chunk-26-1.png)
+![](05_3_rhyme-bigrams.markdown_strict_files/figure-markdown_strict/unnamed-chunk-37-1.png)
 
 ``` r
 ggsave(filename = "plots/fig_5-1-2.png", plot = last_plot(), dpi = 300,
+       width = 8, height = 6, bg = "white")
+```
+
+#### bw
+
+``` r
+df %>% 
+  select(-rhymes_top, -a) %>% 
+  pivot_longer(!year_count) %>% 
+  mutate(name = ifelse(name == "n", "Всего пересечений", "Пересечений среди частотных рифм НКРЯ")) %>% 
+  ggplot(aes(x = as.factor(year_count), 
+             y = value, color = name)) + 
+  
+  geom_boxplot(position = "dodge") + 
+  
+  geom_point(position = position_jitterdodge(), alpha = 0.2) + 
+  
+  scale_color_manual(values = c("grey5", "grey70")) + 
+  expand_limits(y = c(0, 100)) + 
+  labs(x = "Год", 
+       y = "Число пересечений (из 100 возможных)",
+       color = "") +
+  theme(legend.position = "bottom", 
+        axis.text = element_text(size = 10),
+        axis.title = element_text(size = 12),
+        legend.text = element_text(size = 12))
+
+ggsave(filename = "plots/bw/fig_5-1-2.png", plot = last_plot(), dpi = 300,
        width = 8, height = 6, bg = "white")
 ```
 

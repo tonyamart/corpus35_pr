@@ -267,3 +267,53 @@ formula_col
     10 Amphibrach_43    29   1  
     11 Amphibrach_3     20   0.7
     12 Anapest_2        15   0.5
+
+## RNC
+
+Same statistics from the RNC
+
+``` r
+load("../../data/nkrja_19th_lem.Rda")
+
+rnc_1830 <- c19 %>% 
+  filter(year > 1830 & year < 1841)
+
+rnc_1830 %>% 
+  select(meter) %>% 
+  count(meter, sort = T) %>% 
+  mutate(perc = round((n / nrow(rnc_1830)) * 100, 1)) %>% 
+  filter(meter %in% c("Я", "Х", "Д", "Аф", "Ан"))
+```
+
+      meter    n perc
+    1     Я 1228 59.8
+    2     Х  422 20.5
+    3    Аф  132  6.4
+    4    Ан   54  2.6
+    5     Д   41  2.0
+
+``` r
+rnc_1830 %>% 
+  select(meter, feet) %>% 
+  mutate(feet = str_replace(feet, "вольная.*$", "вольная"),
+    formula = paste0(meter, "_", feet)) %>% 
+  count(formula, sort = T) %>% 
+  mutate(perc = round((n / nrow(rnc_1830)) * 100, 1)) %>% 
+  filter(formula %in% c("Я_3", "Я_4", "Я_5", "Я_6", "Я_вольная", 
+                        "Я_регулярная : 4+3", "Х_4", "Аф_4", 
+                        "Аф_регулярная : 4+3", "Ан_2"
+                        )
+         )
+```
+
+                   formula   n perc
+    1                  Я_4 534 26.0
+    2                  Х_4 337 16.4
+    3            Я_вольная 191  9.3
+    4                  Я_5 144  7.0
+    5                  Я_6 121  5.9
+    6                 Аф_4  62  3.0
+    7                  Я_3  29  1.4
+    8   Я_регулярная : 4+3  23  1.1
+    9  Аф_регулярная : 4+3  16  0.8
+    10                Ан_2  14  0.7

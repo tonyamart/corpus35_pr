@@ -14,7 +14,7 @@ library(tidytext)
 
 library(stylo)
 
-library(topicmodels)
+# library(topicmodels)
 
 library(umap)
 
@@ -217,19 +217,28 @@ metrical_mtrx <- corpus1835 %>%
   # select most represented authors
   filter(author_text %in% authors_lines$author_text) %>% 
   
-  # leave only clearly detected meters
-  filter(meter != "Other?" & feet %in% c(2, 3, 4, 5, 6, "other")) %>% 
+  # leave only clearly detected & frequent meters
   mutate(formula = paste0(meter, "_", feet)) %>% 
+  filter(formula %in% c("Iamb_4", "Iamb_v", "Trochee_4", "Iamb_6", "Iamb_5", 
+                        "Amphibrach_4", "Iamb_3", "Anapest_other", 
+                        "Amphibrach_43", "Iamb_43", "Amphibrach_3", "Anapest_2", 
+                        "Trochee_3", "Amphibrach_2", "Dactyl_3", "Trochee_43", 
+                        "Amphibrach_other", "Dactyl_6")) %>% 
   
   # count and sample lines
   separate_rows(text_lemm, sep = "\n") %>% 
   filter(text_lemm != "" & !str_detect(text_lemm, "^\\W+$|^\\s+$")) %>% 
   
   # remove authors who hasn't 1000 lines in selected meters
-  filter(!author_text %in% c("Бестужев А.А. (Марлинский)", 
-                             "Стромилов С.И.", 
-                             "Соколовский В.И.", 
-                             "Пуговишников А.М.")) %>% 
+  filter(!author_text %in% c("Бестужев А.А. (Марлинский)",
+                             "Стромилов С.И.",
+                             "Соколовский В.И.",
+                             "Пуговишников А.М.",
+                             "Гребенка Е.П."
+                           #  "Кропоткин Д.А.",
+                           #  "Губер Э.И."
+
+                             )) %>%
   
   # filter only needed columns
   select(text_id, author_text, meter, formula, text_lemm) %>% 
@@ -239,12 +248,12 @@ metrical_mtrx <- corpus1835 %>%
   filter(!is.na(formula)) %>% 
   
   group_by(author_text) %>% 
-  sample_n(1000) %>% # sample 1000 lines from each author
+  sample_n(900) %>% # sample 900 lines from each author
   #ungroup() %>% 
   
   # create two samples of 500 lines for each author
-  mutate(sample_id = ceiling(1:1000),
-         sample_id = floor(sample_id/500)+1,
+  mutate(sample_id = ceiling(1:900),
+         sample_id = floor(sample_id/450)+1,
          sample_id = ifelse(sample_id == 3, 1, sample_id),
          author_text = paste0(author_text, "_", sample_id)) %>% 
   ungroup() %>% 
@@ -262,6 +271,7 @@ Metrical variations taken into account:
 
 ```{r}
 colnames(metrical_mtrx)
+length(colnames(metrical_mtrx))-1
 ```
 
 Projection
@@ -298,8 +308,10 @@ authors_lbl <- tibble(
     "Другое", "НКРЯ", "Другое", 
     "Круг Бенедиктова", "Круг Бенедиктова", "Пушкинский стиль", 
     "Другое", "Другое", "Старшее поколение",
-    "Другое", "Круг Бенедиктова", "Пушкинский стиль", 
-    "НКРЯ", "Поэты конца 1830-х гг.", "НКРЯ", 
+    # "Другое", # Гребенка
+    "Круг Бенедиктова", "Пушкинский стиль", 
+    "НКРЯ", 
+    "Поэты конца 1830-х гг.", "НКРЯ", 
     "Пушкинский стиль", "Старшее поколение", "Другое", 
     "НКРЯ", "Старшее поколение", "Пушкинский стиль", 
     "Поэты конца 1830-х гг.", "Поэты конца 1830-х гг.", "Круг Бенедиктова", 

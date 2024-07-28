@@ -12,7 +12,7 @@ library(tidytext)
 
 library(topicmodels)
 
-library(umap)
+# library(umap)
 library(stylo) # zeta as oppose()
 
 library(MetBrewer)
@@ -406,6 +406,62 @@ oppose(
   path = "zeta_tests/song_iamb_vs_trochee/",
   corpus.lang = "Other",
   text.slice.length = 500,
+  write.png.file = TRUE
+)
+```
+
+#### romance iamb vs trochee
+
+```{r}
+corpus_genres %>% 
+  filter(meter == "Trochee" | meter == "Iamb") %>% 
+  filter(genre == "романс") %>% 
+  mutate(genre = ifelse(meter == "Iamb", "романс_ямб", "романс_хорей")) %>% 
+  separate_rows(text_lemm, sep = "\n") %>% 
+  filter(!str_detect(text_lemm, "^\\W+$|^\\s+$") & text_lemm != "") %>% 
+  count(genre, sort = T)
+
+corpus_prepared <- corpus_genres %>% 
+  filter(meter == "Trochee" | meter == "Iamb") %>% 
+  filter(genre == "романс") %>% 
+  mutate(genre = ifelse(meter == "Iamb", "романс_ямб", "романс_хорей")) %>% 
+  separate_rows(text_lemm, sep = "\n") %>% 
+  filter(!str_detect(text_lemm, "^\\W+$|^\\s+$") & text_lemm != "") %>% 
+  group_by(genre) %>% 
+  sample_n(900) %>% 
+  mutate(sample_id = ceiling(1:900),
+         sample_id = floor(sample_id/300)+1,
+         sample_id = ifelse(sample_id == 4, 1, sample_id)) %>%
+         # sample_id = floor(sample_id/100)+1, 
+         # sample_id = ifelse(sample_id == 16, 1, sample_id)) %>%
+  ungroup() %>% 
+  mutate(sample_id = paste0(genre, "_", sample_id)) %>% 
+  group_by(sample_id) %>% 
+  summarise(text = paste0(text_lemm, collapse = " ------ ")) %>% 
+  mutate(genre = str_remove(sample_id, "_\\d+$"), 
+         path = ifelse(genre == "романс_ямб", "secondary_set/", "primary_set/"),
+         path = paste0("zeta_tests/romance_iamb_vs_trochee/", path, sample_id, ".txt"))
+
+head(corpus_prepared)
+
+# sample sizes in words
+corpus_prepared %>% 
+  unnest_tokens(input = text, output = word, token = "words") %>% 
+  count(sample_id)
+```
+
+```{r, eval=FALSE}
+for (i in 1:nrow(corpus_prepared)) {
+  writeLines(corpus_prepared$text[i], corpus_prepared$path[i])
+}
+```
+
+```{r}
+oppose(
+  gui = FALSE,
+  path = "zeta_tests/romance_iamb_vs_trochee/",
+  corpus.lang = "Other",
+  text.slice.length = 200,
   write.png.file = TRUE
 )
 ```

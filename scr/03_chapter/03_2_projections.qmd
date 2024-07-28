@@ -6,14 +6,14 @@ editor: visual
 
 # 3.1. Genres & words
 
-This script analyses how words are distributed inside genres making UMAP projections of distances based on MFW.
+This script analyses how words are distributed inside genres using UMAP projections ( distances between samples based on the MFW frequency).
 
 ```{r}
 library(tidyverse)
 library(tidytext)
 
-library(stylo)
-library(seetrees)
+# library(stylo)
+# library(seetrees)
 
 library(umap)
 
@@ -107,7 +107,7 @@ table(corpus_genres$genre)
 
 ## length in lines
 
-texts with genre titles
+Coun how long are the texts with genre titles
 
 ```{r}
 corpus_genres %>% 
@@ -130,6 +130,8 @@ corpus_genres %>%
   labs(x = "",
        y = "Количество строк")
 ```
+
+Check if there is difference between periodicals and poetry collections
 
 ```{r}
 corpus_genres %>% 
@@ -200,12 +202,12 @@ Leave only the texts with genre titles
 genres_only <- genres_sampled %>% 
   filter(!is.na(genre))
 
-glimpse(genres_only)
+# glimpse(genres_only)
 ```
 
 Check sampling
 
-```{r}
+```{r, eval=F}
 genres_only %>% 
   #select(-text_lemm) %>% 
   separate_rows(text_lemm, sep = "\n") %>% 
@@ -218,7 +220,7 @@ genres_only %>%
 
 ### genres - n lines available
 
-Number of lines after sampling
+Available number of lines for each genre after sampling
 
 ```{r}
 genres_only %>% 
@@ -226,8 +228,6 @@ genres_only %>%
   separate_rows(text_lemm, sep = "\n") %>% 
   group_by(genre) %>% 
   count(sort = T)
-
-
 ```
 
 Number of lines in each meter

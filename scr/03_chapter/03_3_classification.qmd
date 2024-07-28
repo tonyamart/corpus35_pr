@@ -977,7 +977,7 @@ for (j in 2:length(genre_list)) {
 ### 10-iterations results
 
 ```{r}
-load("genre_classification_10.Rda")
+load("../../data/ch3/genre_classification_10.Rda")
 
 res_save %>% 
   group_by(genre) %>% 
@@ -1000,7 +1000,7 @@ for (i in 2:length(x)) {
 ### 25-iterations results
 
 ```{r}
-load("genre_classification_25.Rda")
+load("../../data/ch3/genre_classification_25.Rda")
 
 res_save %>% 
   group_by(genre) %>% 
@@ -1025,7 +1025,7 @@ for (i in 2:length(x)) {
 Longer samples
 
 ```{r}
-load("genre_classification_25_100lines.Rda")
+load("../../data/ch3/genre_classification_25_100lines.Rda")
 
 res_save %>% 
   group_by(genre) %>% 
@@ -1059,7 +1059,7 @@ for (i in 2:length(x)) {
 ```{r}
 # save(res_save, x, file = "genre_classification_25_100lines-2.Rda") # save results from 25 iterations for longer samples - second trial
 
-load("genre_classification_25_100lines-2.Rda")
+load("../../data/ch3/genre_classification_25_100lines-2.Rda")
 
 for (i in 2:length(x)) {
   print(x[[i]])

@@ -14,7 +14,7 @@ corpus_1835 <- readRDS("../../data/corpus1835/corpus_1835.Rds")
 glimpse(corpus_1835)
 ```
 
-Small notebook counting number of poems of different meters
+A small notebook counting number of poems of different meters
 
 ### n poems in groups
 
@@ -66,11 +66,19 @@ meters_b
 
 ### formulas
 
+```{r}
+# most used meters:
+corpus_1835 %>% 
+  count(formula, sort = T) %>% 
+  head(20)
+```
+
 Main metrical variations:
 
 ```{r}
-formula_main <- c("Iamb_3", "Iamb_4", "Iamb_5", "Iamb_6", "Iamb_other",
-                  "Trochee_4", "Amphibrach_4", "Anapest_2")
+formula_main <- c("Iamb_3", "Iamb_4", "Iamb_5", "Iamb_6", "Iamb_v",
+                  "Trochee_4", "Amphibrach_4", "Anapest_2", "Amphibrach_43",
+                  "Iamb_43", "Amphibrach_3")
 
 corpus_formula <- corpus_1835 %>% 
   select(corpus, formula) %>% 

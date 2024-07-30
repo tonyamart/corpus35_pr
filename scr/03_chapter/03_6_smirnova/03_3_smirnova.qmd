@@ -459,6 +459,17 @@ ggsave("../plots/Fig_3-3-1-b.png", plot = last_plot(), dpi = 300,
 ### test Zhukovsky
 
 ```{r, eval=FALSE}
+authors <- corpus %>% 
+  mutate(author = author_text,
+         text = text_cln) %>% 
+  select(author, text) %>% 
+  filter(author != "") %>% 
+  unnest_tokens(input = text, output = word, token = "words") %>% 
+  count(author, sort = T) %>% 
+  filter(n > 6000) %>% 
+  pull(author)
+length(authors)
+
 sample_independent_opt(tokenized_df = corpus_iambs,
   n_samples = 2,
   sample_size = 2000)
@@ -539,7 +550,9 @@ imp_res %>%
        x = "", 
        y = "Доля случаев, когда автор был\nближайшим к Жуковскому",
        title = "Все размеры") +
-  theme(axis.text.x = element_text(angle = 90, size = 12))
+  theme(axis.text.x = element_text(angle = 90, size = 12)) + 
+  geom_hline(yintercept = 0.9, colour = "red") + 
+  geom_hline(yintercept = 0.97, colour = "blue", lty=3)
 
 ggsave("../plots/Fig_3-3-1-с.png", plot = last_plot(), dpi = 300, 
        bg = "white", width = 8, height = 6)

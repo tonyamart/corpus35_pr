@@ -8,6 +8,7 @@ editor: visual
 
 ```{r}
 library(tidyverse)
+theme_set(theme_minimal())
 
 corpus_1835 <- readRDS("../../data/corpus1835/corpus_1835.Rds")
 
@@ -115,6 +116,66 @@ formula_col <- corpus_formula %>%
   mutate(perc = round( (n/n_texts_col) *100, 1 ))
 
 formula_col
+```
+
+#### dynamics btw 1835 and 1840
+
+Percentage of meters in different years
+
+Total
+
+```{r}
+year_total <- corpus_1835 %>% 
+  count(year) %>% 
+  rename(year_n = n)
+
+corpus_1835 %>% 
+  filter(meter == "Iamb") %>% 
+  count(year) %>% 
+  left_join(year_total, by = "year") %>% 
+  mutate(perc_year = n/year_n * 100) 
+
+corpus_1835 %>% 
+  group_by(meter, year) %>% 
+  count() %>% 
+  ungroup() %>% 
+  left_join(year_total, by = "year") %>% 
+  mutate(perc_year = n/year_n * 100) %>% 
+  ggplot(aes(x = year, y = perc_year, colour = meter, group = meter)) + 
+  geom_line() + facet_wrap(~meter)
+```
+
+In periodicals and collections separately
+
+```{r}
+year_type_n <- corpus_1835 %>% 
+  group_by(year, corpus) %>% 
+  count() %>% 
+  ungroup() %>% 
+  mutate(year_corpus = paste0(year, "_", corpus)) %>% 
+  rename(year_n = n) %>% 
+  select(-year, -corpus)
+
+year_type_n
+
+corpus_1835 %>% 
+  #filter(meter == "Iamb") %>% 
+  count(meter, year, corpus) %>% 
+  mutate(year_corpus = paste0(year, "_", corpus)) %>% 
+  left_join(year_type_n, by = "year_corpus") %>% 
+  select(-year_corpus) %>% 
+  mutate(perc_year = n/year_n * 100) %>% 
+  ggplot(aes(x = year, y = perc_year, colour = corpus, group = corpus)) + 
+  geom_line() + facet_wrap(~meter)
+
+corpus_1835 %>% 
+  filter(meter == "Iamb") %>% 
+  count(meter, year, corpus) %>% 
+  mutate(year_corpus = paste0(year, "_", corpus)) %>% 
+  left_join(year_type_n, by = "year_corpus") %>% 
+  select(-year_corpus) %>% 
+  mutate(perc_year = n/year_n * 100) %>% 
+  arrange(desc(corpus))
 ```
 
 ## RNC

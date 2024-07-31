@@ -130,7 +130,7 @@ test
 ```
 
 ```{r}
-# count withough author filter, but number of poem entries in each source
+# count without author filter, but number of poem entries in each source
 c19 %>% 
     filter(source %in% test$source) %>% 
     count(source, sort = T)
@@ -191,15 +191,15 @@ nkrja_1835 %>%
 ```
 
 ```{r}
-print("Percentages for 1830-40:")
-tibble(x = c(361, 49, 15, 197, 357, 116, 1128, 178, 8),
-                   total = rep(2409, 9)) %>% 
-    mutate(perc = round(x/total*100, 1))
-
-print("Percentages for 1835-40:")
-tibble(x = c(166, 29, 7, 61, 82, 47, 714, 100, 6),
-      total = rep(1212, 9)) %>% 
-    mutate(pers = round(x/total*100,1))
+# print("Percentages for 1830-40:")
+# tibble(x = c(361, 49, 15, 197, 357, 116, 1128, 178, 8),
+#                    total = rep(2409, 9)) %>% 
+#     mutate(perc = round(x/total*100, 1))
+# 
+# print("Percentages for 1835-40:")
+# tibble(x = c(166, 29, 7, 61, 82, 47, 714, 100, 6),
+#       total = rep(1212, 9)) %>% 
+#     mutate(pers = round(x/total*100,1))
 ```
 
 ### Plot 2.1
@@ -223,37 +223,45 @@ head(rankings_nkrja)
 ## Periodicals data
 
 ```{r}
-per <- readRDS("../../data/corpus1835/corpus_1835.Rds") %>% 
-  filter(corpus == "per") %>% 
-  rename(author = author_text)
+corpus <- readRDS("../../data/corpus1835/corpus_1835.Rds") %>% 
+  mutate(A_ID = str_replace_all(A_ID, "-", "_"),
+         A_ID = str_replace_all(A_ID, "А", "A"))
+  #filter(corpus == "per")
 
-authors_meta <- read.delim("../../meta/authors.tsv", sep = "\t")
+# authors_meta <- read.delim("../../meta/authors.tsv", sep = "\t")
+
+authors_meta <- read.csv("../../data/corpus1835/sql_db/authors.csv") %>% 
+  rename(RP = RP_loc,
+         gender = author_sex) 
 
 # attach only gender by A_ID
-per <- per %>% 
+corpus <- corpus %>% 
   left_join(authors_meta %>% select(A_ID, RP, gender), by = "A_ID")
 
-glimpse(per)
+glimpse(corpus)
 
 rm(authors_meta)
 ```
 
+Periodicals statistics
+
 ```{r}
-print(paste0( "Number of recognised authors: ",  per %>% 
-    filter(A_ID != "") %>% 
-    select(author) %>% 
+print(paste0( "Number of recognised authors in periodicals: ",  corpus %>% 
+    filter(A_ID != "" & corpus == "per") %>% 
+    select(author_text) %>% 
     distinct() %>% nrow )
     )
 
-print(paste0( "Total number of authors (including signatures): ",  per %>% 
+print(paste0( "Total number of authors in periodicals (including signatures): ",  corpus %>% filter(corpus == "per") %>% 
     #filter(A_ID != "") %>% 
-    select(author) %>% 
+    select(author_text) %>% 
     distinct() %>% nrow ))
 
 
-print(paste0( "Number of authors in RP: ",  per %>% 
-    filter(RP != "") %>% 
-    select(author) %>% 
+print(paste0( "Number of periodicals authors in RP: ",  corpus %>% 
+    filter(!is.na(RP) & RP != "") %>% 
+    filter(corpus == "per") %>% 
+    select(author_text) %>% 
     distinct() %>% nrow ))
 ```
 
@@ -265,14 +273,26 @@ nkrja_authors <- c19 %>%
                                      "(\\w\\.)[[:space:]]?(\\w?\\.?)[[:space:]](\\w+)", 
                                      "\\3 \\1\\2"))
 
-#per %>% 
-#    filter(A_ID != "") %>% select(author) %>% distinct() %>% nrow()
+per <- corpus %>% filter(corpus == "per") %>% 
+  rename(author = author_text)
 
-paste0("Number of authors included in NKRJA & found in periodicals: ",  per %>% 
+paste0("Number of authors included in NKRJA & found in periodicals: ",  
+       per %>% 
     filter(A_ID != "") %>% 
     select(author) %>% 
     distinct() %>% 
     inner_join(nkrja_authors, by = "author") %>% nrow() 
+       )
+
+
+paste0("Number of authors included in NKRJA & found in pb: ",  
+       corpus %>% 
+         filter(corpus == "col") %>% 
+         filter(A_ID != "") %>% 
+         rename(author = author_text) %>% 
+         select(author) %>% 
+         distinct() %>% 
+         inner_join(nkrja_authors, by = "author") %>% nrow() 
        )
 ```
 

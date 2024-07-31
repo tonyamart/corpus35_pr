@@ -75,7 +75,8 @@ corpus_1835 %>%
 corpus_1835 %>% 
   select(corpus, text_raw) %>% 
   separate_rows(text_raw, sep = "\n") %>% 
-  filter(text_raw != "") %>% 
+  filter(text_raw != "" & 
+           !str_detect(text_raw, "^\\W+$|^\\d+$|^[[:punct:]]+$")) %>% 
   count(corpus)
 
 
@@ -83,11 +84,13 @@ print("Number of tokens:")
 corpus_1835 %>% 
   select(corpus, text_lemm) %>% 
   unnest_tokens(input = text_lemm, output = word, token = "words") %>% 
+  filter(!str_detect(word, "^\\d+$|^\\W+$")) %>% 
   nrow()
 
 corpus_1835 %>% 
   select(corpus, text_lemm) %>% 
   unnest_tokens(input = text_lemm, output = word, token = "words") %>% 
+  filter(!str_detect(word, "^\\d+$|^\\W+$")) %>% 
   count(corpus) 
 
   
@@ -95,11 +98,13 @@ print("Number of lemmas:")
 corpus_1835 %>% 
   select(corpus, text_lemm) %>% 
   unnest_tokens(input = text_lemm, output = word, token = "words") %>% 
+  filter(!str_detect(word, "^\\d+$|^\\W+$")) %>% 
   count(word) %>% nrow
 
 corpus_1835 %>% 
   select(corpus, text_lemm) %>% 
   unnest_tokens(input = text_lemm, output = word, token = "words") %>% 
+  filter(!str_detect(word, "^\\d+$|^\\W+$")) %>% 
   count(corpus, word) %>%
   select(-n) %>%
   ungroup() %>%

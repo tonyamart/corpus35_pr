@@ -3,32 +3,37 @@ library(reactable)
 library(tidyverse)
 
 
+#setwd("Documents/thesis1830s/corpus35_pr/scr/corpus_app/")
+
 ######### Load data #########
-load("data/corpus_1835.Rda")
+# corpus with texts
+corpus_1835 <- readRDS("data/corpus_1835.Rds")
 
-#authors <- read.delim("data/authors.tsv", sep = "\t")
-meta_cols <- read.csv("data/collections_digitised_meta.csv")
+# glimpse(corpus_1835)
+
+# books 1835-1840 metadata
+meta_books <- read.csv("data/books_metadata.csv") %>% select(-X)
+
+# glimpse(meta_books)
+
+# full bibliography 1830-1850
+biblio <- read.csv("data/biblio_1830-1850.csv") %>% select(-X)
+
+biblio[is.na(biblio)] <- ""
+
+# glimpse(biblio)
 
 
-#glimpse(corpus_1835)
 
-reg_feet <- c("2", "3", "4", "5", "6")
 
-corpus_1835 <- corpus_1835 %>% 
-  mutate(feet = ifelse(!feet %in% reg_feet, "other", feet))
 
-# group labels translation:
-groups_tr <- tibble(
-  subcorpus = c("col_lyr", "alm", "sep_lyr", "per"),
-  group = c("Сборник ст.", "Альманах", "Отд. изд.", "Периодика")
-)
 
 
 
 
 ######### UI #########
 ui <- fluidPage(
-  titlePanel(h3("Poetry corpus 1835-1840 (prototype)")),
+  titlePanel(h3("Poetry between 1835 and 1840: corpus & bibliography")),
   
     mainPanel(
       
@@ -38,13 +43,16 @@ ui <- fluidPage(
         tabPanel("Metadata",
                  
                  fluidRow(h3("Poems published in poetry books"),
-                          p("Total number of poems from all types of sources: 4149"), 
-                          p("Poems in poetry books: 2335"), 
-                          p("Poems from periodicals: 1814"), 
+                          p("Total number of poems from all types of sources: 4797"), 
+                          p("Poems in poetry books: 2892"), 
+                          p("Poems from periodicals: 1905"),
+                          p('Abbreviations: БдЧ - Библиотека для чтения, ЛГ - Литературная газета, ЛПРИ - Литературные прибавления к "Русскому инвалиду", МН - Московский наблюдатель, ОЗ - Отечественные записки, ПРиВЕТ - Пантеон русского и всех европейских театров, Сев_пч - Северная пчела, СО - Сын отечества (СОиСА - Сын отечества и Северный архив), Совр - Современник'),
                           
                           radioButtons("choose_cols_meta",
                                       h5("Choose the metadata type"),
-                                      choices = list("Book level metadata" = 1,
+                                      choices = list(
+                                        "Full bibliography: poetry books 1830-1850" = 0,
+                                        "Corpus 1835-1840: Book level metadata" = 1,
                                                      "Text level metadata (all texts)" = 2,
                                                      "Texts from poetry books" = 3,
                                                      "Texts from periodicals" = 4),
@@ -81,8 +89,8 @@ ui <- fluidPage(
                           
                           checkboxGroupInput("choose_feet",
                                              h4("Select number of feet"),
-                                             choices = unique(corpus_1835$feet),
-                                             selected = unique(corpus_1835$feet))
+                                             choices = unique(corpus_1835$feet_short),
+                                             selected = unique(corpus_1835$feet_short))
                           
                           )),
                           
@@ -137,16 +145,18 @@ ui <- fluidPage(
 
 server <- function(input, output) {
   
-  #### metadata poetry books ####
+  #### metadata ####
   output$cols_metadata <- renderReactable({
     
     if (input$choose_cols_meta == 2 ) {
     
       t <- corpus_1835 %>% 
         mutate(col_id = str_extract(text_id, "C_\\d+"),
-               corpus = ifelse(corpus == "cols", "poetry books", "periodicals")) %>% 
-        left_join(groups_tr, by = "subcorpus") %>% 
-        select(corpus, col_id, text_id, author, text_title, first_line, subtitle, year, source, group)
+               corpus = ifelse(corpus == "col", "poetry books", "periodicals")) %>% 
+        #left_join(groups_tr, by = "subcorpus") %>% 
+        select(corpus, col_id, text_id, year, author_text, 
+               text_title, first_line, text_subtitle, source_text, 
+               author_sign)
       
       reactable(t,
                 searchable = F,
@@ -163,10 +173,12 @@ server <- function(input, output) {
                   text_id = colDef(
                     filterable = T
                   ),
-                  group = colDef(
-                    filterable = T
+                  year = colDef(
+                    filterable = T,
+                    maxWidth = 50
                   ),
-                  author = colDef(
+                  
+                  author_text = colDef(
                     filterable = T
                   ),
                   text_title = colDef(
@@ -176,16 +188,15 @@ server <- function(input, output) {
                     filterable = T,
                     minWidth = 150
                   ),
-                  subtitle = colDef(
+                  text_subtitle = colDef(
                     filterable = T
                   ),
-                  source = colDef(
+                  source_text = colDef(
                     filterable = T,
                     minWidth = 200
                   ),
-                  year = colDef(
-                    filterable = T,
-                    maxWidth = 50
+                  author_sign = colDef(
+                    filterable = T
                   )
                 )
       )
@@ -194,8 +205,9 @@ server <- function(input, output) {
       
       t <- corpus_1835 %>% 
         mutate(col_id = str_extract(text_id, "C_\\d+")) %>% 
-        left_join(groups_tr, by = "subcorpus") %>% 
-        select(col_id, text_id, author, text_title, first_line, subtitle, year, source, group)
+        filter(corpus == "col") %>% 
+        select(col_id, text_id, year, author_text, 
+               text_title, first_line, text_subtitle, source_text)
       
       reactable(t,
                 searchable = F,
@@ -209,10 +221,7 @@ server <- function(input, output) {
                   text_id = colDef(
                     filterable = T
                   ),
-                  group = colDef(
-                    filterable = T
-                  ),
-                  author = colDef(
+                  author_text = colDef(
                     filterable = T
                   ),
                   text_title = colDef(
@@ -222,10 +231,10 @@ server <- function(input, output) {
                     filterable = T,
                     minWidth = 150
                   ),
-                  subtitle = colDef(
+                  text_subtitle = colDef(
                     filterable = T
                   ),
-                  source = colDef(
+                  source_text = colDef(
                     filterable = T,
                     minWidth = 200
                   ),
@@ -236,112 +245,23 @@ server <- function(input, output) {
                 )
       )
       
-     } else if (input$choose_cols_meta == 3) {
+     } else if (input$choose_cols_meta == 1) {
       
-      t <- corpus_1835 %>% 
-        mutate(col_id = str_extract(text_id, "C_\\d+")) %>% 
-        left_join(groups_tr, by = "subcorpus") %>% 
-        select(col_id, text_id, author, text_title, first_line, subtitle, year, source, group)
+      t <- meta_books 
       
       reactable(t,
                 searchable = F,
                 paginationType = "simple",
                 fullWidth = T,
                 columns = list(
-                  col_id = colDef(
+                  source_id = colDef(
                     filterable = T,
                     maxWidth = 60
                   ),
-                  text_id = colDef(
+                  author_name = colDef(
                     filterable = T
                   ),
-                  group = colDef(
-                    filterable = T
-                  ),
-                  author = colDef(
-                    filterable = T
-                  ),
-                  text_title = colDef(
-                    filterable = T
-                  ),
-                  first_line = colDef(
-                    filterable = T,
-                    minWidth = 150
-                  ),
-                  subtitle = colDef(
-                    filterable = T
-                  ),
-                  source = colDef(
-                    filterable = T,
-                    minWidth = 200
-                  ),
-                  year = colDef(
-                    filterable = T,
-                    maxWidth = 50
-                  )
-                )
-      )
-    } else if (input$choose_cols_meta == 4) {
-      
-      t <- corpus_1835 %>% 
-        filter(corpus == "per") %>% 
-        select(text_id, author, text_title, first_line, subtitle, year, source)
-      
-      reactable(t,
-                searchable = F,
-                paginationType = "simple",
-                fullWidth = T,
-                columns = list(
-                  text_id = colDef(
-                    filterable = T,
-                    maxWidth = 60
-                  ),
-                  author = colDef(
-                    filterable = T
-                  ),
-                  text_title = colDef(
-                    filterable = T
-                  ),
-                  first_line = colDef(
-                    filterable = T,
-                    minWidth = 150
-                  ),
-                  subtitle = colDef(
-                    filterable = T
-                  ),
-                  source = colDef(
-                    filterable = T,
-                    minWidth = 200
-                  ),
-                  year = colDef(
-                    filterable = T,
-                    maxWidth = 50
-                  )
-                )
-      )
-      
-    } else {
-      
-      t <- meta_cols %>% 
-        mutate(col_id = paste0("C_", id)) %>% 
-        select(col_id, author, title, city, publisher, year, group)
-      
-      reactable(t,
-                searchable = F,
-                paginationType = "simple",
-                fullWidth = T,
-                columns = list(
-                  col_id = colDef(
-                    filterable = T,
-                    maxWidth = 60
-                  ),
-                  group = colDef(
-                    filterable = T
-                  ),
-                  author = colDef(
-                    filterable = T
-                  ),
-                  title = colDef(
+                  book_title = colDef(
                     filterable = T,
                     minWidth = 200
                   ),
@@ -358,9 +278,98 @@ server <- function(input, output) {
                   ),
                   group = colDef(
                     filterable = T
+                  ),
+                  n_texts = colDef(
+                    sortable = T
+                  ),
+                  total_pages = colDef(
+                    sortable = T
                   )
                 )
       )
+    } else if (input$choose_cols_meta == 4) {
+      
+      t <- corpus_1835 %>% 
+        filter(corpus == "per") %>% 
+        select(text_id, year, author_text, 
+               text_title, first_line, text_subtitle, source_text, 
+               author_sign)
+      
+      reactable(t,
+                searchable = F,
+                paginationType = "simple",
+                fullWidth = T,
+                columns = list(
+                  text_id = colDef(
+                    filterable = T,
+                    maxWidth = 60
+                  ),
+                  author_text = colDef(
+                    filterable = T
+                  ),
+                  text_title = colDef(
+                    filterable = T
+                  ),
+                  first_line = colDef(
+                    filterable = T,
+                    minWidth = 150
+                  ),
+                  text_subtitle = colDef(
+                    filterable = T
+                  ),
+                  source_text = colDef(
+                    filterable = T,
+                    minWidth = 200
+                  ),
+                  year = colDef(
+                    filterable = T,
+                    maxWidth = 50
+                  )
+                )
+      )
+      
+    } else {
+      # full biblio choice
+      t <- biblio 
+      
+      reactable(t,
+                searchable = F,
+                paginationType = "simple",
+                fullWidth = T,
+                columns = list(
+                  
+                  id = colDef(
+                    filterable = T
+                  ),
+                  
+                  group_tr = colDef(
+                    filterable = T,
+                    maxWidth = 100
+                  ),
+                  author = colDef(
+                    filterable = T
+                  ),
+                  title = colDef(
+                    filterable = T,
+                    minWidth = 200
+                  ),
+                  city = colDef(
+                    filterable = T,
+                    maxWidth = 75
+                  ),
+                  publisher = colDef(
+                    filterable = T
+                  ),
+                  digital_copy_URL = colDef(
+                    minWidth = 200
+                  ),
+                  year = colDef(
+                    filterable = T,
+                    maxWidth = 50
+                  )
+                )
+      )
+      
     }
   })
   
@@ -371,11 +380,11 @@ server <- function(input, output) {
   corpus <- reactive({
     corpus_1835 %>% 
       filter(corpus %in% c(input$choose_corpus)) %>% 
-      filter(year > input$choose_year[1] & year < input$choose_year[2]) %>% 
+      filter(as.numeric(year) > input$choose_year[1] & as.numeric(year) < input$choose_year[2]) %>% 
       filter(meter %in% c(input$choose_meter)) %>% 
-      filter(feet %in% c(input$choose_feet)) %>% 
+      filter(feet_short %in% c(input$choose_feet)) %>% 
       mutate(two_lines = str_extract(text_acc, "^.*?\\n.*?\\n")) %>% 
-      select(text_id, year, author, text_title, two_lines, formula)
+      select(text_id, year, author_text, text_title, two_lines, formula)
       })
   
   # search meters
@@ -394,10 +403,11 @@ server <- function(input, output) {
   
   #### search by word ####
   word_search <- reactive({
+    
     corpus_1835 %>% 
-      filter(str_detect(text_raw, input$input_search_word)) %>% 
-      select(text_id, year, author, text_raw) %>% 
-      mutate(text_raw = str_extract_all(text_raw, 
+      filter(str_detect(text_cln, input$input_search_word)) %>% 
+      select(text_id, year, author_text, text_cln) %>% 
+      mutate(text_cln = str_extract_all(text_cln, 
                                         paste0("\\n?.*?", 
                                                input$input_search_word, ".*?\\n")))
   })
@@ -412,8 +422,8 @@ server <- function(input, output) {
               columns = list(
                 text_id = colDef(maxWidth = 100),
                 year = colDef(maxWidth = 75), 
-                author = colDef(maxWidth = 150),
-                text_raw = colDef(minWidth = 200)
+                author_text = colDef(maxWidth = 150),
+                text_cln = colDef(minWidth = 200)
               ))
   })
   
@@ -424,11 +434,11 @@ server <- function(input, output) {
     p <- corpus_1835 %>% 
       filter(text_id == input$text_id)
     
-    paste("Poem author:", p[1, 5], 
-          "\nYear of publication: ", p[1, 11],
-          "\nTitle:", p[1, 7],
-          "\nMeter:", p[1, 17],
-          "\n\nText:\n\n", p[1, 12])
+    paste("Poem author:", p[1, 4], 
+          "\nYear of publication: ", p[1, 8],
+          "\nTitle:", p[1, 5],
+          "\nMeter:", p[1, 19],
+          "\n\nText:\n\n", p[1, 14])
     
   })
   
@@ -439,9 +449,10 @@ server <- function(input, output) {
     
     poem <- corpus_1835[r(),]
     
-    paste0('\t', poem[1,7], '\n\n',
-          poem[1,12], 
-          '\n\nAuthor: ', poem[1,5], ', ', poem[1, 11])
+    paste0('\t', poem[1,5], '\n\n',
+          poem[1,14], 
+          '\n\nAuthor: ', poem[1,4], ', ', poem[1, 8],
+          ' (text_id: ', poem[1,1], ").")
   })
   
   

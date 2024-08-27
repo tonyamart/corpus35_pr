@@ -60,7 +60,7 @@ sources <- text_ids %>%
 rm(text_ids)
 ```
 
-Helpers
+Translation
 
 ``` r
 meters_transl <- tibble(
@@ -118,15 +118,16 @@ corpus_1835 %>%
 corpus_1835 %>% 
   select(corpus, text_raw) %>% 
   separate_rows(text_raw, sep = "\n") %>% 
-  filter(text_raw != "") %>% 
+  filter(text_raw != "" & 
+           !str_detect(text_raw, "^\\W+$|^\\d+$|^[[:punct:]]+$")) %>% 
   count(corpus)
 ```
 
     # A tibble: 2 × 2
       corpus      n
       <chr>   <int>
-    1 col    120403
-    2 per     71754
+    1 col    120141
+    2 per     71541
 
 ``` r
 print("Number of tokens:")
@@ -138,23 +139,25 @@ print("Number of tokens:")
 corpus_1835 %>% 
   select(corpus, text_lemm) %>% 
   unnest_tokens(input = text_lemm, output = word, token = "words") %>% 
+  filter(!str_detect(word, "^\\d+$|^\\W+$")) %>% 
   nrow()
 ```
 
-    [1] 881120
+    [1] 881088
 
 ``` r
 corpus_1835 %>% 
   select(corpus, text_lemm) %>% 
   unnest_tokens(input = text_lemm, output = word, token = "words") %>% 
+  filter(!str_detect(word, "^\\d+$|^\\W+$")) %>% 
   count(corpus) 
 ```
 
     # A tibble: 2 × 2
       corpus      n
       <chr>   <int>
-    1 col    549592
-    2 per    331528
+    1 col    549576
+    2 per    331512
 
 ``` r
 print("Number of lemmas:")
@@ -166,15 +169,17 @@ print("Number of lemmas:")
 corpus_1835 %>% 
   select(corpus, text_lemm) %>% 
   unnest_tokens(input = text_lemm, output = word, token = "words") %>% 
+  filter(!str_detect(word, "^\\d+$|^\\W+$")) %>% 
   count(word) %>% nrow
 ```
 
-    [1] 30399
+    [1] 30378
 
 ``` r
 corpus_1835 %>% 
   select(corpus, text_lemm) %>% 
   unnest_tokens(input = text_lemm, output = word, token = "words") %>% 
+  filter(!str_detect(word, "^\\d+$|^\\W+$")) %>% 
   count(corpus, word) %>%
   select(-n) %>%
   ungroup() %>%
@@ -184,8 +189,8 @@ corpus_1835 %>%
     # A tibble: 2 × 2
       corpus     n
       <chr>  <int>
-    1 col    24795
-    2 per    18686
+    1 col    24782
+    2 per    18671
 
 Number of poems per year
 
@@ -367,13 +372,13 @@ titles <- corpus_1835 %>%
   #filter(word == "е") #%>% 
   #count(word, sort = T) 
 
-# write.csv(titles, "poems_titles.csv") # write to lemmatise
+# write.csv(titles, "../../data/ch3/poems_titles.csv") # write to lemmatise
 ```
 
 Load titles
 
 ``` r
-titles <- read.csv("poems_titles.csv") %>% select(-X)
+titles <- read.csv("../../data/ch3/poems_titles.csv") %>% select(-X)
 
 head(titles)
 ```
@@ -1121,7 +1126,7 @@ Some work around texts with multiple genres in the title (“подражани�
 # write.csv(m, "multigenre_texts.csv")
 
 # read the data with normalised genres
-m <- read.delim("multigenre_texts.csv", sep = ';') %>% select(-X)
+m <- read.delim("../../data/ch3/multigenre_texts.csv", sep = ';') %>% select(-X)
 
 glimpse(m)
 ```
@@ -1289,8 +1294,8 @@ titles %>%
 ![](03_1_overview_genres.markdown_strict_files/figure-markdown_strict/unnamed-chunk-26-1.png)
 
 ``` r
-ggsave("plots/Fig_3-1-2b.png", plot = last_plot(), dpi = 300,
-       bg = "white", width = 8, height = 6)
+# ggsave("plots/Fig_3-1-2b.png", plot = last_plot(), dpi = 300,
+#        bg = "white", width = 8, height = 6)
 ```
 
 ``` r
@@ -1343,8 +1348,8 @@ titles %>%
 ![](03_1_overview_genres.markdown_strict_files/figure-markdown_strict/unnamed-chunk-27-1.png)
 
 ``` r
-ggsave("plots/bw/Fig_3-1-2b.png", plot = last_plot(), dpi = 300,
-       bg = "white", width = 8, height = 6)
+# ggsave("plots/bw/Fig_3-1-2b.png", plot = last_plot(), dpi = 300,
+#        bg = "white", width = 8, height = 6)
 ```
 
 Elegies in iamb-5

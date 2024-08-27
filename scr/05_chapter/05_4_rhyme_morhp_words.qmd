@@ -6,6 +6,8 @@ editor: visual
 
 ## 5.2.1. POS in rhymes - word level
 
+The code used for analysis in Chapter 5.2. (POS in rhyme, individual words)
+
 ## load data & pckg
 
 ```{r, warning=FALSE, message=FALSE}
@@ -67,7 +69,7 @@ glimpse(rhyme_pairs)
 ### rhyme words
 
 ```{r}
-rhyme_words <- read.csv("../../data/corpus1835/sql_db/rhyme_words_upd.csv", 
+rhyme_words <- read.csv("../../data/corpus1835/sql_db/rhyme_words.csv", 
                         
                         # DON'T LET R EAT IAMBS AND DO INTEGER 01 => 1
                         colClasses = c("stress_pattern" = "character",
@@ -1458,7 +1460,7 @@ head(k_endwords)
 -   get POS tags
 
 ```{r}
-endw_pos <- read_csv("k_endwords.csv") %>% select(-`...1`)
+endw_pos <- read_csv("../../data/ch5/working_files/k_endwords.csv") %>% select(-`...1`)
 nrow(k_endwords) == nrow(endw_pos)
 
 k_ew_pos <- cbind(k_endwords, endw_pos)

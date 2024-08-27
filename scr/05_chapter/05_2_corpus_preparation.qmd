@@ -6,14 +6,13 @@ editor: visual
 
 ## Corpus preparation for rhyme analysis
 
+Rhymes were extracted both from Corpus-1835 and RNC, the RhymeTagger data cleaned and additionally annotated with endings (e.g., "-енья") and ending types ("feminine" rhyme). The steps done for the extraction and annotation are shown below.
+
 ## Load pckg
 
 ```{r, message=FALSE, warning=FALSE}
 library(tidyverse)
 library(tidytext)
-
-# library(udpipe)
-# ru_taiga <- udpipe_load_model("../../data/russian-taiga-ud-2.5-191206.udpipe")
 ```
 
 ## Load data
@@ -722,7 +721,7 @@ x <- words_pos %>%
 # write.csv(x, "pos_check.csv")
 
 # read checked table with pos
-x1 <- read.delim("pos_check.csv", sep = ";")
+x1 <- read.delim("../../data/ch5/working_files/pos_check.csv", sep = ";")
 glimpse(x1)
 
 # return only selected rows
@@ -1052,13 +1051,13 @@ glimpse(nkrja)
 ```{r, eval=FALSE}
 w_vec <- unique(c(nkrja$from, nkrja$to))
 
-writeLines(w_vec, "nkrja_words.txt")
+writeLines(w_vec, "../../data/ch5/working_files/nkrja_words.txt")
 ```
 
 Read accented words & add non-acc word (same processing as above with corpus-1835)
 
 ```{r}
-w_vec <- read_file("nkrja_words.accented.txt")
+w_vec <- read_file("../../data/ch5/working_files/nkrja_words.accented.txt")
 
 rw_acc <- tibble(accented = w_vec) %>% # create one-cell tibble
   # separate one word = one row
@@ -1081,7 +1080,7 @@ rw_acc <- rw_acc[-which(rw_acc$accented == ""),]
 Attach words without stresses
 
 ```{r}
-w_vec <- read_file("nkrja_words.txt")
+w_vec <- read_file("../../data/ch5/working_files/nkrja_words.txt")
 
 rw_words <- tibble(word = w_vec) %>% # create one-cell tibble
   # separate one word = one row

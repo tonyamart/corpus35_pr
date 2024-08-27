@@ -59,7 +59,8 @@ glimpse(per_full)
 ```
 
     Rows: 1,905
-    Columns: 14
+    Columns: 15
+    $ X             <int> 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 1…
     $ text_id       <chr> "P_1", "P_10", "P_100", "P_1000", "P_1001", "P_1002", "P…
     $ source_id     <chr> "Per_1", "Per_2", "Per_3", "Per_4", "Per_4", "Per_4", "P…
     $ A_ID          <chr> "", "A_50", "A_7", "A_41", "A_139", "A_11", "A_163", "A_…
@@ -68,9 +69,9 @@ glimpse(per_full)
     $ first_line    <chr> "Ох жизнь, молодецкая", "Зачем с небесной высоты", "В бл…
     $ text_page     <chr> "C. 46", "C. 21", "C. 9-12", "C. 172-174", "C. 175-176",…
     $ corpus        <chr> "per", "per", "per", "per", "per", "per", "per", "per", …
-    $ meter         <chr> "Other", "Iamb", "Iamb", "Iamb", "Trochee", "Iamb", "Tro…
-    $ feet          <chr> "other", "3", "4", "4", "4", "4", "other", "4", "6", "5"…
     $ n_lines       <int> 38, 16, 98, 77, 28, 12, 44, 25, 31, 28, 100, 16, 17, 60,…
+    $ meter         <chr> "Other", "Iamb", "Iamb", "Iamb", "Trochee", "Iamb", "Oth…
+    $ feet          <chr> "?", "3", "4", "4", "4", "4", "?", "4", "6", "5", "4", "…
     $ book_title    <chr> "Сев_пч", "БдЧ", "БдЧ", "Совр", "Совр", "Совр", "Совр", …
     $ year          <int> 1835, 1835, 1836, 1838, 1838, 1838, 1838, 1838, 1838, 18…
     $ text_lemm     <chr> "ох, жизнь молодецкий,\nбравый, солдатский!\nкак осенний…
@@ -96,7 +97,8 @@ glimpse(per)
 ```
 
     Rows: 1,905
-    Columns: 19
+    Columns: 20
+    $ X             <int> 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 1…
     $ text_id       <chr> "P_1", "P_10", "P_100", "P_1000", "P_1001", "P_1002", "P…
     $ source_id     <chr> "Per_1", "Per_2", "Per_3", "Per_4", "Per_4", "Per_4", "P…
     $ A_ID          <chr> "", "A_50", "A_7", "A_41", "A_139", "A_11", "A_163", "A_…
@@ -105,9 +107,9 @@ glimpse(per)
     $ first_line    <chr> "Ох жизнь, молодецкая", "Зачем с небесной высоты", "В бл…
     $ text_page     <chr> "C. 46", "C. 21", "C. 9-12", "C. 172-174", "C. 175-176",…
     $ corpus        <chr> "per", "per", "per", "per", "per", "per", "per", "per", …
-    $ meter         <chr> "Other", "Iamb", "Iamb", "Iamb", "Trochee", "Iamb", "Tro…
-    $ feet          <chr> "other", "3", "4", "4", "4", "4", "other", "4", "6", "5"…
     $ n_lines       <int> 38, 16, 98, 77, 28, 12, 44, 25, 31, 28, 100, 16, 17, 60,…
+    $ meter         <chr> "Other", "Iamb", "Iamb", "Iamb", "Trochee", "Iamb", "Oth…
+    $ feet          <chr> "?", "3", "4", "4", "4", "4", "?", "4", "6", "5", "4", "…
     $ book_title    <chr> "Сев_пч", "БдЧ", "БдЧ", "Совр", "Совр", "Совр", "Совр", …
     $ year          <int> 1835, 1835, 1836, 1838, 1838, 1838, 1838, 1838, 1838, 18…
     $ text_lemm     <chr> "ох, жизнь молодецкий,\nбравый, солдатский!\nкак осенний…
@@ -215,7 +217,8 @@ glimpse(periodicals)
 ```
 
     Rows: 1,905
-    Columns: 20
+    Columns: 21
+    $ X             <int> 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 1…
     $ text_id       <chr> "P_1", "P_10", "P_100", "P_1000", "P_1001", "P_1002", "P…
     $ source_id     <chr> "Per_1", "Per_2", "Per_3", "Per_4", "Per_4", "Per_4", "P…
     $ A_ID          <chr> "", "A_50", "A_7", "A_41", "A_139", "A_11", "A_163", "A_…
@@ -224,9 +227,9 @@ glimpse(periodicals)
     $ first_line    <chr> "Ох жизнь, молодецкая", "Зачем с небесной высоты", "В бл…
     $ text_page     <chr> "C. 46", "C. 21", "C. 9-12", "C. 172-174", "C. 175-176",…
     $ corpus        <chr> "per", "per", "per", "per", "per", "per", "per", "per", …
-    $ meter         <chr> "Other", "Iamb", "Iamb", "Iamb", "Trochee", "Iamb", "Tro…
-    $ feet          <chr> "other", "3", "4", "4", "4", "4", "other", "4", "6", "5"…
     $ n_lines       <int> 38, 16, 98, 77, 28, 12, 44, 25, 31, 28, 100, 16, 17, 60,…
+    $ meter         <chr> "Other", "Iamb", "Iamb", "Iamb", "Trochee", "Iamb", "Oth…
+    $ feet          <chr> "?", "3", "4", "4", "4", "4", "?", "4", "6", "5", "4", "…
     $ book_title    <chr> "Сев_пч", "БдЧ", "БдЧ", "Совр", "Совр", "Совр", "Совр", …
     $ year          <int> 1835, 1835, 1836, 1838, 1838, 1838, 1838, 1838, 1838, 18…
     $ text_lemm     <chr> "ох, жизнь молодецкий,\nбравый, солдатский!\nкак осенний…
@@ -496,6 +499,11 @@ per %>%
 
 ![](02_2_periodicals_overview.markdown_strict_files/figure-markdown_strict/unnamed-chunk-20-1.png)
 
+``` r
+ggsave(file = "plots/Fig_2-2-2.png", plot = last_plot(), dpi = 300,
+      width = 8, height = 6, bg = "white")
+```
+
 #### bw version
 
 ``` r
@@ -536,7 +544,7 @@ per %>%
   labs(x = "Год", y = "Количество текстов")
 ```
 
-![](02_2_periodicals_overview.markdown_strict_files/figure-markdown_strict/unnamed-chunk-21-1.png)
+![](02_2_periodicals_overview.markdown_strict_files/figure-markdown_strict/unnamed-chunk-22-1.png)
 
 ``` r
 ggsave(file = "plots/bw/Fig_2-2-2.png", plot = last_plot(), dpi = 300,
@@ -545,7 +553,7 @@ ggsave(file = "plots/bw/Fig_2-2-2.png", plot = last_plot(), dpi = 300,
 
 ## Table 2.2.4
 
--   count most prominent authors in a jounal (total years) to highlight
+-   count most prominent authors in a journal (total years) to highlight
     table 2.2.4
 
 -   authors’ age info
@@ -595,24 +603,6 @@ per %>%
     10 БдЧ          1837 Тимофеев А.В. (11), Бернет Е. (10), Кропоткин Д.А. (7), Ве…
     # ℹ 19 more rows
 
-``` r
-# %>% 
-  #pivot_wider(names_from = "year", values_from = "author_names")
-
-
-# tile plot attempt
-# per %>% 
-#   #filter(year == "1835") %>% 
-#   filter(author_text != "" & !per_name %in% c("Телескоп", "СП")) %>% 
-#   group_by(per_name, year) %>% 
-#   count(author_text, sort = T) %>% 
-#   slice_max(order_by = n, n = 3) %>% 
-#   ungroup() %>% 
-#   #mutate(author_text = paste0(per_name, "_", author_text)) %>% 
-#   ggplot(aes(x = year, y = author_text, fill = n)) + 
-#   geom_tile() 
-```
-
 Table 2.2.4 most prominent authors highlighting base
 
 ``` r
@@ -647,7 +637,8 @@ glimpse(per)
 ```
 
     Rows: 1,905
-    Columns: 20
+    Columns: 21
+    $ X             <int> 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 1…
     $ text_id       <chr> "P_1", "P_10", "P_100", "P_1000", "P_1001", "P_1002", "P…
     $ source_id     <chr> "Per_1", "Per_2", "Per_3", "Per_4", "Per_4", "Per_4", "P…
     $ A_ID          <chr> "", "A_50", "A_7", "A_41", "A_139", "A_11", "A_163", "A_…
@@ -656,9 +647,9 @@ glimpse(per)
     $ first_line    <chr> "Ох жизнь, молодецкая", "Зачем с небесной высоты", "В бл…
     $ text_page     <chr> "C. 46", "C. 21", "C. 9-12", "C. 172-174", "C. 175-176",…
     $ corpus        <chr> "per", "per", "per", "per", "per", "per", "per", "per", …
-    $ meter         <chr> "Other", "Iamb", "Iamb", "Iamb", "Trochee", "Iamb", "Tro…
-    $ feet          <chr> "other", "3", "4", "4", "4", "4", "other", "4", "6", "5"…
     $ n_lines       <int> 38, 16, 98, 77, 28, 12, 44, 25, 31, 28, 100, 16, 17, 60,…
+    $ meter         <chr> "Other", "Iamb", "Iamb", "Iamb", "Trochee", "Iamb", "Oth…
+    $ feet          <chr> "?", "3", "4", "4", "4", "4", "?", "4", "6", "5", "4", "…
     $ PER_ID        <chr> "Сев_пч", "БдЧ", "БдЧ", "Совр", "Совр", "Совр", "Совр", …
     $ year          <int> 1835, 1835, 1836, 1838, 1838, 1838, 1838, 1838, 1838, 18…
     $ text_lemm     <chr> "ох, жизнь молодецкий,\nбравый, солдатский!\nкак осенний…
@@ -892,275 +883,6 @@ per %>%
     12              Пальмин И.Д.       1803
     13            Кропоткин Д.А.       1818
 
-### treemap plots (not used)
-
-``` r
-# remove incomplete sources
-periodicals <- per %>% 
-  filter(!PER_ID %in% c("Молва", "МН", "Сев_пч"))
-
-years_total <- periodicals %>% 
-  count(year) %>% 
-  mutate(year_label = paste0(year, " (N = ", n, ")"))
-
-source_year_total <- periodicals %>% 
-  count(PER_ID, year)
-```
-
-Count number of texts in each source by each author
-
-``` r
-authors_sources <- periodicals %>% 
-    #filter(PER_ID != "Сев_пч") %>% 
-    mutate(PER_ID = ifelse(str_detect(PER_ID,"СОиСА"), "СО", PER_ID)) %>% 
-    filter(author_text != "") %>% 
-    
-    # grouping by author, year and source
-    group_by(year, PER_ID, author_text) %>% 
-    count(sort = T) %>% 
-    ungroup() %>%
-    
-    # non-frequent authors grouped as "others"
-    mutate(author_text = ifelse(n < 3, "Другие", author_text)) %>% 
-    group_by(year, PER_ID, author_text) %>% 
-    # sum poems by others
-    summarise(n = sum(n)) %>% 
-    mutate(author_label = paste0(author_text, " (", n, ")")) %>% 
-    filter(author_text != "Другие")
-
-head(authors_sources)
-```
-
-Select colours for charts
-
-``` r
-MetBrewer::colorblind_palettes
-
-met.brewer("Archambault")
-
-met.brewer("Egypt")
-
-met.brewer("Johnson")
-
-met.brewer("Kandinsky")
-
-met.brewer("Veronese")
-```
-
-``` r
-# treemap: https://cran.r-project.org/web/packages/treemap/treemap.pdf
-
-# x <- NULL
-# 
-# for (i in 1:length(unique(per$year))) {
-#     
-#     x <- unique(per$year)[i]
-#     
-#     filename = paste0("plots/treemaps/plot_", x, ".png")
-# 
-#     png(filename, width = 600, height = 600)
-# 
-#     t <- authors_sources %>% 
-#         filter(year == x) %>% 
-#         treemap(
-#             index = c("PER_ID", "author_label"),
-#             vSize = "n",
-#             type = "index",
-#             palette = light_palette,
-#             fontsize.labels = c(20, 16),
-#             #position.legend = "right",
-#             overlap.labels = 1,
-#             title = x,
-#             fontsize.title = 22
-#         )
-# 
-#     dev.off()
-# }
-```
-
-``` r
-years_total
-```
-
-``` r
-source_year_total %>% arrange(-desc(year))
-```
-
-``` r
-png("plots/treemaps/2-2-2_1835_v2.png", height = 650, width = 600)
-
-tree_pal <- c(met.brewer("Veronese")[1], # BdCH
-              met.brewer("Veronese")[3], # LPRI
-              met.brewer("Veronese")[4], # SO
-              met.brewer("Kandinsky")[3]) # Telescop
-
-authors_sources %>% 
-        filter(year == 1835) %>% 
-        treemap(
-            index = c("PER_ID", "author_label"),
-            vSize = "n",
-            type = "index",
-            palette = tree_pal,
-            fontsize.labels = c(24, 16),
-            #position.legend = "right",
-            overlap.labels = 1,
-            title = "1835 (N = 269)",
-            fontsize.title = 22
-        )
-
-dev.off()
-```
-
-``` r
-png("plots/treemaps/2-2-2_1836_v2.png", height = 650, width = 600)
-
-authors_sources %>% 
-        filter(year == 1836) %>% 
-        select(PER_ID) %>% distinct() %>% arrange(-desc(PER_ID))
-
-tree_pal <- c(met.brewer("Veronese")[1], # BdCH
-              met.brewer("Veronese")[3], # LPRI
-              met.brewer("Veronese")[4], # SO
-              met.brewer("Veronese")[7], # Sovr
-              met.brewer("Kandinsky")[3]) # Telescop
-
-authors_sources %>% 
-        filter(year == 1836) %>% 
-        treemap(
-            index = c("PER_ID", "author_label"),
-            vSize = "n",
-            type = "index",
-            palette = tree_pal,
-            fontsize.labels = c(24, 16),
-            #position.legend = "right",
-            overlap.labels = 1,
-            title = "1836 (N = 238)",
-            fontsize.title = 22
-        )
-
-dev.off()
-```
-
-``` r
-png("plots/treemaps/2-2-2_1837_v2.png", height = 650, width = 600)
-
-authors_sources %>% 
-        filter(year == 1837) %>% 
-        select(PER_ID) %>% distinct() %>% arrange(-desc(PER_ID))
-
-tree_pal <- c(met.brewer("Veronese")[1], # BdCH
-              met.brewer("Veronese")[3], # LPRI
-              met.brewer("Veronese")[4], # SO
-              met.brewer("Veronese")[7]) # Sovr 
-
-authors_sources %>%
-        filter(year == 1837) %>%
-        treemap(
-            index = c("PER_ID", "author_label"),
-            vSize = "n",
-            type = "index",
-            palette = tree_pal,
-            fontsize.labels = c(24, 16),
-            #position.legend = "right",
-            overlap.labels = 1,
-            title = "1837 (N = 282)",
-            fontsize.title = 22
-        )
-
-dev.off()
-```
-
-``` r
-png("plots/treemaps/2-2-2_1838_v2.png", height = 650, width = 600)
-
-authors_sources %>% 
-        filter(year == 1838) %>% 
-        select(PER_ID) %>% distinct() %>% arrange(-desc(PER_ID))
-
-tree_pal <- c(met.brewer("Veronese")[1], # BdCH
-              met.brewer("Veronese")[3], # LPRI
-              met.brewer("Veronese")[4], # SO
-              met.brewer("Veronese")[7]) # Sovr
-
-authors_sources %>%
-        filter(year == 1838) %>%
-        treemap(
-            index = c("PER_ID", "author_label"),
-            vSize = "n",
-            type = "index",
-            palette = tree_pal,
-            fontsize.labels = c(24, 16),
-            #position.legend = "right",
-            overlap.labels = 1,
-            title = "1838 (N = 288)",
-            fontsize.title = 22
-        )
-
-dev.off()
-```
-
-``` r
-png("plots/treemaps/2-2-2_1839_v2.png", height = 650, width = 600)
-
-authors_sources %>% 
-        filter(year == 1839) %>% 
-        select(PER_ID) %>% distinct() %>% arrange(-desc(PER_ID))
-
-tree_pal <- c(met.brewer("Veronese")[1], # BdCH
-              met.brewer("Veronese")[3], # LPRI
-              met.brewer("Archambault")[2], # OZ
-              met.brewer("Veronese")[4], # SO
-              met.brewer("Veronese")[7]) # Sovr
-
-authors_sources %>%
-        filter(year == 1839) %>%
-        treemap(
-            index = c("PER_ID", "author_label"),
-            vSize = "n",
-            type = "index",
-            palette = tree_pal,
-            fontsize.labels = c(24, 16),
-            #position.legend = "right",
-            overlap.labels = 1,
-            title = "1839 (N = 312)",
-            fontsize.title = 22
-        )
-
-dev.off()
-```
-
-``` r
-png("plots/treemaps/2-2-2_1840_v2.png", height = 700, width = 650)
-
-authors_sources %>% 
-        filter(year == 1840) %>% 
-        select(PER_ID) %>% distinct() %>% arrange(-desc(PER_ID))
-
-tree_pal <- c(met.brewer("Veronese")[1], # BdCH
-              met.brewer("Veronese")[3], # LG
-              met.brewer("Kandinsky")[3], # Mayak
-              met.brewer("Archambault")[2], # OZ
-              met.brewer("Egypt")[2], # PRiVET
-              met.brewer("Veronese")[4], # SO
-              met.brewer("Veronese")[7]) # Sovr
-
-authors_sources %>%
-        filter(year == 1840) %>%
-        treemap(
-            index = c("PER_ID", "author_label"),
-            vSize = "n",
-            type = "index",
-            palette = tree_pal,
-            fontsize.labels = c(24, 16),
-            #position.legend = "right",
-            overlap.labels = 1,
-            title = "1840 (N = 461)",
-            fontsize.title = 22
-        )
-
-dev.off()
-```
-
 ### Authors rotation in journals
 
 ``` r
@@ -1227,6 +949,8 @@ per %>%
 # selected journals
 per_names <- c("БдЧ", "ЛПРИ", "СО", "Совр", "ОЗ")
 ```
+
+Author’s appearances in a journal yearly
 
 ``` r
 # per_names
@@ -1328,6 +1052,9 @@ for (i in 1:length(per_names)) {
      9 Красов В.И.           1      1     2
     10 Лермонтов М.Ю.        1      1     2
     # ℹ 27 more rows
+
+How many authors appeared in a journal only once (=with one poem) in a
+year
 
 ``` r
 unique(per$year)
@@ -1472,6 +1199,7 @@ for (i in 1:length(unique(per$year))) {
      [9] "perc:"          "NaN"           
 
 ``` r
+# percentage of onetimers in each journal in each year
 tibble(year = years,
        source = sources,
        perc = perc) %>% 
@@ -1488,7 +1216,7 @@ tibble(year = years,
     4 Совр    NaN     44.4   47.6   63.6   38.5   63.0
     5 ОЗ      NaN    NaN    NaN     59.3   41.7  NaN  
 
-### Jaccard for total top authors in each source
+### Jaccard’s coefficient for total top authors in each source
 
 ``` r
 t <- per %>% 
@@ -1629,25 +1357,6 @@ tibble(sources = sources,
     4 Совр  0.114 0.128 0.143 1     0.16 
     5 ОЗ    0.032 0.121 0.065 0.16  1    
 
-``` r
-tibble(sources = sources, 
-       int =  intersections, 
-       total = total) %>% 
-  mutate(jaccard = round(int/union, 3) ) %>% 
-  select(sources, jaccard) %>% 
-  filter(jaccard != 1) %>% 
-  ggplot(aes(y = jaccard)) + geom_boxplot()
-
-x <- tibble(sources = sources, 
-       int =  intersections, 
-       total = total) %>% 
-  mutate(jaccard = round(int/union, 3) ) %>% 
-  select(sources, jaccard) %>% 
-  filter(jaccard != 1)
-
-summary(x)
-```
-
 ### LPRI genre titles
 
 ``` r
@@ -1725,7 +1434,7 @@ per %>%
     geom_col(position = "dodge")
 ```
 
-![](02_2_periodicals_overview.markdown_strict_files/figure-markdown_strict/unnamed-chunk-49-1.png)
+![](02_2_periodicals_overview.markdown_strict_files/figure-markdown_strict/unnamed-chunk-37-1.png)
 
 ``` r
 per %>% 

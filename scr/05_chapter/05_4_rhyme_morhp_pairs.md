@@ -2,6 +2,8 @@
 
 ## 5.2.2. Rhyme grammatical contrast & endings variability
 
+Code used for analysis & plots in Chapter 5.2.2.
+
 Load pckg
 
 ``` r
@@ -9,7 +11,8 @@ library(tidyverse)
 library(tidytext)
 
 library(MetBrewer)
-library(patchwork)
+# library(patchwork)
+library(cowplot)
 theme_set(theme_minimal())
 ```
 
@@ -28,7 +31,7 @@ table(meta$meter)
 
 
     Amphibrach    Anapest     Dactyl       Iamb      Other    Trochee 
-           429        142         89       3055        206        876 
+           369        138         79       3085        350        778 
 
 ``` r
 meter_lables <- meta %>% 
@@ -37,13 +40,13 @@ meter_lables <- meta %>%
 head(meter_lables)
 ```
 
-      text_id   meter  feet
-    1     P_1   Other other
-    2    P_10    Iamb     3
-    3   P_100    Iamb     4
-    4  P_1000    Iamb     4
-    5  P_1001 Trochee     4
-    6  P_1002    Iamb     4
+      text_id   meter feet
+    1     P_1   Other    ?
+    2    P_10    Iamb    3
+    3   P_100    Iamb    4
+    4  P_1000    Iamb    4
+    5  P_1001 Trochee    4
+    6  P_1002    Iamb    4
 
 Rhyme pairs
 
@@ -85,12 +88,12 @@ glimpse(rhyme_pairs)
     $ to         <chr> "небеса", "земным", "красавице", "высоко", "легки", "догони…
     $ rhyme_alph <chr> "краса небеса", "земным огневым", "красавице красавицей", "…
     $ meter      <chr> "Other", "Other", "Other", "Trochee", "Trochee", "Trochee",…
-    $ feet       <chr> "other", "other", "other", "4", "4", "4", "4", "4", "4", "4…
+    $ feet       <chr> "?", "?", "?", "4", "4", "4", "4", "4", "4", "4", "4", "4",…
 
 Rhyme words
 
 ``` r
-rhyme_words <- read.csv("../../data/corpus1835/sql_db/rhyme_words_upd.csv", 
+rhyme_words <- read.csv("../../data/corpus1835/sql_db/rhyme_words.csv", 
                         
                         # DON'T LET R EAT IAMBS AND DO INTEGER 01 => 1
                         colClasses = c("stress_pattern" = "character",
@@ -188,7 +191,7 @@ glimpse(rhyme_pairs)
     $ to           <chr> "небеса", "земным", "красавице", "высоко", "легки", "дого…
     $ rhyme_alph   <chr> "краса небеса", "земным огневым", "красавице красавицей",…
     $ meter        <chr> "Other", "Other", "Other", "Trochee", "Trochee", "Trochee…
-    $ feet         <chr> "other", "other", "other", "4", "4", "4", "4", "4", "4", …
+    $ feet         <chr> "?", "?", "?", "4", "4", "4", "4", "4", "4", "4", "4", "4…
     $ from_closure <chr> "masc", "masc", "dactylic", "fem", "masc", "fem", "masc",…
     $ from_pos     <chr> "NOUN", "NOUN", "NOUN", "NOUN", "NOUN", "VERB", "NOUN", "…
     $ from_ending  <chr> "са'", "ы'м", "а'вицей", "о'ко", "ки'", "о'нет", "о'р", "…
@@ -241,7 +244,7 @@ t <- nrow(iamb_masc)
 t
 ```
 
-    [1] 25030
+    [1] 24905
 
 ``` r
 iamb_count <- iamb_masc %>% 
@@ -259,26 +262,26 @@ head(iamb_count, 20)
     # A tibble: 20 × 3
        pos_pair                 n_iamb perc_iamb
        <chr>                     <int>     <dbl>
-     1 NOUN -- NOUN               8980     35.9 
-     2 NOUN -- PRON               3424     13.7 
-     3 VERB -- VERB               3183     12.7 
-     4 NOUN -- VERB               1497      5.98
-     5 ADJ -- NOUN                1321      5.28
-     6 PRON -- PRON               1077      4.3 
-     7 VERB_inf -- VERB_inf        970      3.88
-     8 ADV -- NOUN                 785      3.14
-     9 ADJ -- PRON                 625      2.5 
-    10 ADJ -- ADJ                  348      1.39
-    11 NOUN -- PART                293      1.17
-    12 NOUN -- VERB_inf            271      1.08
+     1 NOUN -- NOUN               8930     35.9 
+     2 NOUN -- PRON               3411     13.7 
+     3 VERB -- VERB               3168     12.7 
+     4 NOUN -- VERB               1494      6   
+     5 ADJ -- NOUN                1319      5.3 
+     6 PRON -- PRON               1064      4.27
+     7 VERB_inf -- VERB_inf        968      3.89
+     8 ADV -- NOUN                 777      3.12
+     9 ADJ -- PRON                 625      2.51
+    10 ADJ -- ADJ                  348      1.4 
+    11 NOUN -- PART                291      1.17
+    12 NOUN -- VERB_inf            271      1.09
     13 NOUN -- VERB_prich          237      0.95
-    14 NOUN -- VERB_imp            228      0.91
-    15 ADV -- PRON                 192      0.77
-    16 VERB_imp -- VERB_imp        186      0.74
-    17 PRON -- VERB_prich          161      0.64
-    18 NOUN -- VERB_deeprich       147      0.59
-    19 PRON -- VERB                133      0.53
-    20 VERB_prich -- VERB_prich     85      0.34
+    14 NOUN -- VERB_imp            226      0.91
+    15 ADV -- PRON                 190      0.76
+    16 VERB_imp -- VERB_imp        187      0.75
+    17 PRON -- VERB_prich          159      0.64
+    18 NOUN -- VERB_deeprich       146      0.59
+    19 PRON -- VERB                130      0.52
+    20 VERB_prich -- VERB_prich     84      0.34
 
 Syllable variation
 
@@ -308,16 +311,16 @@ iamb_count_syl %>%
     # A tibble: 10 × 4
        pos_pair         n_iamb perc_iamb rank_iamb
        <chr>             <int>     <dbl>     <int>
-     1 NOUN_2 -- NOUN_2   2941     11.8          1
-     2 NOUN_1 -- NOUN_2   1909      7.63         2
-     3 NOUN_2 -- NOUN_3   1735      6.93         3
-     4 NOUN_1 -- NOUN_1   1377      5.5          4
-     5 NOUN_2 -- PRON_2   1045      4.17         5
-     6 VERB_2 -- VERB_3    996      3.98         6
-     7 VERB_2 -- VERB_2    943      3.77         7
-     8 NOUN_2 -- PRON_1    872      3.48         8
-     9 VERB_3 -- VERB_3    546      2.18         9
-    10 ADJ_2 -- NOUN_2     524      2.09        10
+     1 NOUN_2 -- NOUN_2   2927     11.8          1
+     2 NOUN_1 -- NOUN_2   1895      7.61         2
+     3 NOUN_2 -- NOUN_3   1732      6.95         3
+     4 NOUN_1 -- NOUN_1   1358      5.45         4
+     5 NOUN_2 -- PRON_2   1037      4.16         5
+     6 VERB_2 -- VERB_3    996      4            6
+     7 VERB_2 -- VERB_2    942      3.78         7
+     8 NOUN_2 -- PRON_1    872      3.5          8
+     9 VERB_3 -- VERB_3    542      2.18         9
+    10 ADJ_2 -- NOUN_2     522      2.1         10
 
 Trochee
 
@@ -329,7 +332,7 @@ t <- nrow(tr_masc)
 t
 ```
 
-    [1] 7045
+    [1] 6310
 
 ``` r
 tr_masc %>% 
@@ -346,28 +349,28 @@ tr_masc %>%
 ```
 
     # A tibble: 20 × 5
-       pos_pair             perc_iamb perc_tr n_iamb  n_tr
-       <chr>                    <dbl>   <dbl>  <int> <int>
-     1 NOUN -- NOUN             35.9    36.6    8980  2577
-     2 VERB -- VERB             12.7    13.2    3183   928
-     3 NOUN -- PRON             13.7    12.2    3424   861
-     4 NOUN -- VERB              5.98    6.71   1497   473
-     5 ADJ -- NOUN               5.28    5.89   1321   415
-     6 PRON -- PRON              4.3     4.02   1077   283
-     7 VERB_inf -- VERB_inf      3.88    3.7     970   261
-     8 ADV -- NOUN               3.14    3.44    785   242
-     9 ADJ -- PRON               2.5     2.37    625   167
-    10 ADJ -- ADJ                1.39    1.39    348    98
-    11 NOUN -- VERB_inf          1.08    0.92    271    65
-    12 ADV -- PRON               0.77    0.88    192    62
-    13 NOUN -- VERB_imp          0.91    0.84    228    59
-    14 NOUN -- VERB_prich        0.95    0.84    237    59
-    15 VERB_imp -- VERB_imp      0.74    0.81    186    57
-    16 NOUN -- PART              1.17    0.75    293    53
-    17 PRON -- VERB_prich        0.64    0.48    161    34
-    18 ADV -- ADV                0.31    0.45     78    32
-    19 PRON -- VERB              0.53    0.45    133    32
-    20 ADV -- VERB               0.26    0.43     65    30
+       pos_pair              perc_iamb perc_tr n_iamb  n_tr
+       <chr>                     <dbl>   <dbl>  <int> <int>
+     1 NOUN -- NOUN              35.9    36.7    8930  2317
+     2 VERB -- VERB              12.7    13.0    3168   823
+     3 NOUN -- PRON              13.7    12.4    3411   780
+     4 NOUN -- VERB               6       6.66   1494   420
+     5 ADJ -- NOUN                5.3     5.71   1319   360
+     6 PRON -- PRON               4.27    3.98   1064   251
+     7 VERB_inf -- VERB_inf       3.89    3.68    968   232
+     8 ADV -- NOUN                3.12    3.41    777   215
+     9 ADJ -- PRON                2.51    2.33    625   147
+    10 ADJ -- ADJ                 1.4     1.35    348    85
+    11 NOUN -- VERB_inf           1.09    0.98    271    62
+    12 ADV -- PRON                0.76    0.97    190    61
+    13 NOUN -- VERB_prich         0.95    0.84    237    53
+    14 NOUN -- VERB_imp           0.91    0.82    226    52
+    15 VERB_imp -- VERB_imp       0.75    0.79    187    50
+    16 NOUN -- PART               1.17    0.74    291    47
+    17 PRON -- VERB_prich         0.64    0.51    159    32
+    18 ADV -- ADV                 0.31    0.49     78    31
+    19 PRON -- VERB               0.52    0.49    130    31
+    20 NOUN -- VERB_deeprich      0.59    0.48    146    30
 
 ``` r
 tr_count_syl <- tr_masc %>% 
@@ -395,16 +398,16 @@ tr_count_syl %>%
     # A tibble: 10 × 4
        pos_pair          n_tr perc_tr rank_tr
        <chr>            <int>   <dbl>   <int>
-     1 NOUN_2 -- NOUN_2   873   12.4        1
-     2 NOUN_2 -- NOUN_3   568    8.06       2
-     3 NOUN_1 -- NOUN_2   491    6.97       3
-     4 NOUN_1 -- NOUN_1   391    5.55       4
-     5 VERB_2 -- VERB_2   309    4.39       5
-     6 VERB_2 -- VERB_3   298    4.23       6
-     7 NOUN_2 -- PRON_2   297    4.22       7
-     8 NOUN_2 -- PRON_1   205    2.91       8
-     9 ADJ_2 -- NOUN_2    162    2.3        9
-    10 NOUN_2 -- VERB_2   149    2.11      10
+     1 NOUN_2 -- NOUN_2   786   12.5        1
+     2 NOUN_2 -- NOUN_3   512    8.11       2
+     3 NOUN_1 -- NOUN_2   435    6.89       3
+     4 NOUN_1 -- NOUN_1   366    5.8        4
+     5 NOUN_2 -- PRON_2   277    4.39       5
+     6 VERB_2 -- VERB_2   270    4.28       6
+     7 VERB_2 -- VERB_3   262    4.15       7
+     8 NOUN_2 -- PRON_1   178    2.82       8
+     9 ADJ_2 -- NOUN_2    140    2.22       9
+    10 NOUN_2 -- VERB_2   133    2.11      10
 
 ``` r
 iamb_count_syl %>% 
@@ -416,26 +419,26 @@ iamb_count_syl %>%
     # A tibble: 20 × 7
        pos_pair                 rank_iamb rank_tr perc_iamb perc_tr n_iamb  n_tr
        <chr>                        <int>   <int>     <dbl>   <dbl>  <int> <int>
-     1 NOUN_2 -- NOUN_2                 1       1     11.8    12.4    2941   873
-     2 NOUN_1 -- NOUN_2                 2       3      7.63    6.97   1909   491
-     3 NOUN_2 -- NOUN_3                 3       2      6.93    8.06   1735   568
-     4 NOUN_1 -- NOUN_1                 4       4      5.5     5.55   1377   391
-     5 NOUN_2 -- PRON_2                 5       7      4.17    4.22   1045   297
-     6 VERB_2 -- VERB_3                 6       6      3.98    4.23    996   298
-     7 VERB_2 -- VERB_2                 7       5      3.77    4.39    943   309
-     8 NOUN_2 -- PRON_1                 8       8      3.48    2.91    872   205
-     9 VERB_3 -- VERB_3                 9      11      2.18    2.04    546   144
-    10 ADJ_2 -- NOUN_2                 10       9      2.09    2.3     524   162
-    11 NOUN_3 -- PRON_1                11      13      1.9     1.66    475   117
-    12 NOUN_3 -- NOUN_3                12      12      1.89    1.8     473   127
-    13 NOUN_1 -- NOUN_3                13      14      1.86    1.63    466   115
-    14 PRON_1 -- PRON_2                14      19      1.81    1.31    454    92
-    15 NOUN_1 -- PRON_1                15      15      1.72    1.41    431    99
-    16 NOUN_2 -- VERB_2                16      10      1.64    2.11    410   149
-    17 PRON_2 -- PRON_2                17      16      1.4     1.39    350    98
-    18 NOUN_1 -- VERB_2                18      18      1.34    1.33    336    94
-    19 VERB_inf_2 -- VERB_inf_3        19      20      1.27    1.25    317    88
-    20 VERB_1 -- VERB_2                20      21      1.25    1.19    312    84
+     1 NOUN_2 -- NOUN_2                 1       1     11.8    12.5    2927   786
+     2 NOUN_1 -- NOUN_2                 2       3      7.61    6.89   1895   435
+     3 NOUN_2 -- NOUN_3                 3       2      6.95    8.11   1732   512
+     4 NOUN_1 -- NOUN_1                 4       4      5.45    5.8    1358   366
+     5 NOUN_2 -- PRON_2                 5       5      4.16    4.39   1037   277
+     6 VERB_2 -- VERB_3                 6       7      4       4.15    996   262
+     7 VERB_2 -- VERB_2                 7       6      3.78    4.28    942   270
+     8 NOUN_2 -- PRON_1                 8       8      3.5     2.82    872   178
+     9 VERB_3 -- VERB_3                 9      11      2.18    2.08    542   131
+    10 ADJ_2 -- NOUN_2                 10       9      2.1     2.22    522   140
+    11 NOUN_3 -- NOUN_3                11      12      1.91    1.7     475   107
+    12 NOUN_3 -- PRON_1                12      13      1.9     1.7     473   107
+    13 NOUN_1 -- NOUN_3                13      14      1.86    1.58    463   100
+    14 PRON_1 -- PRON_2                14      15      1.79    1.38    446    87
+    15 NOUN_1 -- PRON_1                15      16      1.75    1.36    435    86
+    16 NOUN_2 -- VERB_2                16      10      1.65    2.11    411   133
+    17 PRON_2 -- PRON_2                17      17      1.39    1.36    346    86
+    18 NOUN_1 -- VERB_2                18      19      1.34    1.3     333    82
+    19 VERB_inf_2 -- VERB_inf_3        19      20      1.27    1.25    316    79
+    20 VERB_1 -- VERB_2                20      22      1.24    1.11    310    70
 
 ``` r
 ranks_masc <- iamb_count_syl %>% 
@@ -446,7 +449,7 @@ ranks_masc <- iamb_count_syl %>%
 cor(ranks_masc$rank_iamb[1:100], ranks_masc$rank_tr[1:100], method = "kendall")
 ```
 
-    [1] 0.8290909
+    [1] 0.840404
 
 ### fem
 
@@ -502,26 +505,26 @@ head(iamb_count, 20)
     # A tibble: 20 × 3
        pos_pair                       n_iamb perc_iamb
        <chr>                           <int>     <dbl>
-     1 NOUN -- NOUN                    10639     44.0 
-     2 VERB -- VERB                     4779     19.8 
-     3 ADJ -- ADJ                       3045     12.6 
-     4 ADJ -- NOUN                      1390      5.74
-     5 NOUN -- PRON                      601      2.48
-     6 NOUN -- VERB                      527      2.18
-     7 ADV -- NOUN                       465      1.92
-     8 ADJ -- ADV                        346      1.43
-     9 ADJ -- VERB_prich                 337      1.39
-    10 ADV -- ADV                        287      1.19
-    11 VERB_inf -- VERB_inf              281      1.16
-    12 VERB_deeprich -- VERB_deeprich    192      0.79
-    13 ADJ -- VERB_deeprich              176      0.73
-    14 VERB_prich -- VERB_prich          173      0.71
-    15 ADJ -- PRON                       143      0.59
-    16 NOUN -- VERB_deeprich             140      0.58
-    17 VERB_imp -- VERB_imp              137      0.57
-    18 NOUN -- VERB_prich                115      0.48
-    19 ADV -- VERB                       107      0.44
-    20 PRON -- PRON                       64      0.26
+     1 NOUN -- NOUN                    10577     44.0 
+     2 VERB -- VERB                     4753     19.8 
+     3 ADJ -- ADJ                       3034     12.6 
+     4 ADJ -- NOUN                      1376      5.72
+     5 NOUN -- PRON                      599      2.49
+     6 NOUN -- VERB                      522      2.17
+     7 ADV -- NOUN                       463      1.93
+     8 ADJ -- ADV                        341      1.42
+     9 ADJ -- VERB_prich                 334      1.39
+    10 ADV -- ADV                        286      1.19
+    11 VERB_inf -- VERB_inf              278      1.16
+    12 VERB_deeprich -- VERB_deeprich    190      0.79
+    13 ADJ -- VERB_deeprich              171      0.71
+    14 VERB_prich -- VERB_prich          169      0.7 
+    15 ADJ -- PRON                       142      0.59
+    16 NOUN -- VERB_deeprich             138      0.57
+    17 VERB_imp -- VERB_imp              134      0.56
+    18 NOUN -- VERB_prich                116      0.48
+    19 ADV -- VERB                       108      0.45
+    20 PRON -- PRON                       65      0.27
 
 ``` r
 f_iamb_count_syl <- iamb_fem %>% 
@@ -549,16 +552,16 @@ f_iamb_count_syl %>%
     # A tibble: 10 × 4
        pos_pair         n_iamb perc_iamb rank_iamb
        <chr>             <int>     <dbl>     <int>
-     1 NOUN_3 -- NOUN_3   3046     12.6          1
-     2 NOUN_2 -- NOUN_3   2433     10.0          2
-     3 NOUN_3 -- NOUN_4   1928      7.97         3
-     4 NOUN_2 -- NOUN_2   1456      6.02         4
-     5 VERB_3 -- VERB_4   1406      5.81         5
-     6 VERB_4 -- VERB_4   1037      4.29         6
-     7 VERB_3 -- VERB_3    887      3.67         7
-     8 ADJ_3 -- ADJ_3      842      3.48         8
-     9 ADJ_3 -- ADJ_4      801      3.31         9
-    10 VERB_2 -- VERB_3    605      2.5         10
+     1 NOUN_3 -- NOUN_3   3028     12.6          1
+     2 NOUN_2 -- NOUN_3   2418     10.0          2
+     3 NOUN_3 -- NOUN_4   1921      7.99         3
+     4 NOUN_2 -- NOUN_2   1448      6.02         4
+     5 VERB_3 -- VERB_4   1402      5.83         5
+     6 VERB_4 -- VERB_4   1034      4.3          6
+     7 VERB_3 -- VERB_3    886      3.68         7
+     8 ADJ_3 -- ADJ_3      843      3.51         8
+     9 ADJ_3 -- ADJ_4      801      3.33         9
+    10 NOUN_4 -- NOUN_4    597      2.48        10
 
 ``` r
 t <- nrow(tr_fem)
@@ -579,26 +582,26 @@ tr_fem %>%
     # A tibble: 20 × 5
        pos_pair                       perc_iamb perc_tr n_iamb  n_tr
        <chr>                              <dbl>   <dbl>  <int> <int>
-     1 NOUN -- NOUN                       44.0    43.4   10639  2739
-     2 VERB -- VERB                       19.8    17.8    4779  1126
-     3 ADJ -- ADJ                         12.6    13.6    3045   858
-     4 ADJ -- NOUN                         5.74    7.06   1390   446
-     5 NOUN -- VERB                        2.18    2.61    527   165
-     6 ADV -- NOUN                         1.92    2.1     465   133
-     7 NOUN -- PRON                        2.48    2.07    601   131
-     8 ADJ -- ADV                          1.43    1.82    346   115
-     9 ADV -- ADV                          1.19    1.36    287    86
-    10 ADJ -- VERB_prich                   1.39    1.03    337    65
-    11 NOUN -- VERB_deeprich               0.58    1       140    63
-    12 ADJ -- VERB_deeprich                0.73    0.93    176    59
-    13 VERB_inf -- VERB_inf                1.16    0.81    281    51
-    14 VERB_deeprich -- VERB_deeprich      0.79    0.79    192    50
-    15 ADJ -- PRON                         0.59    0.65    143    41
-    16 ADV -- VERB                         0.44    0.59    107    37
-    17 VERB_imp -- VERB_imp                0.57    0.55    137    35
-    18 VERB_prich -- VERB_prich            0.71    0.47    173    30
-    19 NOUN -- VERB_prich                  0.48    0.38    115    24
-    20 ADJ -- VERB                         0.1     0.27     23    17
+     1 NOUN -- NOUN                       44.0    42.6   10577  2410
+     2 VERB -- VERB                       19.8    18.2    4753  1028
+     3 ADJ -- ADJ                         12.6    13.5    3034   763
+     4 ADJ -- NOUN                         5.72    7.14   1376   404
+     5 NOUN -- VERB                        2.17    2.77    522   157
+     6 ADV -- NOUN                         1.93    2.31    463   131
+     7 NOUN -- PRON                        2.49    2       599   113
+     8 ADJ -- ADV                          1.42    1.91    341   108
+     9 ADV -- ADV                          1.19    1.41    286    80
+    10 NOUN -- VERB_deeprich               0.57    1.01    138    57
+    11 ADJ -- VERB_prich                   1.39    0.99    334    56
+    12 ADJ -- VERB_deeprich                0.71    0.9     171    51
+    13 VERB_inf -- VERB_inf                1.16    0.88    278    50
+    14 VERB_deeprich -- VERB_deeprich      0.79    0.8     190    45
+    15 ADV -- VERB                         0.45    0.64    108    36
+    16 ADJ -- PRON                         0.59    0.62    142    35
+    17 VERB_imp -- VERB_imp                0.56    0.58    134    33
+    18 VERB_prich -- VERB_prich            0.7     0.46    169    26
+    19 NOUN -- VERB_prich                  0.48    0.32    116    18
+    20 ADJ -- VERB                         0.1     0.3      23    17
 
 ``` r
 f_tr_count_syl <- tr_fem %>% 
@@ -626,16 +629,16 @@ f_tr_count_syl %>%
     # A tibble: 10 × 4
        pos_pair          n_tr perc_tr rank_tr
        <chr>            <int>   <dbl>   <int>
-     1 NOUN_3 -- NOUN_3   815   12.9        1
-     2 NOUN_2 -- NOUN_3   681   10.8        2
-     3 NOUN_2 -- NOUN_2   471    7.45       3
-     4 NOUN_3 -- NOUN_4   440    6.96       4
-     5 VERB_3 -- VERB_4   306    4.84       5
-     6 ADJ_3 -- ADJ_3     243    3.85       6
-     7 ADJ_3 -- ADJ_4     233    3.69       7
-     8 VERB_3 -- VERB_3   224    3.54       8
-     9 VERB_4 -- VERB_4   207    3.28       9
-    10 VERB_2 -- VERB_3   199    3.15      10
+     1 NOUN_3 -- NOUN_3   702   12.4        1
+     2 NOUN_2 -- NOUN_3   622   11.0        2
+     3 NOUN_2 -- NOUN_2   418    7.39       3
+     4 NOUN_3 -- NOUN_4   375    6.63       4
+     5 VERB_3 -- VERB_4   266    4.7        5
+     6 ADJ_3 -- ADJ_3     213    3.76       6
+     7 VERB_3 -- VERB_3   211    3.73       7
+     8 ADJ_3 -- ADJ_4     209    3.69       8
+     9 VERB_4 -- VERB_4   193    3.41       9
+    10 VERB_2 -- VERB_3   183    3.23      10
 
 Syllable variation
 
@@ -649,26 +652,26 @@ f_iamb_count_syl %>%
     # A tibble: 20 × 7
        pos_pair         rank_iamb rank_tr perc_iamb perc_tr n_iamb  n_tr
        <chr>                <int>   <int>     <dbl>   <dbl>  <int> <int>
-     1 NOUN_3 -- NOUN_3         1       1     12.6    12.9    3046   815
-     2 NOUN_2 -- NOUN_3         2       2     10.0    10.8    2433   681
-     3 NOUN_3 -- NOUN_4         3       4      7.97    6.96   1928   440
-     4 NOUN_2 -- NOUN_2         4       3      6.02    7.45   1456   471
-     5 VERB_3 -- VERB_4         5       5      5.81    4.84   1406   306
-     6 VERB_4 -- VERB_4         6       9      4.29    3.28   1037   207
-     7 VERB_3 -- VERB_3         7       8      3.67    3.54    887   224
-     8 ADJ_3 -- ADJ_3           8       6      3.48    3.85    842   243
-     9 ADJ_3 -- ADJ_4           9       7      3.31    3.69    801   233
-    10 VERB_2 -- VERB_3        10      10      2.5     3.15    605   199
-    11 NOUN_4 -- NOUN_4        11      15      2.49    1.39    602    88
-    12 ADJ_2 -- ADJ_3          12      11      2.29    2.69    554   170
-    13 NOUN_2 -- NOUN_4        13      13      2.06    2.18    499   138
-    14 ADJ_3 -- NOUN_2         14      12      1.57    2.22    381   140
-    15 NOUN_3 -- NOUN_5        15      21      1.43    0.87    347    55
-    16 ADJ_3 -- NOUN_3         16      14      1.3     1.65    315   104
-    17 VERB_2 -- VERB_4        17      16      1.22    1.14    295    72
-    18 ADJ_4 -- ADJ_4          18      18      1.09    1.04    263    66
-    19 NOUN_4 -- NOUN_5        19      26      1.01    0.6     245    38
-    20 NOUN_3 -- PRON_2        20      20      1       0.9     241    57
+     1 NOUN_3 -- NOUN_3         1       1     12.6    12.4    3028   702
+     2 NOUN_2 -- NOUN_3         2       2     10.0    11.0    2418   622
+     3 NOUN_3 -- NOUN_4         3       4      7.99    6.63   1921   375
+     4 NOUN_2 -- NOUN_2         4       3      6.02    7.39   1448   418
+     5 VERB_3 -- VERB_4         5       5      5.83    4.7    1402   266
+     6 VERB_4 -- VERB_4         6       9      4.3     3.41   1034   193
+     7 VERB_3 -- VERB_3         7       7      3.68    3.73    886   211
+     8 ADJ_3 -- ADJ_3           8       6      3.51    3.76    843   213
+     9 ADJ_3 -- ADJ_4           9       8      3.33    3.69    801   209
+    10 NOUN_4 -- NOUN_4        10      15      2.48    1.29    597    73
+    11 VERB_2 -- VERB_3        11      10      2.47    3.23    595   183
+    12 ADJ_2 -- ADJ_3          12      11      2.26    2.7     544   153
+    13 NOUN_2 -- NOUN_4        13      12      2.03    2.28    489   129
+    14 ADJ_3 -- NOUN_2         14      13      1.56    2.12    375   120
+    15 NOUN_3 -- NOUN_5        15      21      1.44    0.87    346    49
+    16 ADJ_3 -- NOUN_3         16      14      1.3     1.68    312    95
+    17 VERB_2 -- VERB_4        17      16      1.21    1.24    292    70
+    18 ADJ_4 -- ADJ_4          18      18      1.1     1.01    264    57
+    19 NOUN_4 -- NOUN_5        19      30      1.03    0.55    247    31
+    20 NOUN_3 -- PRON_2        20      22      1       0.85    241    48
 
 ``` r
 fem_ranks <- f_iamb_count_syl %>% 
@@ -679,7 +682,7 @@ fem_ranks <- f_iamb_count_syl %>%
 cor(fem_ranks$rank_iamb[1:100], fem_ranks$rank_tr[1:100], method = "kendall")
 ```
 
-    [1] 0.7171717
+    [1] 0.6965657
 
 ## RNC
 
@@ -1071,15 +1074,15 @@ Masc rhymes
 glimpse(ranks_masc) # corpus-1835 
 ```
 
-    Rows: 249
+    Rows: 242
     Columns: 7
     $ pos_pair  <chr> "NOUN_2 -- NOUN_2", "NOUN_1 -- NOUN_2", "NOUN_2 -- NOUN_3", …
     $ rank_iamb <int> 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 1…
-    $ rank_tr   <int> 1, 3, 2, 4, 7, 6, 5, 8, 11, 9, 13, 12, 14, 19, 15, 10, 16, 1…
-    $ perc_iamb <dbl> 11.75, 7.63, 6.93, 5.50, 4.17, 3.98, 3.77, 3.48, 2.18, 2.09,…
-    $ perc_tr   <dbl> 12.39, 6.97, 8.06, 5.55, 4.22, 4.23, 4.39, 2.91, 2.04, 2.30,…
-    $ n_iamb    <int> 2941, 1909, 1735, 1377, 1045, 996, 943, 872, 546, 524, 475, …
-    $ n_tr      <int> 873, 491, 568, 391, 297, 298, 309, 205, 144, 162, 117, 127, …
+    $ rank_tr   <int> 1, 3, 2, 4, 5, 7, 6, 8, 11, 9, 12, 13, 14, 15, 16, 10, 17, 1…
+    $ perc_iamb <dbl> 11.75, 7.61, 6.95, 5.45, 4.16, 4.00, 3.78, 3.50, 2.18, 2.10,…
+    $ perc_tr   <dbl> 12.46, 6.89, 8.11, 5.80, 4.39, 4.15, 4.28, 2.82, 2.08, 2.22,…
+    $ n_iamb    <int> 2927, 1895, 1732, 1358, 1037, 996, 942, 872, 542, 522, 475, …
+    $ n_tr      <int> 786, 435, 512, 366, 277, 262, 270, 178, 131, 140, 107, 107, …
 
 ``` r
 glimpse(rnc_masc_ranks) # rnc
@@ -1111,25 +1114,25 @@ head(all_masc_ranks, 20)
        pos_pair  rank_iamb rnc_rank_iamb rank_tr rnc_rank_tr perc_iamb rnc_perc_iamb
        <chr>         <int>         <int>   <int>       <int>     <dbl>         <dbl>
      1 NOUN_2 -…         1             1       1           1     11.8          10.8 
-     2 NOUN_1 -…         2             2       3           2      7.63          7.82
-     3 NOUN_2 -…         3             4       2           4      6.93          5.43
-     4 NOUN_1 -…         4             3       4           3      5.5           7.35
-     5 NOUN_2 -…         5            21       7           8      4.17          1.4 
-     6 VERB_2 -…         6             6       6           5      3.98          3.24
-     7 VERB_2 -…         7             7       5           7      3.77          3   
-     8 NOUN_2 -…         8             8       8          10      3.48          2.34
+     2 NOUN_1 -…         2             2       3           2      7.61          7.82
+     3 NOUN_2 -…         3             4       2           4      6.95          5.43
+     4 NOUN_1 -…         4             3       4           3      5.45          7.35
+     5 NOUN_2 -…         5            21       5           8      4.16          1.4 
+     6 VERB_2 -…         6             6       7           5      4             3.24
+     7 VERB_2 -…         7             7       6           7      3.78          3   
+     8 NOUN_2 -…         8             8       8          10      3.5           2.34
      9 VERB_3 -…         9            11      11          21      2.18          1.94
-    10 ADJ_2 --…        10            25       9          26      2.09          0.91
-    11 NOUN_3 -…        11            31      13          24      1.9           0.66
-    12 NOUN_3 -…        12            19      12           9      1.89          1.42
+    10 ADJ_2 --…        10            25       9          26      2.1           0.91
+    11 NOUN_3 -…        11            19      12           9      1.91          1.42
+    12 NOUN_3 -…        12            31      13          24      1.9           0.66
     13 NOUN_1 -…        13             9      14          19      1.86          2.08
-    14 PRON_1 -…        14            29      19          25      1.81          0.75
-    15 NOUN_1 -…        15            16      15          11      1.72          1.52
-    16 NOUN_2 -…        16            22      10          23      1.64          1.29
-    17 PRON_2 -…        17            23      16          18      1.4           1.28
-    18 NOUN_1 -…        18            14      18          17      1.34          1.65
+    14 PRON_1 -…        14            29      15          25      1.79          0.75
+    15 NOUN_1 -…        15            16      16          11      1.75          1.52
+    16 NOUN_2 -…        16            22      10          23      1.65          1.29
+    17 PRON_2 -…        17            23      17          18      1.39          1.28
+    18 NOUN_1 -…        18            14      19          17      1.34          1.65
     19 VERB_inf…        19             5      20           6      1.27          3.37
-    20 VERB_1 -…        20            15      21          28      1.25          1.58
+    20 VERB_1 -…        20            15      22          28      1.24          1.58
     # ℹ 6 more variables: perc_tr <dbl>, rnc_perc_tr <dbl>, n_iamb <int>,
     #   rnc_n_iamb <int>, n_tr <int>, rnc_n_tr <int>
 
@@ -1141,13 +1144,13 @@ cor(r$rank_iamb[1:90], r$rnc_rank_iamb[1:90],
     method = "kendall")
 ```
 
-    [1] 0.6509363
+    [1] 0.6539326
 
 ``` r
 cor(r$rank_tr[1:90], r$rnc_rank_tr[1:90], method = "kendall")
 ```
 
-    [1] 0.6589263
+    [1] 0.6614232
 
 Fem rhymes
 
@@ -1168,24 +1171,24 @@ head(all_fem_ranks, 20)
        <chr>         <int>         <int>   <int>       <int>     <dbl>         <dbl>
      1 NOUN_3 -…         1             3       1           2     12.6           9.12
      2 NOUN_2 -…         2             2       2           1     10.0           9.46
-     3 NOUN_3 -…         3             6       4           7      7.97          5.6 
+     3 NOUN_3 -…         3             6       4           7      7.99          5.6 
      4 NOUN_2 -…         4             5       3           4      6.02          6.2 
-     5 VERB_3 -…         5             1       5           3      5.81          9.81
-     6 VERB_4 -…         6             4       9           5      4.29          7.91
-     7 VERB_3 -…         7             7       8           6      3.67          5.08
-     8 ADJ_3 --…         8             8       6           8      3.48          2.71
-     9 ADJ_3 --…         9            15       7          11      3.31          1.56
-    10 VERB_2 -…        10             9      10          10      2.5           2.69
-    11 NOUN_4 -…        11            13      15          19      2.49          1.66
-    12 ADJ_2 --…        12            10      11           9      2.29          2.02
-    13 NOUN_2 -…        13            11      13          14      2.06          1.88
-    14 ADJ_3 --…        14            21      12          21      1.57          0.8 
-    15 NOUN_3 -…        15            22      21          45      1.43          0.69
+     5 VERB_3 -…         5             1       5           3      5.83          9.81
+     6 VERB_4 -…         6             4       9           5      4.3           7.91
+     7 VERB_3 -…         7             7       7           6      3.68          5.08
+     8 ADJ_3 --…         8             8       6           8      3.51          2.71
+     9 ADJ_3 --…         9            15       8          11      3.33          1.56
+    10 NOUN_4 -…        10            13      15          19      2.48          1.66
+    11 VERB_2 -…        11             9      10          10      2.47          2.69
+    12 ADJ_2 --…        12            10      11           9      2.26          2.02
+    13 NOUN_2 -…        13            11      12          14      2.03          1.88
+    14 ADJ_3 --…        14            21      13          21      1.56          0.8 
+    15 NOUN_3 -…        15            22      21          45      1.44          0.69
     16 ADJ_3 --…        16            14      14          16      1.3           1.6 
-    17 VERB_2 -…        17            12      16          13      1.22          1.74
-    18 ADJ_4 --…        18            36      18          86      1.09          0.38
-    19 NOUN_4 -…        19            27      26          36      1.01          0.56
-    20 NOUN_3 -…        20            32      20          23      1             0.5 
+    17 VERB_2 -…        17            12      16          13      1.21          1.74
+    18 ADJ_4 --…        18            36      18          86      1.1           0.38
+    19 NOUN_4 -…        19            27      30          36      1.03          0.56
+    20 NOUN_3 -…        20            32      22          23      1             0.5 
     # ℹ 6 more variables: perc_tr <dbl>, rnc_perc_tr <dbl>, n_iamb <int>,
     #   rnc_n_iamb <int>, n_tr <int>, rnc_n_tr <int>
 
@@ -1197,19 +1200,19 @@ cor(r$rank_iamb[1:90], r$rnc_rank_iamb[1:90],
     method = "kendall")
 ```
 
-    [1] 0.6459426
+    [1] 0.6469413
 
 ``` r
 cor(r$rank_tr[1:90], r$rnc_rank_tr[1:90], method = "kendall")
 ```
 
-    [1] 0.6833958
+    [1] 0.6774032
 
 ### network viz
 
 Network:
 
-from, to, corpus, meter, clausula(?)
+from, to, corpus, meter, clausula
 
 NOUN_2 - NOUN_3 , filter n = 1
 
@@ -1235,80 +1238,60 @@ library(ggraph)
 glimpse(all_masc_ranks)
 ```
 
-    Rows: 249
+    Rows: 242
     Columns: 13
     $ pos_pair      <chr> "NOUN_2 -- NOUN_2", "NOUN_1 -- NOUN_2", "NOUN_2 -- NOUN_…
     $ rank_iamb     <int> 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 1…
-    $ rnc_rank_iamb <int> 1, 2, 4, 3, 21, 6, 7, 8, 11, 25, 31, 19, 9, 29, 16, 22, …
-    $ rank_tr       <int> 1, 3, 2, 4, 7, 6, 5, 8, 11, 9, 13, 12, 14, 19, 15, 10, 1…
-    $ rnc_rank_tr   <int> 1, 2, 4, 3, 8, 5, 7, 10, 21, 26, 24, 9, 19, 25, 11, 23, …
-    $ perc_iamb     <dbl> 11.75, 7.63, 6.93, 5.50, 4.17, 3.98, 3.77, 3.48, 2.18, 2…
+    $ rnc_rank_iamb <int> 1, 2, 4, 3, 21, 6, 7, 8, 11, 25, 19, 31, 9, 29, 16, 22, …
+    $ rank_tr       <int> 1, 3, 2, 4, 5, 7, 6, 8, 11, 9, 12, 13, 14, 15, 16, 10, 1…
+    $ rnc_rank_tr   <int> 1, 2, 4, 3, 8, 5, 7, 10, 21, 26, 9, 24, 19, 25, 11, 23, …
+    $ perc_iamb     <dbl> 11.75, 7.61, 6.95, 5.45, 4.16, 4.00, 3.78, 3.50, 2.18, 2…
     $ rnc_perc_iamb <dbl> 10.76, 7.82, 5.43, 7.35, 1.40, 3.24, 3.00, 2.34, 1.94, 0…
-    $ perc_tr       <dbl> 12.39, 6.97, 8.06, 5.55, 4.22, 4.23, 4.39, 2.91, 2.04, 2…
+    $ perc_tr       <dbl> 12.46, 6.89, 8.11, 5.80, 4.39, 4.15, 4.28, 2.82, 2.08, 2…
     $ rnc_perc_tr   <dbl> 10.45, 6.49, 5.73, 5.78, 2.54, 3.70, 3.19, 2.28, 1.32, 0…
-    $ n_iamb        <int> 2941, 1909, 1735, 1377, 1045, 996, 943, 872, 546, 524, 4…
-    $ rnc_n_iamb    <int> 1573, 1143, 794, 1075, 204, 473, 438, 342, 283, 133, 97,…
-    $ n_tr          <int> 873, 491, 568, 391, 297, 298, 309, 205, 144, 162, 117, 1…
-    $ rnc_n_tr      <int> 206, 128, 113, 114, 50, 73, 63, 45, 26, 19, 22, 48, 28, …
+    $ n_iamb        <int> 2927, 1895, 1732, 1358, 1037, 996, 942, 872, 542, 522, 4…
+    $ rnc_n_iamb    <int> 1573, 1143, 794, 1075, 204, 473, 438, 342, 283, 133, 208…
+    $ n_tr          <int> 786, 435, 512, 366, 277, 262, 270, 178, 131, 140, 107, 1…
+    $ rnc_n_tr      <int> 206, 128, 113, 114, 50, 73, 63, 45, 26, 19, 48, 22, 28, …
 
 ``` r
 summary(all_masc_ranks)
 ```
 
-       pos_pair           rank_iamb     rnc_rank_iamb       rank_tr     
-     Length:249         Min.   :  1.0   Min.   :  1.00   Min.   :  1.0  
-     Class :character   1st Qu.: 63.0   1st Qu.: 31.50   1st Qu.: 63.0  
-     Mode  :character   Median :125.0   Median : 71.00   Median :125.0  
-                        Mean   :142.4   Mean   : 88.79   Mean   :129.7  
-                        3rd Qu.:210.0   3rd Qu.:126.00   3rd Qu.:195.0  
-                        Max.   :392.0   Max.   :399.00   Max.   :273.0  
-                                        NA's   :142                     
-      rnc_rank_tr      perc_iamb       rnc_perc_iamb        perc_tr       
-     Min.   :  1.0   Min.   : 0.0000   Min.   : 0.0100   Min.   : 0.0100  
-     1st Qu.: 31.5   1st Qu.: 0.0200   1st Qu.: 0.0700   1st Qu.: 0.0100  
-     Median : 72.0   Median : 0.0600   Median : 0.1900   Median : 0.0600  
-     Mean   : 83.0   Mean   : 0.3958   Mean   : 0.7755   Mean   : 0.3989  
-     3rd Qu.:122.0   3rd Qu.: 0.2200   3rd Qu.: 0.6200   3rd Qu.: 0.2300  
-     Max.   :205.0   Max.   :11.7500   Max.   :10.7600   Max.   :12.3900  
-     NA's   :142                       NA's   :142                        
-      rnc_perc_tr          n_iamb          rnc_n_iamb          n_tr       
-     Min.   : 0.0500   Min.   :   1.00   Min.   :   1.0   Min.   :  1.00  
-     1st Qu.: 0.0500   1st Qu.:   4.00   1st Qu.:  10.0   1st Qu.:  1.00  
-     Median : 0.1500   Median :  14.00   Median :  28.0   Median :  4.00  
-     Mean   : 0.7739   Mean   :  99.11   Mean   : 113.4   Mean   : 28.17  
-     3rd Qu.: 0.7600   3rd Qu.:  56.00   3rd Qu.:  91.0   3rd Qu.: 16.00  
-     Max.   :10.4500   Max.   :2941.00   Max.   :1573.0   Max.   :873.00  
-     NA's   :142                         NA's   :142                      
+       pos_pair           rank_iamb      rnc_rank_iamb       rank_tr      
+     Length:242         Min.   :  1.00   Min.   :  1.00   Min.   :  1.00  
+     Class :character   1st Qu.: 61.25   1st Qu.: 30.50   1st Qu.: 61.25  
+     Mode  :character   Median :121.50   Median : 69.00   Median :121.50  
+                        Mean   :137.76   Mean   : 85.52   Mean   :125.40  
+                        3rd Qu.:202.75   3rd Qu.:124.00   3rd Qu.:186.75  
+                        Max.   :390.00   Max.   :381.00   Max.   :264.00  
+                                         NA's   :138                      
+      rnc_rank_tr       perc_iamb       rnc_perc_iamb        perc_tr       
+     Min.   :  1.00   Min.   : 0.0000   Min.   : 0.0100   Min.   : 0.0200  
+     1st Qu.: 29.75   1st Qu.: 0.0200   1st Qu.: 0.0775   1st Qu.: 0.0200  
+     Median : 70.50   Median : 0.0600   Median : 0.1950   Median : 0.0600  
+     Mean   : 81.21   Mean   : 0.4069   Mean   : 0.7956   Mean   : 0.4125  
+     3rd Qu.:120.25   3rd Qu.: 0.2300   3rd Qu.: 0.6825   3rd Qu.: 0.2400  
+     Max.   :205.00   Max.   :11.7500   Max.   :10.7600   Max.   :12.4600  
+     NA's   :138                        NA's   :138                        
+      rnc_perc_tr          n_iamb         rnc_n_iamb           n_tr       
+     Min.   : 0.0500   Min.   :   1.0   Min.   :   1.00   Min.   :  1.00  
+     1st Qu.: 0.0875   1st Qu.:   5.0   1st Qu.:  10.75   1st Qu.:  1.00  
+     Median : 0.2000   Median :  15.0   Median :  28.50   Median :  4.00  
+     Mean   : 0.7943   Mean   : 101.4   Mean   : 116.32   Mean   : 25.96  
+     3rd Qu.: 0.8600   3rd Qu.:  58.0   3rd Qu.: 100.00   3rd Qu.: 15.00  
+     Max.   :10.4500   Max.   :2927.0   Max.   :1573.00   Max.   :786.00  
+     NA's   :138                        NA's   :138                       
         rnc_n_tr     
      Min.   :  1.00  
-     1st Qu.:  1.00  
-     Median :  3.00  
-     Mean   : 15.28  
-     3rd Qu.: 15.00  
+     1st Qu.:  1.75  
+     Median :  4.00  
+     Mean   : 15.68  
+     3rd Qu.: 17.00  
      Max.   :206.00  
-     NA's   :142     
+     NA's   :138     
 
 Rename nodes
-
-``` r
-all_fem_ranks %>% 
-  select(pos_pair) %>% 
-  mutate(pos_pair = ifelse(str_detect(pos_pair, "NOUN"), 
-                           str_replace_all(pos_pair, "NOUN", "СУЩ"),
-                           pos_pair),
-         pos_pair = ifelse(str_detect(pos_pair, "VERB"), 
-                           str_replace_all(pos_pair, "VERB", "ГЛ"),
-                           pos_pair),
-         pos_pair = ifelse(str_detect(pos_pair, "ADJ"), 
-                           str_replace_all(pos_pair, "ADJ", "ПРИЛ"),
-                           pos_pair),
-         pos_pair = ifelse(str_detect(pos_pair, "PRON"), 
-                           str_replace_all(pos_pair, "PRON", "МЕСТ"),
-                           pos_pair), 
-         pos_pair = ifelse(str_detect(pos_pair, "ADV"), 
-                           str_replace_all(pos_pair, "ADV", "НАР"),
-                           pos_pair))
-```
 
 ``` r
 t <- all_masc_ranks %>% 
@@ -1387,6 +1370,9 @@ net_t %>%
         text = element_text(size = 28),
         panel.spacing.y = unit(4, "lines"))
 ```
+
+    Warning: The `trans` argument of `continuous_scale()` is deprecated as of ggplot2 3.5.0.
+    ℹ Please use the `transform` argument instead.
 
     Warning: Using the `size` aesthetic in this geom was deprecated in ggplot2 3.4.0.
     ℹ Please use `linewidth` in the `default_aes` field and elsewhere instead.
@@ -1484,823 +1470,142 @@ ggsave("plots/fig_5-2-1.png", plot = last_plot(), dpi = 300,
        bg = "white", width = 16, height = 14)
 ```
 
+BW
+
+``` r
+net_t %>% 
+  ggraph(layout = 'linear', circular = TRUE) +
+  #ggraph(layout = "kk") + 
+  geom_edge_arc(aes(width = value, #color = corpus, 
+                     color = value,
+                     alpha = value)) + 
+  geom_edge_loop(aes(width = value, #color = corpus, 
+                     color = value,
+                     alpha = value)) + 
+  geom_node_point(
+    size = 4,
+    color = "grey8"
+    ) + 
+  geom_node_text(aes(label = source), vjust = 1.5, hjust = -0.1,
+                 size = 6, fontface = "bold") + 
+  facet_wrap(~corpus_r) + 
+  scale_edge_color_continuous(low = "grey60", high = "grey10") + 
+  theme(legend.position = "None",
+        text = element_text(size = 28),
+        panel.spacing.y = unit(6, "lines"))
+
+ggsave("plots/bw/fig_5-2-1.png", plot = last_plot(), dpi = 300, 
+       bg = "white", width = 16, height = 14)
+```
+
 ``` r
 iamb_masc %>% 
   filter(from_pos == "NOUN" & to_pos == "PRON") %>% 
-  count(from, to, sort = T)
+  count(from, to, sort = T) %>% 
+  head(100)
 ```
 
-             from      to  n
-    1         сон      он 40
-    2       мечты      ты 36
-    3        дней    моей 33
-    4         час     нас 30
-    5         дня    меня 27
-    6       бытия       я 24
-    7        огня    меня 22
-    8      друзья       я 21
-    9     стороне     мне 18
-    10        час     вас 18
-    11    красоты      ты 17
-    12       дней   своей 15
-    13        раз     вас 15
-    14   страстей    моей 15
-    15     тишине     мне 13
-    16       луна     она 12
-    17        сна     она 12
-    18       дней     ней 11
-    19      закон      он 11
-    20       глас     нас 10
-    21        дни     они 10
-    22    небесам     там 10
-    23       очей    моей 10
-    24        сне     мне 10
-    25      людей    моей  9
-    26      людей     ней  9
-    27      людей   своей  9
-    28   страстей   своей  9
-    29     судьбе    тебе  9
-    30     высоты      ты  8
-    31       глас     вас  8
-    32      грудь  нибудь  8
-    33      покой   тобой  8
-    34        раз     нас  8
-    35      цветы      ты  8
-    36      бытия     моя  7
-    37       глаз     нас  7
-    38       дней   твоей  7
-    39      любви     мои  7
-    40    дикарей   своей  6
-    41      душой    мной  6
-    42       коня    меня  6
-    43      лучей   своей  6
-    44     мечтам     там  6
-    45     мечтой    мной  6
-    46       стон      он  6
-    47       беда  всегда  5
-    48      бытие     мое  5
-    49     вышине     мне  5
-    50   господин    один  5
-    51     друзей    моей  5
-    52      душой   собой  5
-    53      душой   тобой  5
-    54        дым   своим  5
-    55      ночей   твоей  5
-    56     сторон      он  5
-    57     стране     мне  5
-    58    судьбой   собой  5
-    59    судьбой   тобой  5
-    60      суеты      ты  5
-    61        сын    один  5
-    62     фимиам     нам  5
-    63        бой   собой  4
-    64  властелин    один  4
-    65      волна     она  4
-    66       дитя    тебя  4
-    67       дней      ей  4
-    68      душой     мой  4
-    69       жена     она  4
-    70      земля    меня  4
-    71       змея       я  4
-    72     кавказ     нас  4
-    73      лучей     ней  4
-    74      любви    свои  4
-    75      любви    твои  4
-    76   наполеон      он  4
-    77    небесам     нам  4
-    78  небосклон      он  4
-    79      речей    моей  4
-    80      рукой   тобой  4
-    81    соловей   своей  4
-    82     степей    моей  4
-    83      струи     мои  4
-    84     судьбе    себе  4
-    85     тоской     мой  4
-    86     тоской   собой  4
-    87       храм     там  4
-    88      черты      ты  4
-    89       беда   тогда  3
-    90     борьбе    тебе  3
-    91        бою    свою  3
-    92      бытие    твое  3
-    93      весна     она  3
-    94     ветвей   своей  3
-    95       глаз     вас  3
-    96    глубине     мне  3
-    97      детей   твоей  3
-    98        дне     мне  3
-    99       дней     сей  3
-    100       дни     мои  3
-    101    друзей   твоей  3
-    102    друзья     моя  3
-    103     душой    твой  3
-    104       дым     ним  3
-    105    звезда никогда  3
-    106    звезда    туда  3
-    107      звон      он  3
-    108     имена     она  3
-    109   исполин    один  3
-    110  клеветой     мой  3
-    111   клеветы      ты  3
-    112    красой   тобой  3
-    113  красотой    свой  3
-    114  красотой   собой  3
-    115  красотой   тобой  3
-    116      луна    одна  3
-    117    мечтой   собой  3
-    118   мольбой   тобой  3
-    119     морей    моей  3
-    120    небеса    меня  3
-    121   небытия    твоя  3
-    122     ночей   своей  3
-    123      очей     ней  3
-    124   пеленой    мной  3
-    125    поклон      он  3
-    126     полей    моей  3
-    127     полей   своей  3
-    128     порой    мной  3
-    129  простоты      ты  3
-    130     ручей    моей  3
-    131     ручья       я  3
-    132     семья       я  3
-    133   скорбей    моей  3
-    134     следа никогда  3
-    135   соловья     моя  3
-    136   соловья       я  3
-    137  сторонам     нам  3
-    138  страстей   твоей  3
-    139    струна     она  3
-    140    судьбе     мне  3
-    141    толпой    мной  3
-    142    тоской   тобой  3
-    143      тьмы      мы  3
-    144      утех    всех  3
-    145      храм     сам  3
-    146     царей   своей  3
-    147   апполон      он  2
-    148 багратион      он  2
-    149       бег    всех  2
-    150       бой   тобой  2
-    151     бытию     мою  2
-    152    вершин    один  2
-    153      вино     оно  2
-    154    волной   тобой  2
-    155  временам     там  2
-    156     герой    твой  2
-    157     герой   тобой  2
-    158   гименей   твоей  2
-    159    главой    свой  2
-    160     главы      вы  2
-    161   головой    мной  2
-    162   головой   собой  2
-    163    головы      вы  2
-    164    гостей     ней  2
-    165      дитя    меня  2
-    166      дитя       я  2
-    167       дни    одни  2
-    168     долин    один  2
-    169     дугой  другой  2
-    170     душой  другой  2
-    171     душой    иной  2
-    172      заря    тебя  2
-    173    звезда  всегда  2
-    174    звезда   когда  2
-    175    землей   своей  2
-    176     зерно     оно  2
-    177     зимой     мой  2
-    178    злодей   своей  2
-    179     зыбей    моей  2
-    180      избе    себе  2
-    181     красе     все  2
-    182    красой    мной  2
-    183  красотой  другой  2
-    184   купидон      он  2
-    185     листы      ты  2
-    186     любви     они  2
-    187     людей    всей  2
-    188    местам     нам  2
-    189     мечта    туда  2
-    190     мечте      те  2
-    191    мечтой   тобой  2
-    192     мечты      вы  2
-    193       миг   своих  2
-    194   миллион      он  2
-    195    младой     мой  2
-    196     молвы      вы  2
-    197   мольбой  другой  2
-    198   мольбой   собой  2
-    199    москвы      вы  2
-    200   небытия       я  2
-    201     ночей    моей  2
-    202      огне     мне  2
-    203      огня     она  2
-    204      огня    тебя  2
-    205      окна     она  2
-    206      очам     вам  2
-    207    парнас     вас  2
-    208    парнас     нас  2
-    209    плутон      он  2
-    210     покой   собой  2
-    211     покой    твой  2
-    212     порой    свой  2
-    213     порой   собой  2
-    214     порой    твой  2
-    215     порой   тобой  2
-    216  простоты      вы  2
-    217      путь  нибудь  2
-    218     редут     тут  2
-    219     рекой    свой  2
-    220     речей   твоей  2
-    221       рим    моим  2
-    222     родня    меня  2
-    223     рукой    мной  2
-    224     рукой    свой  2
-    225     ручей     ней  2
-    226    святых   своих  2
-    227   скорбей   своей  2
-    228    слезой    твой  2
-    229    слезой   тобой  2
-    230   соловей     ней  2
-    231     сохой     мой  2
-    232     спесь   здесь  2
-    233   старине     мне  2
-    234    стезей   своей  2
-    235      стих      их  2
-    236      стих    моих  2
-    237      стих     них  2
-    238      стих   своих  2
-    239    страна     она  2
-    240    страна   тогда  2
-    241   страной    мной  2
-    242  страстей     сей  2
-    243     струи    свои  2
-    244     струя       я  2
-    245     судей   своей  2
-    246   судьбой     мой  2
-    247     суета      та  2
-    248   темноты      ты  2
-    249    толпой     мой  2
-    250    толпой   собой  2
-    251    толпой   тобой  2
-    252       том     чем  2
-    253       тон      он  2
-    254     тоска    меня  2
-    255    тоской    мной  2
-    256      тьме     мне  2
-    257    фимиам     там  2
-    258      фому     ему  2
-    259      храм     вам  2
-    260      храм     нам  2
-    261    хребты      ты  2
-    262     царей   твоей  2
-    263   чередой   собой  2
-    264   шалунам     нам  2
-    265   аквилон      он  1
-    266     альта      та  1
-    267     аршин    один  1
-    268   бальзам     там  1
-    269    баркас     нас  1
-    270   беготня    меня  1
-    271      беда никогда  1
-    272      беда    туда  1
-    273      беде     где  1
-    274      беде   нигде  1
-    275    бедняк    всяк  1
-    276    бедняк     так  1
-    277     бедой     мой  1
-    278     бедой   одной  1
-    279   белизна     она  1
-    280   берегам     вам  1
-    281   берегам     там  1
-    282    берегу  одному  1
-    283     богам     нам  1
-    284     богам     сам  1
-    285       бой    мной  1
-    286  бородина     она  1
-    287       бою    твою  1
-    288      брак     как  1
-    289    буграм     там  1
-    290     бытие      ее  1
-    291     бытие    свое  1
-    292     бытии    твои  1
-    293     бытия      ея  1
-    294     бытье      ее  1
-    295     вадим     ним  1
-    296      валы      ты  1
-    297     векам     вам  1
-    298     венца     она  1
-    299     весна    одна  1
-    300     весне      ее  1
-    301     весне    одне  1
-    302    весной никакой  1
-    303    весной    свой  1
-    304    весной   собой  1
-    305    ветвей     ней  1
-    306  ветрогон      он  1
-    307      вина    одна  1
-    308      вина     она  1
-    309      вода  всегда  1
-    310      вода никогда  1
-    311     водам     нам  1
-    312     водам     там  1
-    313     водой    свой  1
-    314     водой   тобой  1
-    315    вождей   своей  1
-    316       вой     мой  1
-    317       вой    свой  1
-    318       вой   тобой  1
-    319     война     она  1
-    320     война    тебя  1
-    321     войне     мне  1
-    322    войной   собой  1
-    323     волна    одна  1
-    324    волнам     нам  1
-    325    волнам     сам  1
-    326    волной    мной  1
-    327    волной     мой  1
-    328    волной   такой  1
-    329    волной     той  1
-    330    вражда  всегда  1
-    331    вражда   когда  1
-    332   враждой     мой  1
-    333    врачей      ей  1
-    334     вреда   когда  1
-    335   времена     она  1
-    336   вспомин    один  1
-    337    высоте      те  1
-    338    вышина     она  1
-    339    вышине     оне  1
-    340    газель  досель  1
-    341     герой    свой  1
-    342     герой   собой  1
-    343    главой    мной  1
-    344     главу    свою  1
-    345     главы  таковы  1
-    346    глазам     нам  1
-    347    глазам     сам  1
-    348   глубине     оне  1
-    349  глубиной    мной  1
-    350    голова  такова  1
-    351   головам     нам  1
-    352   головой     мой  1
-    353   головой    свой  1
-    354   головой   такой  1
-    355    головы  таковы  1
-    356     горам     там  1
-    357    города  всегда  1
-    358    города никогда  1
-    359     горой   тобой  1
-    360   господа  всегда  1
-    361  господам     нам  1
-    362    гостей      ей  1
-    363    гостей    моей  1
-    364    гостям     там  1
-    365 гражданин    один  1
-    366  грамотей   своей  1
-    367      грех    всех  1
-    368     греха   тогда  1
-    369     грехи    одни  1
-    370    гробов   таков  1
-    371     гроза    тебя  1
-    372    грозой    мной  1
-    373    грозой     мой  1
-    374    грудей     ней  1
-    375     груди       я  1
-    376    грядой  другой  1
-    377   гурьбой   собой  1
-    378       дам     вам  1
-    379       дам     нам  1
-    380    дверей   своей  1
-    381    дверей   твоей  1
-    382     детей     ней  1
-    383     детей   своей  1
-    384      дитя    одна  1
-    385       дна     она  1
-    386      дней    всей  1
-    387       дня    себя  1
-    388       дня    тебя  1
-    389       дня       я  1
-    390   доброта   тогда  1
-    391   доброты      ты  1
-    392    дождем   своем  1
-    393       дом   одном  1
-    394       дом   потом  1
-    395     домам     вам  1
-    396    доской    твой  1
-    397   дроздам     вам  1
-    398    друзей      ей  1
-    399    друзей     ней  1
-    400    друзей   своей  1
-    401    друзья    меня  1
-    402   друзьям     вам  1
-    403     дурак     так  1
-    404     душой   какой  1
-    405     душой   одной  1
-    406     душой    свой  1
-    407       дым    иным  1
-    408       дым    моим  1
-    409         е    свое  1
-    410      едой   собой  1
-    411      елей   своей  1
-    412     ермак     так  1
-    413  ерусалим      им  1
-    414      жена    одна  1
-    415      жена    тебя  1
-    416      жене     мне  1
-    417     жених      их  1
-    418     житье     мое  1
-    419    житьем   своем  1
-    420     житья       я  1
-    421     забот     тот  1
-    422    заменя    меня  1
-    423     зарей    моей  1
-    424     зарей   своей  1
-    425     затей      ей  1
-    426     затей    моей  1
-    427    звезда    меня  1
-    428    звезда   тогда  1
-    429    звезде     где  1
-    430    звезде     мне  1
-    431   звездой    мной  1
-    432   звездой     мой  1
-    433   звездой   собой  1
-    434   звездой   тобой  1
-    435     звено    одно  1
-    436    зверей   твоей  1
-    437    земель  досель  1
-    438     земле     мне  1
-    439    землей   твоей  1
-    440     земли    твои  1
-    441     земля    тебя  1
-    442     земля   тогда  1
-    443  землякам     сам  1
-    444       зим   своим  1
-    445     зимой    свой  1
-    446       зло  никого  1
-    447    злодей      ей  1
-    448    злодей    моей  1
-    449    злодей     ней  1
-    450      змей    моей  1
-    451      змея    твоя  1
-    452      зной    мной  1
-    453     зыбей   своей  1
-    454   ибрагим   своим  1
-    455     игрой    мной  1
-    456     игрой   тобой  1
-    457      игры      вы  1
-    458      икон      он  1
-    459      илью    свою  1
-    460     имена    одна  1
-    461   исполин      он  1
-    462    кавказ     вас  1
-    463     камин    один  1
-    464  карандаш     ваш  1
-    465    картин    один  1
-    466  клеветой   собой  1
-    467      клим  другим  1
-    468    княжна    одна  1
-    469    князья    твоя  1
-    470    князья       я  1
-    471    когтей   твоей  1
-    472    когтям     нам  1
-    473     козой   собой  1
-    474   колдуна    одна  1
-    475      коне     все  1
-    476      коне     мне  1
-    477      коня никогда  1
-    478     копье    свое  1
-    479     корму  одному  1
-    480     корой    свой  1
-    481    корчмы      мы  1
-    482     косой    мной  1
-    483    красой   одной  1
-    484    красой    свой  1
-    485    красой   собой  1
-    486   красота    тебя  1
-    487   красота    туда  1
-    488   красоте      ее  1
-    489  красотой   любой  1
-    490  красотой    мной  1
-    491  красотой     мой  1
-    492     краям     там  1
-    493 крепостей      ей  1
-    494   крестам     там  1
-    495    кресты      ты  1
-    496    крупин    один  1
-    497    крылом   одном  1
-    498    кудрей      ей  1
-    499    кудрей    моей  1
-    500    кудрей   своей  1
-    501    кудрей   твоей  1
-    502    кустам     там  1
-    503     лабаз     нас  1
-    504     ладья       я  1
-    505     лелей    моей  1
-    506       лен      он  1
-    507     лесам     там  1
-    508    лесной    мной  1
-    509     лилей   твоей  1
-    510   линдсей    моей  1
-    511     лисой   какой  1
-    512       лих никаких  1
-    513   лошадям     сам  1
-    514     лугам     нам  1
-    515      луна    меня  1
-    516     лучей      ей  1
-    517     лучей    моей  1
-    518     лучей     сей  1
-    519     лучей   твоей  1
-    520      львы      вы  1
-    521     льдин    один  1
-    522     людей      ей  1
-    523     людей     сей  1
-    524     людей   твоей  1
-    525  мавзолей    моей  1
-    526    метлой     мой  1
-    527     мечей      ей  1
-    528     мечей   своей  1
-    529     мечта     она  1
-    530     мечта      та  1
-    531    мечтам     вам  1
-    532    мечтам     нам  1
-    533    мечтам     сам  1
-    534    мечтой    иной  1
-    535    мечтой     мой  1
-    536     мечту     ему  1
-    537       миг    моих  1
-    538       миг     них  1
-    539       миг   твоих  1
-    540     милон      он  1
-    541    младой   одной  1
-    542    младой   тобой  1
-    543    молвой  другой  1
-    544    молоко   никто  1
-    545   мольбам     там  1
-    546    мольбе     мне  1
-    547   мольбой     мой  1
-    548     морей     ней  1
-    549     морей   своей  1
-    550    морфей   своей  1
-    551  мудрецам     нам  1
-    552    мужчин    один  1
-    553      муку   моему  1
-    554     мулла    тебя  1
-    555     мышам     нам  1
-    556    небеса    тебя  1
-    557   небесам     вам  1
-    558     немых      их  1
-    559    нищеты      ты  1
-    560     ногам     нам  1
-    561     ногой     мой  1
-    562     ногой   собой  1
-    563     ночам     нам  1
-    564     ночей      ей  1
-    565     ночей     ней  1
-    566     ночей     чей  1
-    567   облаков   таков  1
-    568    оборот     тот  1
-    569      огне     оне  1
-    570     огней   своей  1
-    571     огнем   твоем  1
-    572      огня    туда  1
-    573      окне     мне  1
-    574   окружон      он  1
-    575     орфей    моей  1
-    576      очам     там  1
-    577      очей      ей  1
-    578      очей   своей  1
-    579      очей   твоей  1
-    580     певца    меня  1
-    581   пеленой    свой  1
-    582  пилигрим      им  1
-    583     питье      ее  1
-    584     питье     мое  1
-    585    питьем   своем  1
-    586    племен      он  1
-    587     плода    тебя  1
-    588     плоды      ты  1
-    589       пни     они  1
-    590  погружон      он  1
-    591     показ     нас  1
-    592     покой    мной  1
-    593     покой     мой  1
-    594     покой   одной  1
-    595     полей      ей  1
-    596     полей     ней  1
-    597  полнотой    мной  1
-    598  полнотой   тобой  1
-    599   полосой     мой  1
-    600   полусон      он  1
-    601     полям     нам  1
-    602     полям     там  1
-    603     помех    всех  1
-    604   поражон      он  1
-    605     порой  другой  1
-    606     порой     мой  1
-    607     порой   одной  1
-    608   правоты      ты  1
-    609    приказ     нас  1
-    610   прикрас     вас  1
-    611    проказ     нас  1
-    612  прометей   своей  1
-    613 простотой    свой  1
-    614 простотой   собой  1
-    615     пруда   тогда  1
-    616   пустота    себя  1
-    617  пустотой    свой  1
-    618   пустоты      ты  1
-    619  пустякам     вам  1
-    620     путей   твоей  1
-    621     путям     сам  1
-    622     путям     там  1
-    623     пятам     там  1
-    624       рам     там  1
-    625   рассказ     вас  1
-    626   рассказ     нас  1
-    627      реке    твое  1
-    628     рекой    мной  1
-    629     рекой   тобой  1
-    630     речам     там  1
-    631     речей   своей  1
-    632       рим   твоим  1
-    633    родных     них  1
-    634   родства  такова  1
-    635       рой    свой  1
-    636       рой   собой  1
-    637     росой     той  1
-    638   ротозей     сей  1
-    639    рублей     ней  1
-    640      рука    меня  1
-    641      рука   тогда  1
-    642     рукам     вам  1
-    643     рукам     нам  1
-    644      руке     мне  1
-    645     рукой  другой  1
-    646     рукой   одной  1
-    647     рукой   собой  1
-    648     рукой    твой  1
-    649     ручей   своей  1
-    650     ручья    тебя  1
-    651    свечей    моей  1
-    652    свинья       я  1
-    653   свирель  отсель  1
-    654    святых    моих  1
-    655    святых     них  1
-    656     седин    один  1
-    657     семей   своей  1
-    658    семьей   своей  1
-    659     семья     моя  1
-    660     семья    твоя  1
-    661  семьянин    один  1
-    662   серафим   своим  1
-    663     сетей   твоей  1
-    664      сион      он  1
-    665   сиротой     мой  1
-    666   сиротой   собой  1
-    667   сиротой   тобой  1
-    668    скалой   собой  1
-    669     следа    туда  1
-    670     следы      вы  1
-    671     слеза   тогда  1
-    672    слезам     там  1
-    673    слезой     мой  1
-    674    слезой   собой  1
-    675     слезы      вы  1
-    676   слепоты      ты  1
-    677     слова     моя  1
-    678     слова  такова  1
-    679    словам     вам  1
-    680    словам     нам  1
-    681      слон      он  1
-    682      снам     нам  1
-    683       сне    одне  1
-    684   соловей    моей  1
-    685   соловей   твоей  1
-    686  сопряжон      он  1
-    687   старика    себя  1
-    688   старина    одна  1
-    689  стариной    мной  1
-    690    статья    своя  1
-    691    статья       я  1
-    692     стена    одна  1
-    693    стенам     нам  1
-    694    стеной    мной  1
-    695    стеной   одной  1
-    696     стеня    меня  1
-    697    степей   своей  1
-    698    степей   твоей  1
-    699    степям     там  1
-    700    стопам     нам  1
-    701    стопой   собой  1
-    702   сторона     она  1
-    703    стране     все  1
-    704  страстей      ей  1
-    705  страстей     ней  1
-    706  страстям     сам  1
-    707   стрелой  другой  1
-    708   стрелой    мной  1
-    709     строй   одной  1
-    710    струей    моей  1
-    711    струей   своей  1
-    712     струя    твоя  1
-    713     стыда  всегда  1
-    714     стыда никогда  1
-    715     стыда    тебя  1
-    716       суд     тут  1
-    717      суда никогда  1
-    718      суда    одна  1
-    719     судей    моей  1
-    720     судей     ней  1
-    721     судия    твоя  1
-    722    судьба    меня  1
-    723    судьба    себя  1
-    724    судьба    тебя  1
-    725    судьбе      ты  1
-    726   судьбин    один  1
-    727   судьбой    мной  1
-    728   судьбой    твой  1
-    729    судьей     сей  1
-    730     судью    свою  1
-    731     суета    куда  1
-    732     суета    себя  1
-    733    суетой     мой  1
-    734    суетой    твой  1
-    735     сумой   одной  1
-    736     сумой    свой  1
-    737     тарас     вас  1
-    738  темнотой    мной  1
-    739  теплотой    мной  1
-    740  теплотой    твой  1
-    741   теплоты      ты  1
-    742   тесноте      те  1
-    743   тесноты      ты  1
-    744    тишина     она  1
-    745    тишине      ее  1
-    746    тишине     оне  1
-    747    тканье     мое  1
-    748     толпа    меня  1
-    749     толпа    одна  1
-    750     толпе     где  1
-    751    толпой    твой  1
-    752     толпы      вы  1
-    753 торжество     его  1
-    754    травой    твой  1
-    755      трон      он  1
-    756    тропой    мной  1
-    757    трофей   своей  1
-    758    трубой    иной  1
-    759     труда  всегда  1
-    760     труда никогда  1
-    761     труда     она  1
-    762     труда    себя  1
-    763     труда   тогда  1
-    764     труда    туда  1
-    765    трудам     вам  1
-    766      тьму    нему  1
-    767      тьму  одному  1
-    768      тьму  твоему  1
-    769     углам     там  1
-    770      углу     ему  1
-    771      укор      он  1
-    772       ума    сама  1
-    773       уму  никому  1
-    774       уму  потому  1
-    775       умы      вы  1
-    776       умы      мы  1
-    777     успех    всех  1
-    778      уста    меня  1
-    779      уста      та  1
-    780      уста   тогда  1
-    781     устам     нам  1
-    782      ушам     нам  1
-    783       фей      ей  1
-    784       фей    моей  1
-    785      фраз     вас  1
-    786      фрак     так  1
-    787    хвалой     мой  1
-    788      хлам     там  1
-    789     хулой     мой  1
-    790     хулой   одной  1
-    791     царей      ей  1
-    792     царей     ней  1
-    793    цветам     там  1
-    794     чалмы      мы  1
-    795   чародей   своей  1
-    796   часовой    мной  1
-    797      челе     мне  1
-    798     челне     мне  1
-    799      чело    одно  1
-    800   чередой  другой  1
-    801   чередой    мной  1
-    802       чин    один  1
-    803  чистотой таковой  1
-    804  чистотой     той  1
-    805   чистоты      ты  1
-    806    чтецам     нам  1
-    807     чудак     так  1
-    808       шаг     так  1
-    809     юдоль  оттоль  1
-    810     ярмом   потом  1
+             from     to  n
+    1         сон     он 40
+    2       мечты     ты 36
+    3        дней   моей 33
+    4         час    нас 29
+    5         дня   меня 26
+    6       бытия      я 24
+    7        огня   меня 22
+    8      друзья      я 21
+    9     стороне    мне 18
+    10        час    вас 18
+    11    красоты     ты 17
+    12   страстей   моей 16
+    13       дней  своей 15
+    14        раз    вас 15
+    15     тишине    мне 13
+    16       луна    она 12
+    17        сна    она 12
+    18       дней    ней 11
+    19      закон     он 11
+    20       глас    нас 10
+    21    небесам    там 10
+    22       очей   моей 10
+    23        сне    мне 10
+    24        дни    они  9
+    25      людей   моей  9
+    26      людей    ней  9
+    27      людей  своей  9
+    28   страстей  своей  9
+    29     судьбе   тебе  9
+    30     высоты     ты  8
+    31       глас    вас  8
+    32      грудь нибудь  8
+    33        раз    нас  8
+    34      цветы     ты  8
+    35      бытия    моя  7
+    36       глаз    нас  7
+    37      любви    мои  7
+    38      покой  тобой  7
+    39    дикарей  своей  6
+    40       дней  твоей  6
+    41      душой   мной  6
+    42       коня   меня  6
+    43      лучей  своей  6
+    44     мечтой   мной  6
+    45       стон     он  6
+    46       беда всегда  5
+    47      бытие    мое  5
+    48     вышине    мне  5
+    49   господин   один  5
+    50     друзей   моей  5
+    51      душой  собой  5
+    52      душой  тобой  5
+    53        дым  своим  5
+    54     мечтам    там  5
+    55      ночей  твоей  5
+    56     сторон     он  5
+    57     стране    мне  5
+    58    судьбой  собой  5
+    59    судьбой  тобой  5
+    60      суеты     ты  5
+    61        сын   один  5
+    62     фимиам    нам  5
+    63        бой  собой  4
+    64  властелин   один  4
+    65      волна    она  4
+    66    глубине    мне  4
+    67       дитя   тебя  4
+    68       дней     ей  4
+    69      душой    мой  4
+    70       жена    она  4
+    71       звон     он  4
+    72      земля   меня  4
+    73       змея      я  4
+    74     кавказ    нас  4
+    75      лучей    ней  4
+    76      любви   свои  4
+    77      любви   твои  4
+    78   наполеон     он  4
+    79    небесам    нам  4
+    80  небосклон     он  4
+    81      речей   моей  4
+    82      рукой  тобой  4
+    83    соловей  своей  4
+    84     степей   моей  4
+    85      струи    мои  4
+    86     судьбе   себе  4
+    87     тоской    мой  4
+    88     тоской  собой  4
+    89       храм    там  4
+    90      черты     ты  4
+    91       беда  тогда  3
+    92     борьбе   тебе  3
+    93        бою   свою  3
+    94      бытие   твое  3
+    95      весна    она  3
+    96     ветвей  своей  3
+    97       глаз    вас  3
+    98      детей  твоей  3
+    99        дне    мне  3
+    100      дней    сей  3
 
 ## endings
 
@@ -2321,7 +1626,7 @@ glimpse(masc_pairs)
     $ to           <chr> "небеса", "земным", "легки", "простор", "лучом", "я", "по…
     $ rhyme_alph   <chr> "краса небеса", "земным огневым", "легки силки", "простор…
     $ meter        <chr> "Other", "Other", "Trochee", "Trochee", "Trochee", "Iamb"…
-    $ feet         <chr> "other", "other", "4", "4", "4", "4", "4", "4", "4", "4",…
+    $ feet         <chr> "?", "?", "4", "4", "4", "4", "4", "4", "4", "4", "4", "4…
     $ from_closure <chr> "masc", "masc", "masc", "masc", "masc", "masc", "masc", "…
     $ from_pos     <chr> "NOUN", "NOUN", "NOUN", "NOUN", "NOUN", "PRON", "NOUN", "…
     $ from_ending  <chr> "са'", "ы'м", "ки'", "о'р", "о'м", "оя'", "не'", "ё'т", "…
@@ -2457,7 +1762,7 @@ p1_m <- m_ranked_pos %>%
 p1_m
 ```
 
-![](05_4_rhyme_morhp_pairs.markdown_strict_files/figure-markdown_strict/unnamed-chunk-44-1.png)
+![](05_4_rhyme_morhp_pairs.markdown_strict_files/figure-markdown_strict/unnamed-chunk-45-1.png)
 
 Analysis of the less variate pairs
 
@@ -2543,7 +1848,7 @@ glimpse(fem_pairs)
     $ to           <chr> "догонит", "гремучий", "заране", "крылатой", "огнекрылой"…
     $ rhyme_alph   <chr> "догонит стонет", "гремучий тучи", "заране тумане", "крыл…
     $ meter        <chr> "Trochee", "Trochee", "Trochee", "Trochee", "Trochee", "T…
-    $ feet         <chr> "4", "4", "4", "4", "4", "4", "4", "other", "6", "6", "6"…
+    $ feet         <chr> "4", "4", "4", "4", "4", "4", "4", "v", "6", "6", "6", "6…
     $ from_closure <chr> "fem", "fem", "fem", "fem", "fem", "fem", "fem", "fem", "…
     $ from_pos     <chr> "VERB", "NOUN", "NOUN", "NOUN", "ADJ", "PRON", "NOUN", "N…
     $ from_ending  <chr> "о'нет", "у'чи", "а'не", "а'той", "ы'лой", "о'ю", "а'ми",…
@@ -2676,7 +1981,7 @@ p1_f <- f_ranked_pos  %>%
 p1_f
 ```
 
-![](05_4_rhyme_morhp_pairs.markdown_strict_files/figure-markdown_strict/unnamed-chunk-46-1.png)
+![](05_4_rhyme_morhp_pairs.markdown_strict_files/figure-markdown_strict/unnamed-chunk-47-1.png)
 
 Analysis of the less variate pairs
 
@@ -2900,7 +2205,7 @@ m_ranked_long %>%
 
     `geom_smooth()` using method = 'gam' and formula = 'y ~ s(x, bs = "cs")'
 
-![](05_4_rhyme_morhp_pairs.markdown_strict_files/figure-markdown_strict/unnamed-chunk-49-1.png)
+![](05_4_rhyme_morhp_pairs.markdown_strict_files/figure-markdown_strict/unnamed-chunk-50-1.png)
 
 ``` r
 # pos_plot
@@ -3038,7 +2343,7 @@ feats_plot
 
     `geom_smooth()` using method = 'gam' and formula = 'y ~ s(x, bs = "cs")'
 
-![](05_4_rhyme_morhp_pairs.markdown_strict_files/figure-markdown_strict/unnamed-chunk-51-1.png)
+![](05_4_rhyme_morhp_pairs.markdown_strict_files/figure-markdown_strict/unnamed-chunk-52-1.png)
 
 ### fem / masc endings separately
 
@@ -3106,7 +2411,7 @@ f_plot
 
     `geom_smooth()` using method = 'gam' and formula = 'y ~ s(x, bs = "cs")'
 
-![](05_4_rhyme_morhp_pairs.markdown_strict_files/figure-markdown_strict/unnamed-chunk-52-1.png)
+![](05_4_rhyme_morhp_pairs.markdown_strict_files/figure-markdown_strict/unnamed-chunk-53-1.png)
 
 ``` r
 m <- m_ranked_feats %>% 
@@ -3137,12 +2442,8 @@ m_plot <- m_ranked_long %>%
         plot.title = element_text(size = 18), 
         plot.subtitle = element_text(size = 14))
 
-m_plot
+# m_plot
 ```
-
-    `geom_smooth()` using method = 'gam' and formula = 'y ~ s(x, bs = "cs")'
-
-![](05_4_rhyme_morhp_pairs.markdown_strict_files/figure-markdown_strict/unnamed-chunk-53-1.png)
 
 ### fig. 5.2.2
 
@@ -3157,20 +2458,10 @@ BBBBBB#DDDD
 #pos_plot + feats_plot + p1_m + p1_f + plot_layout(design = layout)
 
 f_plot + m_plot + p1_f + p1_m + plot_layout(design = layout)
-```
 
-    `geom_smooth()` using method = 'gam' and formula = 'y ~ s(x, bs = "cs")'
-    `geom_smooth()` using method = 'gam' and formula = 'y ~ s(x, bs = "cs")'
-
-![](05_4_rhyme_morhp_pairs.markdown_strict_files/figure-markdown_strict/unnamed-chunk-54-1.png)
-
-``` r
 ggsave(filename = "plots/fig_5-2-2.png", plot = last_plot(), dpi = 300,
        bg = "white", width = 12, height = 10)
 ```
-
-    `geom_smooth()` using method = 'gam' and formula = 'y ~ s(x, bs = "cs")'
-    `geom_smooth()` using method = 'gam' and formula = 'y ~ s(x, bs = "cs")'
 
 #### feats - kendall cor
 
@@ -3308,20 +2599,20 @@ masc_pairs %>%
   distinct(rhyme_alph, .keep_all = TRUE)
 ```
 
-    # A tibble: 92 × 7
+    # A tibble: 96 × 7
        ending_pair    rhyme_alph      from     to       from_pos to_pos feats_pair  
        <chr>          <chr>           <chr>    <chr>    <chr>    <chr>  <chr>       
      1 -а'ль -- -а'ль печаль скрыжаль скрыжаль печаль   ADV      NOUN   ADV,вводн= …
-     2 -а'ль -- -а'ль жаль печаль     жаль     печаль   ADV      NOUN   ADV,прдк= -…
+     2 -а'ль -- -а'ль даль жаль       жаль     даль     ADV      NOUN   ADV,прдк= -…
      3 -а'ль -- -а'ль жаль хрусталь   жаль     хрусталь ADV      NOUN   ADV,прдк= -…
      4 -а'ль -- -а'ль вдаль жаль      вдаль    жаль     ADV      ADV    ADV= -- ADV…
-     5 -а'ль -- -а'ль вдаль печаль    вдаль    печаль   ADV      NOUN   ADV= -- S,ж…
-     6 -а'ль -- -а'ль даль жаль       даль     жаль     NOUN     ADV    S,жен,неод=…
-     7 -а'ль -- -а'ль даль эмаль      даль     эмаль    NOUN     NOUN   S,жен,неод=…
-     8 -а'ль -- -а'ль даль хрусталь   даль     хрусталь NOUN     NOUN   S,жен,неод=…
-     9 -а'ль -- -а'ль сталь хрусталь  хрусталь сталь    NOUN     NOUN   S,муж,неод=…
-    10 -а'ль -- -а'ль враль жаль      враль    жаль     NOUN     ADV    S,муж,од=им…
-    # ℹ 82 more rows
+     5 -а'ль -- -а'ль вдаль вуаль     вдаль    вуаль    ADV      NOUN   ADV= -- S,ж…
+     6 -а'ль -- -а'ль жаль печаль     печаль   жаль     NOUN     ADV    S,жен,неод=…
+     7 -а'ль -- -а'ль вдаль печаль    печаль   вдаль    NOUN     ADV    S,жен,неод=…
+     8 -а'ль -- -а'ль даль печаль     даль     печаль   NOUN     NOUN   S,жен,неод=…
+     9 -а'ль -- -а'ль миндаль шаль    шаль     миндаль  NOUN     NOUN   S,жен,неод=…
+    10 -а'ль -- -а'ль даль миндаль    миндаль  даль     NOUN     NOUN   S,муж,неод=…
+    # ℹ 86 more rows
 
 FEM rhymes feats analysis
 
@@ -3828,307 +3119,3 @@ fem_words %>%
     3 -о'ды -- -о'ды          24 природы, годы, свободы, народы, непогоды, своды, м…
     4 -о'ры -- -о'ры          35 взоры, горы, авроры, разговоры, хоры, уборы, укоры…
     5 -и'ца -- -и'ца          39 царица, денница, девица, птица, темница, столица, …
-
-NB both for masc & fem rhymes it seems that THE most freq ending is also
-the most variative (-oi, -oju),
-
-however, some of the endings have very low N of pos/feats combinations
-(-ить) but can generate very large number of words, these are mostly
-verbal endings =\> seeming refusal to use this kind of rhymes
-
-the most redundant / monotonous are though NOUN endings and rhyme pairs,
-which are less plausible to include many words for non-freq endings
-(such as -ец / -ца) though they include a small number of very symbolic
-poetic words (венец, певец… любовь кровь… пир мир…)
-
-## percentage of less variable rhyme endings
-
-### masc rhymes
-
-Count percentage by corpus
-
-``` r
-m_ranked_pos %>% select(-pos_pair) %>% head
-```
-
-    # A tibble: 6 × 5
-      ending_pair  pos_var  rank label          group         
-      <chr>          <int> <int> <chr>          <chr>         
-    1 -о'й -- -о'й       8     1 1 -о'й -- -о'й more variation
-    2 -е'й -- -е'й       6     2 2 -е'й -- -е'й more variation
-    3 -а'л -- -а'л       4     3 3 -а'л -- -а'л more variation
-    4 -на' -- -на'       5     4 4 -на' -- -на' more variation
-    5 -и'т -- -и'т       4     5 5 -и'т -- -и'т more variation
-    6 -о'в -- -о'в       3     6 6 -о'в -- -о'в less variation
-
-``` r
-corpus_totals <- masc_pairs %>% 
-  mutate(corpus = str_extract(text_id, "^\\w")) %>% 
-  count(corpus) %>% 
-  rename(total = n)
-
-masc_pairs %>% 
-  mutate(ending_pair = paste0("-", from_ending, " -- -", to_ending)) %>% 
-  select(text_id, ending_pair) %>% 
-  left_join(m_ranked_pos %>% select(ending_pair, pos_var, group),
-            by = "ending_pair") %>% 
-  mutate(group = ifelse(is.na(group), "non-freq", group),
-         corpus = str_extract(text_id, "^\\w")) %>% 
-  group_by(corpus) %>% 
-  count(group) %>% 
-  ungroup() %>% 
-  left_join(corpus_totals, by = "corpus") %>% 
-  mutate(perc = round((n / total)*100, 1)) %>% 
-  select(-n, -total) %>% 
-  pivot_wider(names_from = group, values_from = perc)
-```
-
-    # A tibble: 2 × 4
-      corpus `less variation` `more variation` `non-freq`
-      <chr>             <dbl>            <dbl>      <dbl>
-    1 C                  27.6             47.2       25.2
-    2 P                  27.6             47.5       24.9
-
-Load metadata about authors
-
-``` r
-meta <- read.csv("../../data/corpus1835/sql_db/texts_metadata.csv")
-authors <- read.csv("../../data/corpus1835/sql_db/authors.csv")
-
-meta <- meta %>% 
-  select(text_id, A_ID) %>% 
-  left_join(authors %>% select(A_ID, author_name), by = "A_ID")
-
-masc_pairs_authors <- masc_pairs %>% 
-  left_join(meta, by = "text_id")
-
-masc_pairs_authors %>% 
-  count(author_name, sort = T) %>% head()
-```
-
-          author_name    n
-    1            <NA> 3875
-    2  Жуковский В.А. 1621
-    3     Крылов И.А. 1584
-    4 Быстроглазов А. 1219
-    5   Бороздна И.П. 1053
-    6       Бернет Е.  963
-
-Count perc of less / more variative rhymes by different authors
-
-``` r
-# select authors
-a <- c("Баратынский Е.А.", "Бенедиктов В.Г.", "Мейснер А.", "Тимофеев А.В.",
-      "Шахова Е.Н.", "Некрасов Н.А.", "Суханов М.Д.", "Ростопчина Е.П.", 
-      "Козлов И.И.")
-
-a_totals <- masc_pairs_authors %>% 
-  filter(author_name %in% a) %>% 
-  count(author_name, sort = T) %>% 
-  rename(total = n)
-
-min(a_totals$total)
-```
-
-    [1] 361
-
-``` r
-m_ranked_pos %>% 
-  filter(group == "less variation") %>% 
-  select(ending_pair) %>% 
-  distinct() %>% pull()
-```
-
-     [1] "-о'в -- -о'в"   "-и'л -- -и'л"   "-ты' -- -ты'"   "-ё'т -- -ё'т"  
-     [5] "-ла' -- -ла'"   "-и'ть -- -и'ть" "-е'ц -- -е'ц"   "-о'р -- -о'р"  
-     [9] "-е'л -- -е'л"   "-ня' -- -ня'"   "-ка' -- -ка'"   "-го' -- -го'"  
-    [13] "-а'н -- -а'н"   "-ны' -- -ны'"   "-о'вь -- -о'вь" "-и'р -- -и'р"  
-    [17] "-е'нь -- -е'нь" "-са' -- -са'"   "-е'с -- -е'с"   "-о'д -- -о'д"  
-    [21] "-ё'т -- -е'т"   "-ца' -- -ца'"   "-а'ль -- -а'ль" "-а'р -- -а'р"  
-    [25] "-и'н -- -и'н"   "-у'г -- -у'г"   "-у'м -- -у'м"   "-бя' -- -бя'"  
-    [29] "-ле' -- -ле'"   "-о'г -- -о'г"   "-ти' -- -ти'"   "-му' -- -му'"  
-    [33] "-а'л -- -я'л"   "-е'ть -- -е'ть" "-бе' -- -бе'"   "-и'сь -- -и'сь"
-    [37] "-е'к -- -е'к"   "-а'д -- -а'д"   "-а'т -- -а'т"   "-у'л -- -у'л"  
-    [41] "-у'ть -- -у'ть" "-ша' -- -ша'"   "-я'л -- -а'л"   "-ну' -- -ну'"  
-    [45] "-ы'ть -- -и'ть" "-ё'н -- -ё'н"   "-ке' -- -ке'"   "-е'т -- -э'т"  
-    [49] "-ою' -- -ою'"   "-ы'х -- -и'х"   "-ко' -- -ко'"   "-ы'х -- -ы'х"  
-    [53] "-а'з -- -а'з"   "-е'в -- -е'в"   "-те' -- -те'"  
-
-``` r
-samples <- NULL
-
-for (i in 1:100) {
-  x <- masc_pairs_authors %>% 
-    filter(author_name %in% a) %>% 
-    group_by(author_name) %>% 
-    sample_n(100) %>% 
-    mutate(ending_pair = paste0("-", from_ending, " -- -", to_ending)) %>% 
-    select(text_id, author_name, ending_pair) %>% 
-    left_join(m_ranked_pos %>% select(ending_pair, pos_var, group),
-              by = "ending_pair") %>% 
-    mutate(group = ifelse(is.na(group), "non-freq rhymes (not top-100)", group)) %>% 
-    group_by(author_name) %>% 
-    count(group) %>% 
-    ungroup() %>% 
-    #left_join(a_totals, by = "author_name") %>% 
-    mutate(perc = round((n / 100)*100, 1)) %>% 
-    select(-n#, -total
-           ) #%>% 
-    #pivot_wider(names_from = group, values_from = perc) %>% 
-    #arrange(desc(`less variation`))
-
-  samples <- rbind(samples, x)
-}
-
-
-samples %>% 
-  ggplot(aes(x = author_name, y = perc, color = group)) + 
-  geom_boxplot(width = 0.5)
-```
-
-![](05_4_rhyme_morhp_pairs.markdown_strict_files/figure-markdown_strict/unnamed-chunk-73-1.png)
-
-### fem rhymes
-
-``` r
-f_ranked_pos %>% head
-```
-
-    # A tibble: 6 × 5
-      ending_pair      pos_var  rank label              group         
-      <chr>              <int> <int> <chr>              <chr>         
-    1 -о'ю -- -о'ю           5     1 1 -о'ю -- -о'ю     more variation
-    2 -а'ми -- -а'ми         2     2 2 -а'ми -- -а'ми   less variation
-    3 -е'нья -- -е'нья       1     3 3 -е'нья -- -е'нья less variation
-    4 -а'ет -- -а'ет         1     4 4 -а'ет -- -а'ет   less variation
-    5 -е'нье -- -е'нье       1     5 5 -е'нье -- -е'нье less variation
-    6 -а'я -- -а'я           5     6 6 -а'я -- -а'я     more variation
-
-``` r
-f_ranked_pos %>% 
-  filter(group == "less variation") %>% 
-  select(ending_pair) %>% 
-  distinct() %>% pull()
-```
-
-     [1] "-а'ми -- -а'ми"       "-е'нья -- -е'нья"     "-а'ет -- -а'ет"      
-     [4] "-е'нье -- -е'нье"     "-а'ли -- -а'ли"       "-а'нья -- -а'нья"    
-     [7] "-и'ла -- -и'ла"       "-а'нье -- -а'нье"     "-е'ний -- -е'ний"    
-    [10] "-и'лся -- -и'лся"     "-а'ю -- -а'ю"         "-а'лся -- -а'лся"    
-    [13] "-а'ют -- -а'ют"       "-ё'тся -- -ё'тся"     "-о'ды -- -о'ды"      
-    [16] "-и'тся -- -и'тся"     "-о'ре -- -о'ре"       "-и'тель -- -и'тель"  
-    [19] "-е'ньем -- -е'ньем"   "-е'ет -- -е'ет"       "-о'чи -- -о'чи"      
-    [22] "-и'ны -- -и'ны"       "-и'ра -- -и'ра"       "-и'ли -- -и'ли"      
-    [25] "-а'ний -- -а'ний"     "-и'цы -- -и'цы"       "-а'ми -- -я'ми"      
-    [28] "-а'вы -- -а'вы"       "-а'ет -- -я'ет"       "-е'ла -- -е'ла"      
-    [31] "-о'ры -- -о'ры"       "-и'ца -- -и'ца"       "-я'ет -- -а'ет"      
-    [34] "-а'ться -- -а'ться"   "-я'ми -- -а'ми"       "-о'да -- -о'да"      
-    [37] "-а'на -- -а'на"       "-а'дость -- -а'дость" "-о'дит -- -о'дит"    
-    [40] "-у'ки -- -у'ки"       "-и'лась -- -и'лась"   "-а'ешь -- -а'ешь"    
-    [43] "-и'ться -- -и'ться"   "-ея' -- -ея'"         "-и'лись -- -и'лись"  
-    [46] "-и'на -- -и'на"       "-а'ды -- -а'ды"       "-о'на -- -о'на"      
-    [49] "-и'лой -- -и'лой"     "-а'ньем -- -а'ньем"   "-у'га -- -у'га"      
-    [52] "-о'ка -- -о'ка"       "-а'стья -- -а'стья"   "-о'кой -- -о'кой"    
-    [55] "-а'лись -- -а'лись"   "-о'га -- -о'га"       "-и'лы -- -и'лы"      
-    [58] "-у'ет -- -у'ет"       "-о'гу -- -о'гу"       "-а'ни -- -а'ни"      
-    [61] "-и'вой -- -и'вой"     "-а'вой -- -а'вой"     "-е'мя -- -е'мя"      
-    [64] "-е'нью -- -е'нью"     "-о'вью -- -о'вью"     "-а'лась -- -а'лась"  
-    [67] "-е'ва -- -е'ва"       "-е'те -- -е'те"       "-е'жды -- -е'жды"    
-    [70] "-е'ни -- -е'ни"       "-и'мый -- -и'мый"     "-и'ре -- -и'ре"      
-
-``` r
-corpus_totals <- fem_pairs %>% 
-  mutate(corpus = str_extract(text_id, "^\\w")) %>% 
-  count(corpus) %>% 
-  rename(total = n)
-
-fem_pairs %>% 
-  mutate(ending_pair = paste0("-", from_ending, " -- -", to_ending)) %>% 
-  select(text_id, ending_pair) %>% 
-  left_join(f_ranked_pos %>% select(ending_pair, pos_var, group),
-            by = "ending_pair") %>% 
-  mutate(group = ifelse(is.na(group), "non-freq", group),
-         corpus = str_extract(text_id, "^\\w")) %>% 
-  group_by(corpus) %>% 
-  count(group) %>% 
-  ungroup() %>% 
-  left_join(corpus_totals, by = "corpus") %>% 
-  mutate(perc = round((n / total)*100, 1)) %>% 
-  select(-n, -total) %>% 
-  pivot_wider(names_from = group, values_from = perc)
-```
-
-    # A tibble: 2 × 4
-      corpus `less variation` `more variation` `non-freq`
-      <chr>             <dbl>            <dbl>      <dbl>
-    1 C                  36.1             15.2       48.6
-    2 P                  34.8             14.3       50.9
-
-Authors
-
-``` r
-fem_pairs_authors <- fem_pairs %>% 
-  left_join(meta, by = "text_id")
-
-fem_pairs_authors %>% 
-  count(author_name, sort = T) %>% head()
-```
-
-          author_name    n
-    1            <NA> 3446
-    2  Жуковский В.А. 1732
-    3     Крылов И.А. 1372
-    4     Смирнова А. 1094
-    5   Бороздна И.П. 1050
-    6 Бенедиктов В.Г.  875
-
-``` r
-# select authors
-a <- c("Баратынский Е.А.", "Бенедиктов В.Г.", "Мейснер А.", "Тимофеев А.В.",
-      "Шахова Е.Н.", "Некрасов Н.А.", "Суханов М.Д.", "Ростопчина Е.П.", 
-      "Козлов И.И.")
-
-a_totals <- fem_pairs_authors %>% 
-  filter(author_name %in% a) %>% 
-  count(author_name, sort = T) %>% 
-  rename(total = n)
-
-min(a_totals$total)
-```
-
-    [1] 355
-
-``` r
-samples <- NULL
-
-for (i in 1:100) {
-  x <- fem_pairs_authors %>% 
-    filter(author_name %in% a) %>% 
-    group_by(author_name) %>% 
-    sample_n(100) %>% 
-    mutate(ending_pair = paste0("-", from_ending, " -- -", to_ending)) %>% 
-    select(text_id, author_name, ending_pair) %>% 
-    left_join(f_ranked_pos %>% select(ending_pair, pos_var, group),
-              by = "ending_pair") %>% 
-    mutate(group = ifelse(is.na(group), "non-freq rhymes (not top-100)", group)) %>% 
-    group_by(author_name) %>% 
-    count(group) %>% 
-    ungroup() %>% 
-    #left_join(a_totals, by = "author_name") %>% 
-    mutate(perc = round((n / 100)*100, 1)) %>% 
-    select(-n#, -total
-           ) #%>% 
-    #pivot_wider(names_from = group, values_from = perc) %>% 
-    #arrange(desc(`less variation`))
-
-  samples <- rbind(samples, x)
-}
-
-
-samples %>% 
-  filter(group != "non-freq rhymes (not top-100)") %>% 
-  ggplot(aes(x = author_name, y = perc, color = group)) + 
-  geom_boxplot(width = 0.5)
-```
-
-![](05_4_rhyme_morhp_pairs.markdown_strict_files/figure-markdown_strict/unnamed-chunk-76-1.png)

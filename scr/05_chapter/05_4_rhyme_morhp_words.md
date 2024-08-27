@@ -2,6 +2,9 @@
 
 ## 5.2.1. POS in rhymes - word level
 
+The code used for analysis in Chapter 5.2. (POS in rhyme, individual
+words)
+
 ## load data & pckg
 
 ``` r
@@ -25,8 +28,9 @@ meta <- read.csv("../../data/corpus1835/sql_db/texts_metadata.csv")
 glimpse(meta)
 ```
 
-    Rows: 4,797
-    Columns: 11
+    Rows: 4,799
+    Columns: 12
+    $ X             <int> 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 1…
     $ text_id       <chr> "P_1", "P_10", "P_100", "P_1000", "P_1001", "P_1002", "P…
     $ source_id     <chr> "Per_1", "Per_2", "Per_3", "Per_4", "Per_4", "Per_4", "P…
     $ A_ID          <chr> "", "A_50", "A_7", "A_41", "A_139", "A_11", "A_163", "A_…
@@ -35,9 +39,9 @@ glimpse(meta)
     $ first_line    <chr> "Ох жизнь, молодецкая", "Зачем с небесной высоты", "В бл…
     $ text_page     <chr> "C. 46", "C. 21", "C. 9-12", "C. 172-174", "C. 175-176",…
     $ corpus        <chr> "per", "per", "per", "per", "per", "per", "per", "per", …
-    $ meter         <chr> "Other", "Iamb", "Iamb", "Iamb", "Trochee", "Iamb", "Tro…
-    $ feet          <chr> "other", "3", "4", "4", "4", "4", "other", "4", "6", "5"…
     $ n_lines       <int> 38, 16, 98, 77, 28, 12, 44, 25, 31, 28, 100, 16, 17, 60,…
+    $ meter         <chr> "Other", "Iamb", "Iamb", "Iamb", "Trochee", "Iamb", "Oth…
+    $ feet          <chr> "?", "3", "4", "4", "4", "4", "?", "4", "6", "5", "4", "…
 
 Meter labels
 
@@ -47,7 +51,7 @@ table(meta$meter)
 
 
     Amphibrach    Anapest     Dactyl       Iamb      Other    Trochee 
-           429        142         89       3055        206        876 
+           369        138         79       3085        350        778 
 
 ``` r
 meter_lables <- meta %>% 
@@ -110,7 +114,7 @@ glimpse(rhyme_pairs)
 ### rhyme words
 
 ``` r
-rhyme_words <- read.csv("../../data/corpus1835/sql_db/rhyme_words_upd.csv", 
+rhyme_words <- read.csv("../../data/corpus1835/sql_db/rhyme_words.csv", 
                         
                         # DON'T LET R EAT IAMBS AND DO INTEGER 01 => 1
                         colClasses = c("stress_pattern" = "character",
@@ -427,13 +431,13 @@ word_2 %>%
   filter(is.na(word_acc)) %>% head()
 ```
 
-         text_id      meter rhyme_alph word word_acc stress_pattern closure_pattern
-    1     P_1520 Amphibrach      ж мне    ж     <NA>           <NA>            <NA>
-    2   C_68__74       Iamb  ль печаль   ль     <NA>           <NA>            <NA>
-    3  C_633__55       Iamb    садов ф    ф     <NA>           <NA>            <NA>
-    4   C_180__5       Iamb    благ ль   ль     <NA>           <NA>            <NA>
-    5  C_315__16       Iamb  ль печаль   ль     <NA>           <NA>            <NA>
-    6 C_633__125       Iamb  ж стороне    ж     <NA>           <NA>            <NA>
+         text_id meter rhyme_alph word word_acc stress_pattern closure_pattern
+    1     P_1520 Other      ж мне    ж     <NA>           <NA>            <NA>
+    2   C_68__74  Iamb  ль печаль   ль     <NA>           <NA>            <NA>
+    3  C_633__55  Iamb    садов ф    ф     <NA>           <NA>            <NA>
+    4   C_180__5  Iamb    благ ль   ль     <NA>           <NA>            <NA>
+    5  C_315__16  Iamb  ль печаль   ль     <NA>           <NA>            <NA>
+    6 C_633__125  Iamb  ж стороне    ж     <NA>           <NA>            <NA>
       closure old_tag feats ending_st  pos
     1    <NA>    <NA>  <NA>      <NA> <NA>
     2    <NA>    <NA>  <NA>      <NA> <NA>
@@ -448,7 +452,7 @@ word_2 %>%
 ```
 
         text_id      meter      rhyme_alph   word word_acc stress_pattern
-    1    P_1520 Amphibrach           ж мне      ж     <NA>           <NA>
+    1    P_1520      Other           ж мне      ж     <NA>           <NA>
     2  C_156__3    Trochee покорныи черныи черныи  черны'и            010
     3  C_68__74       Iamb       ль печаль     ль     <NA>           <NA>
     4 C_633__55       Iamb         садов ф      ф     <NA>           <NA>
@@ -492,7 +496,7 @@ table(all_words$meter)
 
 
     Amphibrach    Anapest     Dactyl       Iamb      Other    Trochee 
-         12996       3891       1874     108752       4251      30687 
+         10787       4181       1414     108088      10499      27482 
 
 #### MFW in rhymes
 
@@ -526,15 +530,15 @@ all_words %>%
        meter   closure word_acc     n
        <chr>   <chr>   <chr>    <int>
      1 Iamb    fem     тобо'ю     181
-     2 Iamb    fem     мно'ю      174
-     3 Iamb    fem     све'та     152
-     4 Iamb    fem     душо'ю     148
-     5 Iamb    fem     сла'вы     148
-     6 Trochee fem     о'чи        66
-     7 Trochee fem     но'чи       61
-     8 Trochee fem     мо'ре       44
-     9 Trochee fem     во'лны      41
-    10 Trochee fem     мно'ю       37
+     2 Iamb    fem     мно'ю      175
+     3 Iamb    fem     све'та     151
+     4 Iamb    fem     душо'ю     150
+     5 Iamb    fem     сла'вы     146
+     6 Trochee fem     о'чи        64
+     7 Trochee fem     но'чи       59
+     8 Trochee fem     мо'ре       38
+     9 Trochee fem     во'лны      36
+    10 Trochee fem     ту'чи       35
 
 ``` r
 all_words %>% 
@@ -549,16 +553,16 @@ all_words %>%
     # Groups:   meter, closure [2]
        meter   closure word_acc     n
        <chr>   <chr>   <chr>    <int>
-     1 Iamb    masc    я'         484
-     2 Iamb    masc    све'т      325
-     3 Iamb    masc    меня'      318
-     4 Iamb    masc    тобо'й     300
-     5 Iamb    masc    она'       299
-     6 Trochee masc    я'         134
-     7 Trochee masc    она'       117
-     8 Trochee masc    мне'        96
-     9 Trochee masc    меня'       86
-    10 Trochee masc    све'т       86
+     1 Iamb    masc    я'         471
+     2 Iamb    masc    све'т      322
+     3 Iamb    masc    меня'      313
+     4 Iamb    masc    она'       300
+     5 Iamb    masc    тобо'й     293
+     6 Trochee masc    я'         118
+     7 Trochee masc    она'       102
+     8 Trochee masc    мне'        85
+     9 Trochee masc    меня'       81
+    10 Trochee masc    све'т       79
 
 ``` r
 all_words %>% 
@@ -569,24 +573,29 @@ all_words %>%
   filter(closure == "dactylic")
 ```
 
-    # A tibble: 14 × 4
+    # A tibble: 19 × 4
     # Groups:   meter, closure [2]
        meter   closure  word_acc           n
        <chr>   <chr>    <chr>          <int>
      1 Iamb    dactylic рети'вое           9
-     2 Iamb    dactylic ка'тится           8
-     3 Iamb    dactylic окрова'вленный     8
-     4 Iamb    dactylic го'лоса            7
-     5 Iamb    dactylic кру'жится          7
-     6 Iamb    dactylic про'снется         7
-     7 Trochee dactylic вопию'щего        11
-     8 Trochee dactylic зову'щего         11
-     9 Trochee dactylic печа'льная         6
-    10 Trochee dactylic жела'ния           5
-    11 Trochee dactylic ненагля'дная       5
-    12 Trochee dactylic ра'дости           5
-    13 Trochee dactylic страда'ния         5
-    14 Trochee dactylic та'йною            5
+     2 Iamb    dactylic про'снется         8
+     3 Iamb    dactylic кру'жится          7
+     4 Iamb    dactylic окрова'вленный     7
+     5 Iamb    dactylic бе'рега            6
+     6 Iamb    dactylic восхи'щенный       6
+     7 Iamb    dactylic го'лоса            6
+     8 Iamb    dactylic громо'вая          6
+     9 Iamb    dactylic де'рева            6
+    10 Iamb    dactylic ка'тится           6
+    11 Iamb    dactylic при'нялся          6
+    12 Iamb    dactylic шеве'лится         6
+    13 Trochee dactylic вопию'щего        11
+    14 Trochee dactylic зову'щего         11
+    15 Trochee dactylic печа'льная         6
+    16 Trochee dactylic жела'ния           5
+    17 Trochee dactylic ненагля'дная       5
+    18 Trochee dactylic ра'дости           5
+    19 Trochee dactylic страда'ния         5
 
 MFW 3-syll meters
 
@@ -598,21 +607,21 @@ all_words %>%
   slice_max(order_by = n, n = 5)
 ```
 
-    # A tibble: 60 × 4
+    # A tibble: 68 × 4
     # Groups:   meter, closure [9]
-       meter      closure  word_acc          n
-       <chr>      <chr>    <chr>         <int>
-     1 Amphibrach dactylic ми'лого           5
-     2 Amphibrach dactylic ру'сские          5
-     3 Amphibrach dactylic азо'вского        4
-     4 Amphibrach dactylic байка'льского     4
-     5 Amphibrach dactylic до'брые           4
-     6 Amphibrach dactylic каспи'йского      4
-     7 Amphibrach dactylic ла'сточка         4
-     8 Amphibrach fem      мо'ре            34
-     9 Amphibrach fem      о'чи             29
-    10 Amphibrach fem      но'чи            27
-    # ℹ 50 more rows
+       meter      closure  word_acc        n
+       <chr>      <chr>    <chr>       <int>
+     1 Amphibrach dactylic ла'сточка       4
+     2 Amphibrach dactylic ва'лится        2
+     3 Amphibrach dactylic го'ренка        2
+     4 Amphibrach dactylic ди'вная         2
+     5 Amphibrach dactylic заве'сою        2
+     6 Amphibrach dactylic завы'ванье      2
+     7 Amphibrach dactylic каса'точка      2
+     8 Amphibrach dactylic ле'сенка        2
+     9 Amphibrach dactylic мо'лвила        2
+    10 Amphibrach dactylic невиди'мкою     2
+    # ℹ 58 more rows
 
 #### total_meter
 
@@ -627,12 +636,12 @@ total_meter
 ```
 
            meter  total
-    1 Amphibrach  12996
-    2    Anapest   3891
-    3     Dactyl   1874
-    4       Iamb 108752
-    5      Other   4251
-    6    Trochee  30687
+    1 Amphibrach  10787
+    2    Anapest   4181
+    3     Dactyl   1414
+    4       Iamb 108088
+    5      Other  10499
+    6    Trochee  27482
 
 #### Number of masc / fem / dactyl endings
 
@@ -649,21 +658,21 @@ all_words %>%
     # Groups:   meter [5]
        meter      closure      n  total  perc
        <chr>      <chr>    <int>  <int> <dbl>
-     1 Amphibrach dactylic   381  12996  2.93
-     2 Amphibrach fem       5472  12996 42.1 
-     3 Amphibrach masc      7137  12996 54.9 
-     4 Anapest    dactylic    53   3891  1.36
-     5 Anapest    fem       1143   3891 29.4 
-     6 Anapest    masc      2695   3891 69.3 
-     7 Dactyl     dactylic   250   1874 13.3 
-     8 Dactyl     fem        575   1874 30.7 
-     9 Dactyl     masc      1044   1874 55.7 
-    10 Iamb       dactylic  1324 108752  1.22
-    11 Iamb       fem      53075 108752 48.8 
-    12 Iamb       masc     54284 108752 49.9 
-    13 Trochee    dactylic  1103  30687  3.59
-    14 Trochee    fem      14091  30687 45.9 
-    15 Trochee    masc     15444  30687 50.3 
+     1 Amphibrach dactylic   103  10787  0.95
+     2 Amphibrach fem       4799  10787 44.5 
+     3 Amphibrach masc      5884  10787 54.6 
+     4 Anapest    dactylic    70   4181  1.67
+     5 Anapest    fem       1191   4181 28.5 
+     6 Anapest    masc      2920   4181 69.8 
+     7 Dactyl     dactylic   224   1414 15.8 
+     8 Dactyl     fem        429   1414 30.3 
+     9 Dactyl     masc       759   1414 53.7 
+    10 Iamb       dactylic  1245 108088  1.15
+    11 Iamb       fem      52766 108088 48.8 
+    12 Iamb       masc     54010 108088 50.0 
+    13 Trochee    dactylic   994  27482  3.62
+    14 Trochee    fem      12611  27482 45.9 
+    15 Trochee    masc     13834  27482 50.3 
 
 ``` r
 # all_words %>% 
@@ -704,26 +713,25 @@ all_words %>%
   select(-total, -total_closure)
 ```
 
-    # A tibble: 17 × 6
+    # A tibble: 16 × 6
        meter closure  ending_st     n perc_all_iambic perc_iamb_clos
        <chr> <chr>    <chr>     <int>           <dbl>          <dbl>
-     1 Iamb  dactylic е'ния        20            0.02           1.51
-     2 Iamb  dactylic е'ние        14            0.01           1.06
-     3 Iamb  dactylic а'ния        13            0.01           0.98
-     4 Iamb  dactylic а'тится      10            0.01           0.76
-     5 Iamb  dactylic а'рая         9            0.01           0.68
-     6 Iamb  dactylic и'вое         9            0.01           0.68
-     7 Iamb  dactylic у'жится       9            0.01           0.68
-     8 Iamb  fem      о'ю        2236            2.06           4.21
-     9 Iamb  fem      а'ми       1629            1.5            3.07
-    10 Iamb  fem      е'нья      1492            1.37           2.81
-    11 Iamb  fem      а'ет       1451            1.33           2.73
-    12 Iamb  fem      е'нье      1227            1.13           2.31
-    13 Iamb  masc     о'й        5258            4.83           9.69
-    14 Iamb  masc     е'й        3155            2.9            5.81
-    15 Iamb  masc     а'л        1874            1.72           3.45
-    16 Iamb  masc     и'т        1526            1.4            2.81
-    17 Iamb  masc     на'        1446            1.33           2.66
+     1 Iamb  dactylic е'ния        17            0.02           1.37
+     2 Iamb  dactylic е'ние        12            0.01           0.96
+     3 Iamb  dactylic а'ния        11            0.01           0.88
+     4 Iamb  dactylic а'рая         9            0.01           0.72
+     5 Iamb  dactylic а'тится       9            0.01           0.72
+     6 Iamb  dactylic и'вое         9            0.01           0.72
+     7 Iamb  fem      о'ю        2231            2.06           4.23
+     8 Iamb  fem      а'ми       1626            1.5            3.08
+     9 Iamb  fem      е'нья      1483            1.37           2.81
+    10 Iamb  fem      а'ет       1447            1.34           2.74
+    11 Iamb  fem      е'нье      1229            1.14           2.33
+    12 Iamb  masc     о'й        5237            4.85           9.7 
+    13 Iamb  masc     е'й        3153            2.92           5.84
+    14 Iamb  masc     а'л        1851            1.71           3.43
+    15 Iamb  masc     и'т        1527            1.41           2.83
+    16 Iamb  masc     на'        1447            1.34           2.68
 
 ``` r
 all_words %>% 
@@ -758,26 +766,25 @@ all_words %>%
   select(-total, -total_closure)
 ```
 
-    # A tibble: 17 × 6
+    # A tibble: 16 × 6
        meter   closure  ending_st     n perc_all_tr perc_tr_clos
        <chr>   <chr>    <chr>     <int>       <dbl>        <dbl>
-     1 Trochee dactylic е'ния        21        0.07         1.9 
-     2 Trochee dactylic а'ния        20        0.07         1.81
-     3 Trochee dactylic а'ется       13        0.04         1.18
-     4 Trochee dactylic ё'нная       12        0.04         1.09
-     5 Trochee dactylic е'ние        11        0.04         1   
-     6 Trochee dactylic у'щего       11        0.04         1   
-     7 Trochee dactylic ю'щего       11        0.04         1   
-     8 Trochee fem      о'ю         506        1.65         3.59
-     9 Trochee fem      а'я         429        1.4          3.04
-    10 Trochee fem      а'ет        396        1.29         2.81
-    11 Trochee fem      а'ми        366        1.19         2.6 
-    12 Trochee fem      е'нья       219        0.71         1.55
-    13 Trochee masc     о'й        1387        4.52         8.98
-    14 Trochee masc     е'й         816        2.66         5.28
-    15 Trochee masc     и'т         591        1.93         3.83
-    16 Trochee masc     на'         498        1.62         3.22
-    17 Trochee masc     ё'т         425        1.38         2.75
+     1 Trochee dactylic а'ния        20        0.07         2.01
+     2 Trochee dactylic е'ния        19        0.07         1.91
+     3 Trochee dactylic ё'нная       12        0.04         1.21
+     4 Trochee dactylic е'ние        11        0.04         1.11
+     5 Trochee dactylic у'щего       11        0.04         1.11
+     6 Trochee dactylic ю'щего       11        0.04         1.11
+     7 Trochee fem      о'ю         446        1.62         3.54
+     8 Trochee fem      а'я         382        1.39         3.03
+     9 Trochee fem      а'ет        362        1.32         2.87
+    10 Trochee fem      а'ми        287        1.04         2.28
+    11 Trochee fem      е'нья       190        0.69         1.51
+    12 Trochee masc     о'й        1270        4.62         9.18
+    13 Trochee masc     е'й         717        2.61         5.18
+    14 Trochee masc     и'т         528        1.92         3.82
+    15 Trochee masc     на'         444        1.62         3.21
+    16 Trochee masc     ё'т         376        1.37         2.72
 
 ## POS distribution in meters / endings
 
@@ -879,20 +886,20 @@ all_words %>%
 ```
 
                  pos     n perc_all_iambic
-    1            ADJ 12510           11.50
-    2            ADP    17            0.02
-    3            ADV  3078            2.83
+    1            ADJ 12423           11.49
+    2            ADP    18            0.02
+    3            ADV  3061            2.83
     4           CONJ    15            0.01
-    5           INTJ    76            0.07
-    6           NOUN 56113           51.60
-    7            NUM    92            0.08
-    8           PART   462            0.42
-    9           PRON  8564            7.87
-    10          VERB 20671           19.01
-    11 VERB_deeprich  1166            1.07
-    12      VERB_imp  1109            1.02
-    13      VERB_inf  2959            2.72
-    14    VERB_prich  1851            1.70
+    5           INTJ    75            0.07
+    6           NOUN 55781           51.61
+    7            NUM    91            0.08
+    8           PART   460            0.43
+    9           PRON  8500            7.86
+    10          VERB 20566           19.03
+    11 VERB_deeprich  1152            1.07
+    12      VERB_imp  1099            1.02
+    13      VERB_inf  2949            2.73
+    14    VERB_prich  1831            1.69
 
 By clausula
 
@@ -917,20 +924,20 @@ all_words %>%
     # A tibble: 14 × 4
        closure pos               n perc_iamb_clos
        <chr>   <chr>         <int>          <dbl>
-     1 masc    ADJ            3096           5.7 
-     2 masc    ADP              15           0.03
-     3 masc    ADV            1425           2.63
+     1 masc    ADJ            3090           5.72
+     2 masc    ADP              16           0.03
+     3 masc    ADV            1415           2.62
      4 masc    CONJ             11           0.02
-     5 masc    INTJ             51           0.09
-     6 masc    NOUN          28393          52.3 
-     7 masc    NUM              45           0.08
-     8 masc    PART            430           0.79
-     9 masc    PRON           7516          13.8 
-    10 masc    VERB           9114          16.8 
-    11 masc    VERB_deeprich   312           0.57
-    12 masc    VERB_imp        768           1.41
-    13 masc    VERB_inf       2343           4.32
-    14 masc    VERB_prich      765           1.41
+     5 masc    INTJ             50           0.09
+     6 masc    NOUN          28253          52.3 
+     7 masc    NUM              46           0.09
+     8 masc    PART            428           0.79
+     9 masc    PRON           7452          13.8 
+    10 masc    VERB           9076          16.8 
+    11 masc    VERB_deeprich   308           0.57
+    12 masc    VERB_imp        766           1.42
+    13 masc    VERB_inf       2339           4.33
+    14 masc    VERB_prich      760           1.41
 
 ``` r
 all_words %>% 
@@ -953,20 +960,20 @@ all_words %>%
     # A tibble: 14 × 4
        closure pos               n perc_iamb_clos
        <chr>   <chr>         <int>          <dbl>
-     1 fem     ADJ            9071          17.1 
+     1 fem     ADJ            9023          17.1 
      2 fem     ADP               2           0   
-     3 fem     ADV            1631           3.07
+     3 fem     ADV            1624           3.08
      4 fem     CONJ              4           0.01
      5 fem     INTJ             25           0.05
-     6 fem     NOUN          27119          51.1 
+     6 fem     NOUN          26960          51.1 
      7 fem     NUM              44           0.08
      8 fem     PART             32           0.06
-     9 fem     PRON           1043           1.97
-    10 fem     VERB          11363          21.4 
-    11 fem     VERB_deeprich   838           1.58
-    12 fem     VERB_imp        330           0.62
-    13 fem     VERB_inf        610           1.15
-    14 fem     VERB_prich      963           1.81
+     9 fem     PRON           1043           1.98
+    10 fem     VERB          11302          21.4 
+    11 fem     VERB_deeprich   827           1.57
+    12 fem     VERB_imp        324           0.61
+    13 fem     VERB_inf        604           1.14
+    14 fem     VERB_prich      952           1.8 
 
 ``` r
 all_words %>% 
@@ -989,16 +996,16 @@ all_words %>%
     # A tibble: 10 × 4
        closure  pos               n perc_iamb_clos
        <chr>    <chr>         <int>          <dbl>
-     1 dactylic ADJ             343          25.9 
-     2 dactylic ADV              22           1.66
-     3 dactylic NOUN            601          45.4 
-     4 dactylic NUM               3           0.23
-     5 dactylic PRON              5           0.38
-     6 dactylic VERB            194          14.6 
-     7 dactylic VERB_deeprich    16           1.21
-     8 dactylic VERB_imp         11           0.83
-     9 dactylic VERB_inf          6           0.45
-    10 dactylic VERB_prich      123           9.29
+     1 dactylic ADJ             310          24.9 
+     2 dactylic ADV              22           1.77
+     3 dactylic NOUN            568          45.6 
+     4 dactylic NUM               1           0.08
+     5 dactylic PRON              5           0.4 
+     6 dactylic VERB            188          15.1 
+     7 dactylic VERB_deeprich    17           1.37
+     8 dactylic VERB_imp          9           0.72
+     9 dactylic VERB_inf          6           0.48
+    10 dactylic VERB_prich      119           9.56
 
 #### trochee
 
@@ -1017,19 +1024,19 @@ all_words %>%
 ```
 
                  pos     n perc_all_iambic
-    1            ADJ  4113           13.40
-    2            ADP     5            0.02
-    3            ADV   948            3.09
-    4           INTJ    33            0.11
-    5           NOUN 15654           51.01
-    6            NUM    26            0.08
-    7           PART   104            0.34
-    8           PRON  2206            7.19
-    9           VERB  5734           18.69
-    10 VERB_deeprich   330            1.08
-    11      VERB_imp   303            0.99
-    12      VERB_inf   740            2.41
-    13    VERB_prich   442            1.44
+    1            ADJ  3665           13.34
+    2            ADP     4            0.01
+    3            ADV   882            3.21
+    4           INTJ    27            0.10
+    5           NOUN 13963           50.81
+    6            NUM    23            0.08
+    7           PART    91            0.33
+    8           PRON  1984            7.22
+    9           VERB  5157           18.77
+    10 VERB_deeprich   299            1.09
+    11      VERB_imp   273            0.99
+    12      VERB_inf   673            2.45
+    13    VERB_prich   398            1.45
 
 By clausula
 
@@ -1055,19 +1062,19 @@ all_words %>%
     # A tibble: 13 × 4
        pos            masc   fem dactylic
        <chr>         <dbl> <dbl>    <dbl>
-     1 NOUN          52.3  51.2     32.7 
-     2 ADJ            6.03 18.8     49.0 
-     3 VERB          18.0  20.3      8.52
-     4 PRON          12.8   1.58     0.09
-     5 VERB_prich     1.12  1.33     7.43
-     6 VERB_inf       4.06  0.79     0.09
-     7 ADV            2.96  3.41     1   
-     8 VERB_deeprich  0.46  1.8      0.54
-     9 VERB_imp       1.35  0.63     0.45
-    10 PART           0.62  0.06    NA   
-    11 INTJ           0.19  0.03    NA   
-    12 NUM            0.06  0.1      0.18
-    13 ADP            0.03  0.01    NA   
+     1 NOUN          52.3  50.7     33.7 
+     2 ADJ            5.89 18.7     49.3 
+     3 VERB          17.9  20.7      7.65
+     4 PRON          13.0   1.48     0.1 
+     5 VERB_prich     1.18  1.28     7.34
+     6 VERB_inf       4.07  0.87    NA   
+     7 ADV            3.01  3.61     1.11
+     8 VERB_deeprich  0.51  1.78     0.3 
+     9 VERB_imp       1.34  0.66     0.4 
+    10 PART           0.6   0.06    NA   
+    11 INTJ           0.17  0.02    NA   
+    12 NUM            0.06  0.11     0.1 
+    13 ADP            0.02  0.01    NA   
 
 ### POS length (in syl)
 
@@ -1161,10 +1168,10 @@ m
      3 Amphibra… PRON              1.6             1.6              2              2
      4 Amphibra… VERB              2.2             2.2              2              2
      5 Anapest   ADJ               2.3             2.3              2              2
-     6 Anapest   NOUN              1.9             1.9              2              2
+     6 Anapest   NOUN              1.8             1.8              2              2
      7 Anapest   PRON              1.7             1.7              2              2
      8 Anapest   VERB              2.3             2.3              2              2
-     9 Dactyl    ADJ               2.1             2.1              2              2
+     9 Dactyl    ADJ               2               2                2              2
     10 Dactyl    NOUN              1.9             1.9              2              2
     11 Dactyl    PRON              1.7             1.7              2              2
     12 Dactyl    VERB              2.3             2.3              2              2
@@ -1200,17 +1207,16 @@ all_words %>%
   filter(pos == "NOUN" & meter %in% c("Iamb", "Trochee")) 
 ```
 
-         meter  pos pos_syl perc     n total_meter
-    1     Iamb NOUN  NOUN_1 14.3  7756       54284
-    2     Iamb NOUN  NOUN_2 28.9 15664       54284
-    3     Iamb NOUN  NOUN_3  8.9  4818       54284
-    4     Iamb NOUN  NOUN_4  0.3   153       54284
-    5     Iamb NOUN  NOUN_5  0.0     2       54284
-    6  Trochee NOUN  NOUN_1 13.2  2037       15444
-    7  Trochee NOUN  NOUN_2 29.7  4588       15444
-    8  Trochee NOUN  NOUN_3  9.2  1421       15444
-    9  Trochee NOUN  NOUN_4  0.2    25       15444
-    10 Trochee NOUN  NOUN_5  0.0     1       15444
+        meter  pos pos_syl perc     n total_meter
+    1    Iamb NOUN  NOUN_1 14.2  7693       54010
+    2    Iamb NOUN  NOUN_2 28.9 15591       54010
+    3    Iamb NOUN  NOUN_3  8.9  4811       54010
+    4    Iamb NOUN  NOUN_4  0.3   155       54010
+    5    Iamb NOUN  NOUN_5  0.0     3       54010
+    6 Trochee NOUN  NOUN_1 13.3  1842       13834
+    7 Trochee NOUN  NOUN_2 29.7  4106       13834
+    8 Trochee NOUN  NOUN_3  9.1  1263       13834
+    9 Trochee NOUN  NOUN_4  0.2    23       13834
 
 ``` r
   # NB other POS can be tested via filter
@@ -1253,12 +1259,12 @@ f
      3 Amphibrach PRON                  1.5                 2.5              1
      4 Amphibrach VERB                  2.2                 3.2              2
      5 Anapest    ADJ                   2.1                 3.1              2
-     6 Anapest    NOUN                  1.7                 2.7              2
+     6 Anapest    NOUN                  1.6                 2.7              2
      7 Anapest    PRON                  1.6                 2.6              2
      8 Anapest    VERB                  2.2                 3.2              2
      9 Dactyl     ADJ                   2.1                 3.1              2
     10 Dactyl     NOUN                  1.8                 2.8              2
-    11 Dactyl     PRON                  1.2                 2.2              1
+    11 Dactyl     PRON                  1.3                 2.3              1
     12 Dactyl     VERB                  2.3                 3.3              2
     13 Iamb       ADJ                   2.2                 3.2              2
     14 Iamb       NOUN                  1.9                 2.9              2
@@ -1292,16 +1298,16 @@ all_words %>%
 ```
 
          meter  pos pos_syl perc    n total_meter
-    1     Iamb VERB  VERB_2  3.3 1781       54284
-    2     Iamb VERB  VERB_3  8.6 4660       54284
-    3     Iamb VERB  VERB_4  8.3 4514       54284
-    4     Iamb VERB  VERB_5  0.7  407       54284
-    5     Iamb VERB  VERB_6  0.0    1       54284
-    6  Trochee VERB  VERB_2  4.0  612       15444
-    7  Trochee VERB  VERB_3  7.9 1223       15444
-    8  Trochee VERB  VERB_4  6.3  967       15444
-    9  Trochee VERB  VERB_5  0.3   54       15444
-    10 Trochee VERB  VERB_6  0.0    1       15444
+    1     Iamb VERB  VERB_2  3.3 1758       54010
+    2     Iamb VERB  VERB_3  8.6 4643       54010
+    3     Iamb VERB  VERB_4  8.3 4497       54010
+    4     Iamb VERB  VERB_5  0.7  403       54010
+    5     Iamb VERB  VERB_6  0.0    1       54010
+    6  Trochee VERB  VERB_2  4.1  562       13834
+    7  Trochee VERB  VERB_3  8.1 1116       13834
+    8  Trochee VERB  VERB_4  6.4  882       13834
+    9  Trochee VERB  VERB_5  0.3   48       13834
+    10 Trochee VERB  VERB_6  0.0    1       13834
 
 dactylic
 
@@ -1333,24 +1339,24 @@ d
     # A tibble: 18 × 6
        meter pos   d_mean_stress_pos d_mean_syl_lenght med_stress_pos med_syl_length
        <chr> <chr>             <dbl>             <dbl>          <dbl>          <dbl>
-     1 Amph… ADJ                 1.9               3.9            2              4  
-     2 Amph… NOUN                1.6               3.6            1              3  
-     3 Amph… VERB                1.8               3.8            2              4  
-     4 Anap… ADJ                 2.2               4.2            2              4  
-     5 Anap… NOUN                1.5               3.5            1              3  
-     6 Anap… VERB                1.7               3.7            2              4  
-     7 Dact… ADJ                 2                 4              2              4  
-     8 Dact… NOUN                1.8               3.8            2              4  
-     9 Dact… PRON                1                 3              1              3  
-    10 Dact… VERB                2.3               4.3            2              4  
-    11 Iamb  ADJ                 1.9               3.9            2              4  
-    12 Iamb  NOUN                1.6               3.6            1              3  
-    13 Iamb  PRON                1                 3              1              3  
-    14 Iamb  VERB                1.6               3.6            1.5            3.5
-    15 Troc… ADJ                 2                 4              2              4  
-    16 Troc… NOUN                1.9               3.9            2              4  
-    17 Troc… PRON                1                 3              1              3  
-    18 Troc… VERB                1.8               3.8            2              4  
+     1 Amph… ADJ                 2                 4                2              4
+     2 Amph… NOUN                1.4               3.4              1              3
+     3 Amph… VERB                1.5               3.5              1              3
+     4 Anap… ADJ                 2.3               4.3              2              4
+     5 Anap… NOUN                1.5               3.5              1              3
+     6 Anap… VERB                1.8               3.8              2              4
+     7 Dact… ADJ                 2                 4                2              4
+     8 Dact… NOUN                1.9               3.9              2              4
+     9 Dact… PRON                1                 3                1              3
+    10 Dact… VERB                2.2               4.2              2              4
+    11 Iamb  ADJ                 1.9               3.9              2              4
+    12 Iamb  NOUN                1.6               3.6              1              3
+    13 Iamb  PRON                1                 3                1              3
+    14 Iamb  VERB                1.6               3.6              2              4
+    15 Troc… ADJ                 2                 4                2              4
+    16 Troc… NOUN                1.9               3.9              2              4
+    17 Troc… PRON                1                 3                1              3
+    18 Troc… VERB                1.7               3.7              2              4
 
 ``` r
 dact_total <- all_words %>% filter(closure == "dactylic" & meter != "Other") %>% 
@@ -1374,14 +1380,14 @@ all_words %>%
 ```
 
         meter pos pos_syl perc   n total_meter
-    1    Iamb ADJ   ADJ_3  0.2  97       54284
-    2    Iamb ADJ   ADJ_4  0.3 189       54284
-    3    Iamb ADJ   ADJ_5  0.1  53       54284
-    4    Iamb ADJ   ADJ_6  0.0   4       54284
-    5 Trochee ADJ   ADJ_3  1.0 151       15444
-    6 Trochee ADJ   ADJ_4  1.5 233       15444
-    7 Trochee ADJ   ADJ_5  0.9 145       15444
-    8 Trochee ADJ   ADJ_6  0.1  11       15444
+    1    Iamb ADJ   ADJ_3  0.2  90       54010
+    2    Iamb ADJ   ADJ_4  0.3 165       54010
+    3    Iamb ADJ   ADJ_5  0.1  52       54010
+    4    Iamb ADJ   ADJ_6  0.0   3       54010
+    5 Trochee ADJ   ADJ_3  1.0 135       13834
+    6 Trochee ADJ   ADJ_4  1.5 209       13834
+    7 Trochee ADJ   ADJ_5  1.0 135       13834
+    8 Trochee ADJ   ADJ_6  0.1  11       13834
 
 ``` r
 glimpse(m)
@@ -1391,8 +1397,8 @@ glimpse(m)
     Columns: 6
     $ meter           <chr> "Amphibrach", "Amphibrach", "Amphibrach", "Amphibrach"…
     $ pos             <chr> "ADJ", "NOUN", "PRON", "VERB", "ADJ", "NOUN", "PRON", …
-    $ mean_stress_pos <dbl> 2.3, 1.9, 1.6, 2.2, 2.3, 1.9, 1.7, 2.3, 2.1, 1.9, 1.7,…
-    $ mean_syl_lenght <dbl> 2.3, 1.9, 1.6, 2.2, 2.3, 1.9, 1.7, 2.3, 2.1, 1.9, 1.7,…
+    $ mean_stress_pos <dbl> 2.3, 1.9, 1.6, 2.2, 2.3, 1.8, 1.7, 2.3, 2.0, 1.9, 1.7,…
+    $ mean_syl_lenght <dbl> 2.3, 1.9, 1.6, 2.2, 2.3, 1.8, 1.7, 2.3, 2.0, 1.9, 1.7,…
     $ med_stress_pos  <dbl> 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, …
     $ med_syl_length  <dbl> 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, …
 
@@ -1412,12 +1418,12 @@ cbind(m %>% select(-med_stress_pos, -med_syl_length),
     3  Amphibrach PRON             1.6                   2.5             1.6
     4  Amphibrach VERB             2.2                   3.2             2.2
     5     Anapest  ADJ             2.3                   3.1             2.3
-    6     Anapest NOUN             1.9                   2.7             1.9
+    6     Anapest NOUN             1.8                   2.7             1.8
     7     Anapest PRON             1.7                   2.6             1.7
     8     Anapest VERB             2.3                   3.2             2.3
-    9      Dactyl  ADJ             2.1                   3.1             2.1
+    9      Dactyl  ADJ             2.0                   3.1             2.0
     10     Dactyl NOUN             1.9                   2.8             1.9
-    11     Dactyl PRON             1.7                   2.2             1.7
+    11     Dactyl PRON             1.7                   2.3             1.7
     12     Dactyl VERB             2.3                   3.3             2.3
     13       Iamb  ADJ             2.2                   3.2             2.2
     14       Iamb NOUN             1.9                   2.9             1.9
@@ -1433,12 +1439,12 @@ cbind(m %>% select(-med_stress_pos, -med_syl_length),
     3                    1.5
     4                    2.2
     5                    2.1
-    6                    1.7
+    6                    1.6
     7                    1.6
     8                    2.2
     9                    2.1
     10                   1.8
-    11                   1.2
+    11                   1.3
     12                   2.3
     13                   2.2
     14                   1.9
@@ -1529,9 +1535,9 @@ all_words %>%
 ```
 
       pos_group     n perc_all_iambic
-    1  declined 79038           72.68
-    2     verbs 24739           22.75
-    3     other  4906            4.51
+    1  declined 78535           72.66
+    2     verbs 24614           22.77
+    3     other  4872            4.51
 
 By clausula
 
@@ -1555,15 +1561,15 @@ all_words %>%
     # A tibble: 9 × 4
       closure  pos_group     n perc_iamb_clos
       <chr>    <chr>     <int>          <dbl>
-    1 dactylic declined   1072          81.0 
-    2 dactylic other        41           3.1 
-    3 dactylic verbs       211          15.9 
-    4 fem      declined  38196          72.0 
-    5 fem      other      2576           4.85
-    6 fem      verbs     12303          23.2 
-    7 masc     declined  39770          73.3 
-    8 masc     other      2289           4.22
-    9 masc     verbs     12225          22.5 
+    1 dactylic declined   1002          80.5 
+    2 dactylic other        40           3.21
+    3 dactylic verbs       203          16.3 
+    4 fem      declined  37978          72.0 
+    5 fem      other      2558           4.85
+    6 fem      verbs     12230          23.2 
+    7 masc     declined  39555          73.2 
+    8 masc     other      2274           4.21
+    9 masc     verbs     12181          22.6 
 
 #### trochee
 
@@ -1582,9 +1588,9 @@ all_words %>%
 ```
 
       pos_group     n perc_all_iambic
-    1  declined 22415           73.04
-    2     verbs  6777           22.08
-    3     other  1446            4.71
+    1  declined 20010           72.81
+    2     verbs  6103           22.21
+    3     other  1326            4.82
 
 By clausula
 
@@ -1608,15 +1614,15 @@ all_words %>%
     # A tibble: 9 × 4
       closure  pos_group     n perc_tr_clos
       <chr>    <chr>     <int>        <dbl>
-    1 dactylic declined    984        89.2 
-    2 dactylic other        19         1.72
-    3 dactylic verbs       100         9.07
-    4 fem      declined  10273        72.9 
-    5 fem      other       760         5.39
-    6 fem      verbs      3058        21.7 
-    7 masc     declined  11158        72.2 
-    8 masc     other       667         4.32
-    9 masc     verbs      3619        23.4 
+    1 dactylic declined    899        90.4 
+    2 dactylic other        15         1.51
+    3 dactylic verbs        80         8.05
+    4 fem      declined   9103        72.2 
+    5 fem      other       706         5.6 
+    6 fem      verbs      2802        22.2 
+    7 masc     declined  10008        72.3 
+    8 masc     other       605         4.37
+    9 masc     verbs      3221        23.3 
 
 ``` r
 rm(x, iamb_closures, trochee_closures)
@@ -1672,16 +1678,16 @@ all_words %>%
     # A tibble: 14 × 3
        pos               P     C
        <chr>         <dbl> <dbl>
-     1 NOUN          53.2  50.9 
-     2 VERB          17.3  19.8 
-     3 ADJ           12.3  11.2 
-     4 PRON           7.99  7.82
-     5 VERB_inf       2.24  2.96
-     6 ADV            2.94  2.78
-     7 VERB_prich     1.7   1.71
-     8 VERB_deeprich  1     1.11
-     9 VERB_imp       0.86  1.1 
-    10 PART           0.37  0.45
+     1 NOUN          53.3  50.8 
+     2 VERB          17.3  19.9 
+     3 ADJ           12.2  11.2 
+     4 PRON           7.94  7.83
+     5 VERB_inf       2.24  2.97
+     6 ADV            2.96  2.77
+     7 VERB_prich     1.67  1.71
+     8 VERB_deeprich  0.99  1.1 
+     9 VERB_imp       0.85  1.1 
+    10 PART           0.38  0.45
     11 NUM            0.09  0.08
     12 INTJ           0.05  0.08
     13 ADP            0.01  0.02
@@ -1708,16 +1714,16 @@ all_words %>%
     # A tibble: 14 × 5
        pos           P__fem C__fem P__masc C__masc
        <chr>          <dbl>  <dbl>   <dbl>   <dbl>
-     1 NOUN           53.6   49.9    52.9    52   
-     2 VERB           18.8   22.7    16.2    17.1 
-     3 ADJ            18.2   16.6     6.16    5.48
-     4 PRON            1.85   2.02   14.1    13.7 
-     5 VERB_inf        0.67   1.38    3.77    4.59
-     6 ADV             3.36   2.94    2.57    2.65
-     7 VERB_prich      1.57   1.93    1.6     1.31
-     8 VERB_deeprich   1.44   1.65    0.6     0.56
-     9 VERB_imp        0.41   0.72    1.31    1.47
-    10 PART            0.06   0.06    0.68    0.85
+     1 NOUN           53.7   49.9    53.1    51.9 
+     2 VERB           18.8   22.7    16.1    17.1 
+     3 ADJ            18.0   16.7     6.18    5.5 
+     4 PRON            1.84   2.04   13.9    13.7 
+     5 VERB_inf        0.67   1.37    3.76    4.61
+     6 ADV             3.39   2.93    2.57    2.65
+     7 VERB_prich      1.57   1.92    1.57    1.32
+     8 VERB_deeprich   1.43   1.63    0.6     0.56
+     9 VERB_imp        0.39   0.72    1.31    1.47
+    10 PART            0.07   0.06    0.68    0.85
     11 INTJ            0.04   0.05    0.07    0.11
     12 NUM             0.11   0.07    0.08    0.09
     13 ADP             0.01   0       0.02    0.03
@@ -1744,9 +1750,9 @@ all_words %>%
     # A tibble: 3 × 5
       pos_group P__fem C__fem P__masc C__masc
       <chr>      <dbl>  <dbl>   <dbl>   <dbl>
-    1 declined   75.1   70.5    74.7    72.5 
-    2 verbs      19.8   24.8    21.2    23.2 
-    3 other       5.02   4.77    4.02    4.32
+    1 declined   75.1   70.5    74.8     72.5
+    2 verbs      19.8   24.8    21.2     23.2
+    3 other       5.04   4.76    4.02     4.3
 
 ``` r
 rm(cp_clausulas, cp_total)
@@ -1765,11 +1771,11 @@ authors_meta <- read_csv("../../data/corpus1835/sql_db/authors.csv") %>%
   select(A_ID, author_name)
 ```
 
-    Rows: 315 Columns: 10
+    Rows: 315 Columns: 11
     ── Column specification ────────────────────────────────────────────────────────
     Delimiter: ","
-    chr (9): A_ID, author_name, author_full_name, author_sex, year_birth, year_d...
-    dbl (1): aristocracy
+    chr (10): A_ID, author_name, author_full_name, author_sex, year_birth, year_...
+    dbl  (1): aristocracy
 
     ℹ Use `spec()` to retrieve the full column specification for this data.
     ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
@@ -1811,43 +1817,43 @@ all_words %>%
 ```
 
             author_name    n
-    1    Жуковский В.А. 6496
+    1    Жуковский В.А. 6518
     2       Крылов И.А. 6367
     3     Бороздна И.П. 4510
-    4  Баратынский Е.А. 3432
+    4  Баратынский Е.А. 3438
     5       Смирнова А. 3012
-    6   Быстроглазов А. 2399
-    7       Башкатов А. 2387
-    8         Бернет Е. 2249
-    9      Демидов М.А. 2075
-    10      Шахова Е.Н. 2005
-    11    Тепляков В.Г. 1909
-    12    Некрасов Н.А. 1896
+    6   Быстроглазов А. 2397
+    7       Башкатов А. 2249
+    8         Бернет Е. 2225
+    9      Демидов М.А. 2133
+    10      Шахова Е.Н. 2011
+    11     Суханов М.Д. 1892
+    12       Мейснер А. 1866
     13       Зилов А.М. 1862
-    14       Мейснер А. 1848
-    15     Суханов М.Д. 1834
-    16      Меркли М.М. 1582
-    17  Бенедиктов В.Г. 1547
-    18    Полежаев А.И. 1502
-    19    Мартынов А.М. 1478
-    20      Козлов И.И. 1474
-    21     Бакунин И.М. 1456
-    22      Сушков Д.П. 1448
-    23  Ростопчина Е.П. 1396
-    24    Тимофеев А.В. 1211
+    14    Тепляков В.Г. 1843
+    15    Некрасов Н.А. 1834
+    16      Меркли М.М. 1580
+    17  Бенедиктов В.Г. 1515
+    18    Мартынов А.М. 1494
+    19     Бакунин И.М. 1456
+    20      Сушков Д.П. 1448
+    21    Полежаев А.И. 1418
+    22  Ростопчина Е.П. 1416
+    23      Козлов И.И. 1392
+    24    Тимофеев А.В. 1197
     25      Пушкин А.С. 1089
     26   Лермонтов М.Ю. 1045
     27   Слепушкин Ф.Н. 1037
-    28      Менцов Ф.Н. 1030
-    29        Кашаев В.  996
-    30     Теплова Н.С.  984
-    31      Кашкин Д.Е.  980
-    32      Глинка Ф.Н.  916
-    33       Губер Э.И.  908
+    28     Теплова Н.С. 1004
+    29        Кашаев В. 1000
+    30      Кашкин Д.Е.  980
+    31      Глинка Ф.Н.  916
+    32       Губер Э.И.  908
+    33      Менцов Ф.Н.  908
     34       Ершов П.П.  898
-    35      Марков М.А.  828
-    36    Алексеев П.Ф.  780
-    37 Подолинский А.И.  768
+    35      Марков М.А.  846
+    36 Подолинский А.И.  800
+    37    Алексеев П.Ф.  714
     38        Кони Ф.А.  706
     39   Бутырский Н.И.  674
     40     Савурский Н.  655
@@ -1882,9 +1888,9 @@ authors_total
 ```
 
            author_name total
-    1 Баратынский Е.А.  3432
-    2      Козлов И.И.  1474
-    3  Ростопчина Е.П.  1396
+    1 Баратынский Е.А.  3438
+    2      Козлов И.И.  1392
+    3  Ростопчина Е.П.  1416
 
 Total POS (without masc/fem devision
 
@@ -1915,9 +1921,9 @@ words_authors %>%
     # A tibble: 3 × 4
       pos_group `Баратынский Е.А.` `Козлов И.И.` `Ростопчина Е.П.`
       <chr>                  <dbl>         <dbl>             <dbl>
-    1 declined               80.8          76.3              70.3 
-    2 verbs                  14.6          18.9              27.2 
-    3 other                   4.63          4.82              2.51
+    1 declined               80.7          76.8              70.5 
+    2 verbs                  14.7          18.3              27.0 
+    3 other                   4.65          4.89              2.54
 
 Clausulas
 
@@ -1952,16 +1958,16 @@ words_authors %>%
     # A tibble: 10 × 5
        pos   closure `Баратынский Е.А.` `Козлов И.И.` `Ростопчина Е.П.`
        <chr> <chr>                <dbl>         <dbl>             <dbl>
-     1 NOUN  fem                   52.7          46.4              39.3
-     2 NOUN  masc                  51.1          49.1              35  
-     3 ADJ   fem                   19.5          22.9              27.9
-     4 VERB  fem                   15.4          19.7              25  
-     5 PRON  masc                  23.8          15.4              23.2
-     6 VERB  masc                  11            12.9              21.4
-     7 ADJ   masc                   5.6          10.3               9.1
-     8 PRON  fem                    4.2           2.3               1.6
-     9 ADV   masc                   2.6           1.7               1.9
-    10 ADV   fem                    2.5           1.8               1.7
+     1 NOUN  fem                   52.7          47.3              39  
+     2 NOUN  masc                  51            49.5              35.5
+     3 ADJ   fem                   19.5          22.4              28  
+     4 VERB  fem                   15.5          19.1              24.9
+     5 PRON  masc                  23.8          15.5              23  
+     6 VERB  masc                  11.1          12.1              21.2
+     7 ADJ   masc                   5.6          10.4               8.9
+     8 PRON  fem                    4.2           2.2               1.8
+     9 ADV   fem                    2.6           1.9               1.7
+    10 ADV   masc                   2.6           1.6               2  
 
 ``` r
 words_authors %>% 
@@ -1984,12 +1990,12 @@ words_authors %>%
     # A tibble: 6 × 5
       pos_group closure `Баратынский Е.А.` `Козлов И.И.` `Ростопчина Е.П.`
       <chr>     <chr>                <dbl>         <dbl>             <dbl>
-    1 declined  masc                  82.1          79                69.6
-    2 declined  fem                   79            73.5              70.7
-    3 verbs     masc                  13.2          17.5              27.8
-    4 verbs     fem                   16.3          20.4              26.9
-    5 other     fem                    4.7           6.1               2.5
-    6 other     masc                   4.7           3.6               2.6
+    1 declined  masc                  82            79.6              69.9
+    2 declined  fem                   78.8          74                70.8
+    3 verbs     masc                  13.3          16.8              27.4
+    4 verbs     fem                   16.4          19.8              26.7
+    5 other     fem                    4.8           6.2               2.4
+    6 other     masc                   4.7           3.6               2.7
 
 ``` r
 words_authors %>% 
@@ -1998,50 +2004,50 @@ words_authors %>%
   filter(pos == "VERB") %>% sample_n(10)
 ```
 
-         text_id meter            rhyme_alph       word    word_acc stress_pattern
-    1      P_121  Iamb    переживает умирает переживает пережива'ет          00010
-    2      P_762  Iamb            даму опишу      опишу      опишу'            001
-    3  C_301__17  Iamb   прервался расстался  расстался  расста'лся            010
-    4     P_1066  Iamb           была влекла     влекла     влекла'             01
-    5     P_1854  Iamb         завоют зароют     зароют     заро'ют            010
-    6  C_169__13  Iamb         была невесела       была       была'             01
-    7     P_1232  Iamb        молчит сливает     молчит     молчи'т             01
-    8  C_169__27  Iamb          миновал сжал    миновал    минова'л            001
-    9      P_853  Iamb    помчится укротится   помчится   помчи'тся            010
-    10    P_1104  Iamb развивалось старалась  старалась  стара'лась            010
-       closure_pattern closure old_tag
-    1               10     fem       V
-    2                1    masc       V
-    3               10     fem       V
-    4                1    masc       V
-    5               10     fem       V
-    6                1    masc       V
-    7                1    masc       V
-    8                1    masc       V
-    9               10     fem       V
-    10              10     fem       V
-                                                      feats ending_st  pos
-    1                        V,пе=непрош,ед,изъяв,3-л,несов      а'ет VERB
-    2                          V,пе=непрош,ед,изъяв,1-л,сов       шу' VERB
-    3                            V,нп=прош,ед,изъяв,муж,сов     а'лся VERB
-    4                          V,несов,пе=прош,ед,изъяв,жен       ла' VERB
-    5                             V=непрош,мн,изъяв,3-л,сов      о'ют VERB
-    6                          V,нп=прош,ед,изъяв,жен,несов       ла' VERB
-    7                        V,несов,нп=непрош,ед,изъяв,3-л       и'т VERB
-    8  V,пе=(прош,ед,изъяв,муж,несов|прош,ед,изъяв,муж,сов)       а'л VERB
-    9                          V,сов,нп=непрош,ед,изъяв,3-л     и'тся VERB
-    10                         V,несов,нп=прош,ед,изъяв,жен    а'лась VERB
-       pos_group     author_name
-    1      verbs Ростопчина Е.П.
-    2      verbs Ростопчина Е.П.
-    3      verbs Ростопчина Е.П.
-    4      verbs Ростопчина Е.П.
-    5      verbs Ростопчина Е.П.
-    6      verbs Ростопчина Е.П.
-    7      verbs Ростопчина Е.П.
-    8      verbs Ростопчина Е.П.
-    9      verbs Ростопчина Е.П.
-    10     verbs Ростопчина Е.П.
+         text_id meter              rhyme_alph        word     word_acc
+    1      P_655  Iamb             увижу унижу       увижу       уви'жу
+    2     P_1066  Iamb встречались поклонялись встречались встреча'лись
+    3      P_819  Iamb         мечтала пропала     пропала     пропа'ла
+    4  C_301__17  Iamb           блестит сулит       сулит       сули'т
+    5      P_654  Iamb     забьется разнесется  разнесется  разнесё'тся
+    6      P_999  Iamb      миновался раздался    раздался    разда'лся
+    7      P_923  Iamb            ловил почтил      почтил      почти'л
+    8      P_163  Iamb         казнит наказует    наказует    наказу'ет
+    9      P_519  Iamb      завывали раздирали   раздирали   раздира'ли
+    10     P_853  Iamb          готовят уловит     готовят     гото'вят
+       stress_pattern closure_pattern closure old_tag
+    1             010              10     fem       V
+    2             010              10     fem       V
+    3             010              10     fem       V
+    4              01               1    masc       V
+    5            0010              10     fem       V
+    6             010              10     fem       V
+    7              01               1    masc       V
+    8            0010              10     fem       V
+    9            0010              10     fem       V
+    10            010              10     fem       V
+                                      feats ending_st  pos pos_group
+    1          V,сов,пе=непрош,ед,изъяв,1-л      и'жу VERB     verbs
+    2              V,нп=прош,мн,изъяв,несов    а'лись VERB     verbs
+    3            V,нп=прош,ед,изъяв,жен,сов      а'ла VERB     verbs
+    4        V,несов,пе=непрош,ед,изъяв,3-л       и'т VERB     verbs
+    5          V,сов,нп=непрош,ед,изъяв,3-л     ё'тся VERB     verbs
+    6            V,нп=прош,ед,изъяв,муж,сов     а'лся VERB     verbs
+    7            V,сов=прош,ед,изъяв,муж,пе       и'л VERB     verbs
+    8  V=устар,непрош,ед,изъяв,3-л,несов,пе      у'ет VERB     verbs
+    9              V=прош,мн,изъяв,несов,пе      а'ли VERB     verbs
+    10       V,несов,пе=непрош,мн,изъяв,3-л     о'вят VERB     verbs
+           author_name
+    1  Ростопчина Е.П.
+    2  Ростопчина Е.П.
+    3  Ростопчина Е.П.
+    4  Ростопчина Е.П.
+    5  Ростопчина Е.П.
+    6  Ростопчина Е.П.
+    7  Ростопчина Е.П.
+    8  Ростопчина Е.П.
+    9  Ростопчина Е.П.
+    10 Ростопчина Е.П.
 
 #### benediktov & co
 
@@ -2057,9 +2063,9 @@ authors_total
 ```
 
           author_name total
-    1 Бенедиктов В.Г.  1547
-    2       Бернет Е.  2249
-    3     Шахова Е.Н.  2005
+    1 Бенедиктов В.Г.  1515
+    2       Бернет Е.  2225
+    3     Шахова Е.Н.  2011
 
 All POS
 
@@ -2120,15 +2126,15 @@ words_authors %>%
     # A tibble: 10 × 5
        pos   closure `Бернет Е.` `Бенедиктов В.Г.` `Шахова Е.Н.`
        <chr> <chr>         <dbl>             <dbl>         <dbl>
-     1 NOUN  fem            59.8              54.1          46.8
-     2 NOUN  masc           57.6              53.9          46  
-     3 VERB  fem            19.7              18.3          24  
-     4 ADJ   fem            12.7              17.6          20.2
-     5 VERB  masc           17.5              16.4          16.7
-     6 PRON  masc            6.5              12.2          16.6
-     7 ADJ   masc            4.6               6.8           9.4
-     8 ADV   fem             1.7               3.4           3.5
-     9 ADV   masc            2                 3.2           2.8
+     1 NOUN  fem            59.8              54.4          46  
+     2 NOUN  masc           57.2              53.5          46.1
+     3 VERB  fem            19.7              17.7          24.4
+     4 ADJ   fem            12.6              17.8          20.7
+     5 VERB  masc           17.6              16.4          16.9
+     6 PRON  masc            6.6              12.1          16.5
+     7 ADJ   masc            4.7               6.9           9.3
+     8 ADV   fem             1.7               3.2           3.4
+     9 ADV   masc            2.1               3.3           2.8
     10 PRON  fem             1.6               1             1.4
 
 ``` r
@@ -2153,12 +2159,12 @@ words_authors %>%
     # A tibble: 6 × 5
       pos_group closure `Бернет Е.` `Бенедиктов В.Г.` `Шахова Е.Н.`
       <chr>     <chr>         <dbl>             <dbl>         <dbl>
-    1 declined  fem            76                74            69.5
-    2 declined  masc           70.4              75.4          72.9
-    3 verbs     fem            20.6              19.7          26.2
-    4 verbs     masc           25.8              19.8          23.2
-    5 other     fem             3.4               6.3           4.2
-    6 other     masc            3.8               4.9           3.9
+    1 declined  fem            76                74.7          69.2
+    2 declined  masc           70.1              75.2          73  
+    3 verbs     fem            20.6              19.1          26.6
+    4 verbs     masc           26                19.9          23.2
+    5 other     fem             3.5               6.2           4.1
+    6 other     masc            3.9               5             3.9
 
 #### other authors
 
@@ -2178,8 +2184,8 @@ authors_total
 ```
 
          author_name total
-    1     Мейснер А.  1848
-    2  Некрасов Н.А.  1896
+    1     Мейснер А.  1866
+    2  Некрасов Н.А.  1834
     3 Слепушкин Ф.Н.  1037
 
 ``` r
@@ -2240,10 +2246,10 @@ words_authors %>%
     # A tibble: 5 × 5
       pos   closure `Слепушкин Ф.Н.` `Некрасов Н.А.` `Мейснер А.`
       <chr> <chr>              <dbl>           <dbl>        <dbl>
-    1 NOUN  fem                 51.7            64.5         57.7
-    2 VERB  fem                 30.6             9.1         13.8
-    3 ADJ   fem                 13.6            15.7         18.5
-    4 ADV   fem                  0.8             5.4          4.8
+    1 NOUN  fem                 51.7            64           57.4
+    2 VERB  fem                 30.6             9.5         13.7
+    3 ADJ   fem                 13.6            15.7         19  
+    4 ADV   fem                  0.8             5.5          4.8
     5 PRON  fem                  1.7             0.7          1.1
 
 ``` r
@@ -2268,12 +2274,12 @@ words_authors %>%
     # A tibble: 6 × 5
       pos_group closure `Некрасов Н.А.` `Мейснер А.` `Слепушкин Ф.Н.`
       <chr>     <chr>             <dbl>        <dbl>            <dbl>
-    1 declined  fem                81.8         79.6             67.2
-    2 declined  masc               72.9         79.1             74.7
-    3 verbs     fem                10.7         14.5             31.9
-    4 verbs     masc               22           15.2             22.8
-    5 other     fem                 7.5          5.9              0.9
-    6 other     masc                5.1          5.7              2.5
+    1 declined  fem                81.1         79.8             67.2
+    2 declined  masc               72.4         79.2             74.7
+    3 verbs     fem                11.2         14.4             31.9
+    4 verbs     masc               22.5         15.2             22.8
+    5 other     fem                 7.7          5.8              0.9
+    6 other     masc                5.2          5.6              2.5
 
 ``` r
 rm(authors_closures, authors_total, authors)
@@ -2296,15 +2302,15 @@ authors_total
 ```
 
            author_name total
-    1 Баратынский Е.А.  3432
-    2  Бенедиктов В.Г.  1547
-    3        Бернет Е.  2249
-    4      Козлов И.И.  1474
-    5       Мейснер А.  1848
-    6    Некрасов Н.А.  1896
-    7  Ростопчина Е.П.  1396
+    1 Баратынский Е.А.  3438
+    2  Бенедиктов В.Г.  1515
+    3        Бернет Е.  2225
+    4      Козлов И.И.  1392
+    5       Мейснер А.  1866
+    6    Некрасов Н.А.  1834
+    7  Ростопчина Е.П.  1416
     8   Слепушкин Ф.Н.  1037
-    9      Шахова Е.Н.  2005
+    9      Шахова Е.Н.  2011
 
 ``` r
 top_authors <- words_authors %>% count(author_name, sort = T) %>% filter(n > 1000) %>% pull(author_name)
@@ -2339,15 +2345,15 @@ cbind(a, as.tibble(scale(v))) %>% filter(author_name %in% author_v)
     # Groups:   author_name [9]
       author_name    ADJ     ADV    NOUN   PRON    VERB VERB_inf VERB_imp VERB_prich
       <chr>        <dbl>   <dbl>   <dbl>  <dbl>   <dbl>    <dbl>    <dbl>      <dbl>
-    1 Баратынски…  0.690 -0.372  -0.0892  2.31  -0.990   -1.03    -0.519       0.770
-    2 Бенедиктов…  0.169  0.520   0.279  -0.457 -0.360   -0.636    0.0453      0.880
-    3 Бернет Е.   -0.875 -0.818   1.10   -1.40  -0.0884  -0.0407   1.31        0.223
-    4 Козлов И.И.  1.18  -0.669  -0.432   0.624 -0.417   -0.338   -0.942       1.43 
-    5 Мейснер А.  -0.463  0.892   1.36   -0.424 -1.09    -0.685   -0.0957      0.442
-    6 Некрасов Н… -0.271  1.11    0.773   0.252 -1.08    -0.0407   0.891      -0.215
-    7 Ростопчина…  2.31  -0.892  -1.97    1.57   0.613    0.505   -1.22        0.223
-    8 Слепушкин … -0.573 -1.19    0.799  -1.61   0.627    0.108   -0.237      -1.42 
-    9 Шахова Е.Н.  0.416  0.0743 -0.457   0.590  0.141    0.306    0.0453     -0.762
+    1 Баратынски…  0.142 -0.617   0.0440  2.46  -0.722   -1.18     -0.114    -0.258 
+    2 Бенедиктов…  0.280  0.0349  0.416  -0.394 -0.429   -0.575    -0.645     0.845 
+    3 Бернет Е.   -0.875 -0.536   0.595  -0.822  0.0843   0.0345    0.550     0.344 
+    4 Козлов И.И.  1.05  -0.617  -0.328   0.463 -0.517   -0.372    -0.778     1.45  
+    5 Мейснер А.  -0.188  0.687   1.35   -0.644 -1.01    -0.880    -0.114     0.0430
+    6 Некрасов Н… -0.545  1.91    0.724   0.141 -0.956   -0.0671    1.08     -0.458 
+    7 Ростопчина…  2.37  -0.780  -1.94    1.60   0.495    0.593    -1.04      0.444 
+    8 Слепушкин … -0.435 -1.43    0.749  -1.75   0.685    0.0853   -0.114    -1.26  
+    9 Шахова Е.Н.  0.500  0.768  -0.751   0.712  0.319    0.288    -0.247    -0.358 
     # ℹ 1 more variable: VERB_deeprich <dbl>
 
 ``` r
@@ -2390,18 +2396,18 @@ cbind(a, as.tibble(scale(v))) %>% filter(author_name %in% author_v)
 
     # A tibble: 9 × 10
     # Groups:   author_name [9]
-      author_name          ADJ    ADV    NOUN   PRON     VERB VERB_inf VERB_imp
-      <chr>              <dbl>  <dbl>   <dbl>  <dbl>    <dbl>    <dbl>    <dbl>
-    1 Баратынский Е.А. -0.865   0.339  0.0161  1.76  -1.23     -0.833    -0.206
-    2 Бенедиктов В.Г.   0.979   1.31  -0.500   0.401 -0.00683  -0.930     0.520
-    3 Бернет Е.        -0.155  -0.392  0.611  -1.46  -0.294     0.341     2.70 
-    4 Козлов И.И.       1.12   -0.880 -0.341   0.401 -0.796     0.146    -0.569
-    5 Мейснер А.       -0.865   1.07   0.928  -0.884 -0.653    -0.441    -0.206
-    6 Некрасов Н.А.    -0.0135  0.339 -0.618   0.616 -0.437     0.732     0.883
-    7 Ростопчина Е.П.   1.55   -0.636 -1.93    2.12   1.21     -0.0501   NA    
-    8 Слепушкин Ф.Н.   -0.439  -1.12   1.60   -1.96  -0.366     0.243    -0.206
-    9 Шахова Е.Н.       1.55    2.29  -0.936   0.330 -0.222     0.439    -0.569
-    # ℹ 2 more variables: VERB_prich <dbl>, VERB_deeprich <dbl>
+      author_name     ADJ     ADV   NOUN   PRON    VERB VERB_inf VERB_imp VERB_prich
+      <chr>         <dbl>   <dbl>  <dbl>  <dbl>   <dbl>    <dbl>    <dbl>      <dbl>
+    1 Баратынски… -0.354   0.325  -0.392  1.83  -0.983    -1.23   0.00830     0.252 
+    2 Бенедиктов…  0.727   0.629  -0.277 -0.278  0.420    -0.455 -0.282       0.551 
+    3 Бернет Е.   -1.03    0.325   0.334 -1.04   0.346     0.655  0.299       0.252 
+    4 Козлов И.И.  2.21   -0.282  -0.659  0.552 -1.06     -0.122 NA           2.34  
+    5 Мейснер А.  -0.489   0.933   1.59  -0.662 -1.94     -0.899 -0.282       0.252 
+    6 Некрасов Н… -0.624   0.933  -0.239  0.616 -0.466     0.322 -0.282      -0.0459
+    7 Ростопчина…  1.54    0.0217 -2.30   2.60   0.125     1.43  -1.15       -0.344 
+    8 Слепушкин …  0.0515 -0.586   1.33  -2.26  -0.0967    0.544  0.299      -0.941 
+    9 Шахова Е.Н.  1.13   -0.586  -1.00   1.13   0.199     0.322  0.00830    -0.941 
+    # ℹ 1 more variable: VERB_deeprich <dbl>
 
 ``` r
 cbind(a, as.tibble(scale(v))) %>% filter(author_name %in% author_v) %>% 
@@ -2412,7 +2418,8 @@ cbind(a, as.tibble(scale(v))) %>% filter(author_name %in% author_v) %>%
   labs(title = "Masculine rhymes")
 ```
 
-    Warning: Removed 1 rows containing missing values (`geom_col()`).
+    Warning: Removed 1 row containing missing values or values outside the scale range
+    (`geom_col()`).
 
 ![](05_4_rhyme_morhp_words.markdown_strict_files/figure-markdown_strict/unnamed-chunk-77-1.png)
 
@@ -2477,17 +2484,17 @@ cbind(a, as.tibble(scale(v))) %>% filter(author_name %in% author_v)
 
     # A tibble: 9 × 10
     # Groups:   author_name [9]
-      author_name      ADJ    ADV   NOUN    PRON   VERB VERB_inf VERB_imp VERB_prich
-      <chr>          <dbl>  <dbl>  <dbl>   <dbl>  <dbl>    <dbl>    <dbl>      <dbl>
-    1 Баратынский …  0.386 -0.322  0.433  2.19   -0.633   -0.780   -0.625    -0.255 
-    2 Бенедиктов В…  0.425  0.380  0.255 -1.16   -0.470   -0.171   -0.406    -0.255 
-    3 Бернет Е.     -0.833 -0.438  0.899 -0.263  -0.163   -0.627   -0.406    -0.0807
-    4 Козлов И.И.    1.15  -1.02  -0.410 -0.486  -0.143   -0.780   -0.625     0.0932
-    5 Мейснер А.     0.120  0.731  1.03  -0.709  -0.919   -0.780   -0.406     0.615 
-    6 Некрасов Н.А. -0.185  1.78   1.30  -1.60   -1.25    -0.323    0.252    -0.602 
-    7 Ростопчина Е…  1.99  -0.555 -1.30  -0.709   0.367    0.439   -0.406    -0.255 
-    8 Слепушкин Ф.… -0.833 -1.37   0.122 -0.0399  0.960   -0.323   -0.406    -1.30  
-    9 Шахова Е.Н.    0.272  0.497 -0.322 -1.16    0.204    0.439   -0.625     0.0932
+      author_name     ADJ    ADV    NOUN    PRON   VERB VERB_inf VERB_imp VERB_prich
+      <chr>         <dbl>  <dbl>   <dbl>   <dbl>  <dbl>    <dbl>    <dbl>      <dbl>
+    1 Баратынски…  0.598  -0.330 -0.0141  2.52   -0.603   -0.515  -0.743      0.425 
+    2 Бенедиктов…  0.367   0.314  0.300  -0.536  -0.476   -0.254  -0.743     -0.595 
+    3 Бернет Е.   -0.671  -0.545  0.906  -0.332  -0.117   NA      NA         -0.0850
+    4 Козлов И.И.  1.06   -0.760 -0.306   0.0755 -0.286   -0.775  -0.299      0.0850
+    5 Мейснер А.  -0.132   1.50   0.995  -0.740  -0.856   -0.645  -0.521     -0.425 
+    6 Некрасов Н… -0.0171  1.28   1.33   -1.15   -1.30    -0.384  -0.0776    -0.935 
+    7 Ростопчина…  1.75   -0.438 -1.43    0.0755  0.558   -0.124  -0.521      0.595 
+    8 Слепушкин … -0.632  -1.30   0.0981 -0.128   0.939   -0.384  -0.521     -1.45  
+    9 Шахова Е.Н.  0.560   0.744 -0.575  -0.332   0.326    0.136  -0.743     -0.765 
     # ℹ 1 more variable: VERB_deeprich <dbl>
 
 ``` r
@@ -2499,7 +2506,8 @@ cbind(a, as.tibble(scale(v))) %>% filter(author_name %in% author_v) %>%
   labs(title = "Feminine rhymes")
 ```
 
-    Warning: Removed 1 rows containing missing values (`geom_col()`).
+    Warning: Removed 3 rows containing missing values or values outside the scale range
+    (`geom_col()`).
 
 ![](05_4_rhyme_morhp_words.markdown_strict_files/figure-markdown_strict/unnamed-chunk-79-1.png)
 
@@ -2640,7 +2648,7 @@ head(k_endwords)
 -   get POS tags
 
 ``` r
-endw_pos <- read_csv("k_endwords.csv") %>% select(-`...1`)
+endw_pos <- read_csv("../../data/ch5/working_files/k_endwords.csv") %>% select(-`...1`)
 ```
 
     New names:
@@ -2754,7 +2762,7 @@ iamb3_texts <- meta %>%
 length(iamb3_texts) # 53 other Iamb_3 poems
 ```
 
-    [1] 53
+    [1] 57
 
 ``` r
 iamb_texts <- meta %>% 
@@ -2764,7 +2772,7 @@ iamb_texts <- meta %>%
 length(iamb_texts) # 3023 iamb texts
 ```
 
-    [1] 3023
+    [1] 3053
 
 ``` r
 total <- all_words %>% 
@@ -2776,7 +2784,7 @@ total <- all_words %>%
 total # 1098 rhyme words in iamb-3
 ```
 
-    [1] 1098
+    [1] 1112
 
 ``` r
 i3_rhymed <- all_words %>% 
@@ -2789,17 +2797,17 @@ i3_rhymed
 ```
 
                  pos n_rhyme_i3 perc_rhyme_i3
-    1            ADJ        190         17.30
-    2            ADV         23          2.09
-    3           NOUN        606         55.19
+    1            ADJ        190         17.09
+    2            ADV         23          2.07
+    3           NOUN        612         55.04
     4            NUM          2          0.18
     5           PART          1          0.09
-    6           PRON         19          1.73
-    7           VERB        199         18.12
-    8  VERB_deeprich         12          1.09
-    9       VERB_imp          5          0.46
-    10      VERB_inf          7          0.64
-    11    VERB_prich         34          3.10
+    6           PRON         21          1.89
+    7           VERB        205         18.44
+    8  VERB_deeprich         12          1.08
+    9       VERB_imp          5          0.45
+    10      VERB_inf          7          0.63
+    11    VERB_prich         34          3.06
 
 all Iambs
 
@@ -2811,7 +2819,7 @@ total_iambs <- all_words %>%
 total_iambs # 53 075 words in all iambs
 ```
 
-    [1] 53075
+    [1] 52766
 
 ``` r
 iambs_rhymed <- all_words %>% 
@@ -2824,20 +2832,20 @@ iambs_rhymed
 ```
 
                  pos n_rhyme_iambs perc_rhyme_iambs
-    1            ADJ          9071            17.09
+    1            ADJ          9023            17.10
     2            ADP             2             0.00
-    3            ADV          1631             3.07
+    3            ADV          1624             3.08
     4           CONJ             4             0.01
     5           INTJ            25             0.05
-    6           NOUN         27119            51.10
+    6           NOUN         26960            51.09
     7            NUM            44             0.08
     8           PART            32             0.06
-    9           PRON          1043             1.97
-    10          VERB         11363            21.41
-    11 VERB_deeprich           838             1.58
-    12      VERB_imp           330             0.62
-    13      VERB_inf           610             1.15
-    14    VERB_prich           963             1.81
+    9           PRON          1043             1.98
+    10          VERB         11302            21.42
+    11 VERB_deeprich           827             1.57
+    12      VERB_imp           324             0.61
+    13      VERB_inf           604             1.14
+    14    VERB_prich           952             1.80
 
 rnc i3 data load
 
@@ -3024,15 +3032,15 @@ k_ew_pos %>%
 ```
 
                  pos perc_kulmann perc_rhyme_i3 perc_rhyme_iambs
-    1           NOUN         52.6         55.19            51.10
-    2           VERB         13.7         18.12            21.41
-    3            ADJ         17.9         17.30            17.09
-    4     VERB_prich          2.9          3.10             1.81
-    5            ADV          4.3          2.09             3.07
-    6           PRON          3.0          1.73             1.97
-    7  VERB_deeprich          3.0          1.09             1.58
-    8       VERB_inf          1.3          0.64             1.15
-    9       VERB_imp          0.5          0.46             0.62
+    1           NOUN         52.6         55.04            51.09
+    2           VERB         13.7         18.44            21.42
+    3            ADJ         17.9         17.09            17.10
+    4     VERB_prich          2.9          3.06             1.80
+    5            ADV          4.3          2.07             3.08
+    6           PRON          3.0          1.89             1.98
+    7  VERB_deeprich          3.0          1.08             1.57
+    8       VERB_inf          1.3          0.63             1.14
+    9       VERB_imp          0.5          0.45             0.61
     10           NUM          0.3          0.18             0.08
     11          PART          0.3          0.09             0.06
     12          CONJ          0.0            NA             0.01

@@ -1,5 +1,11 @@
 # 05_3_rhyme_bigrams
 
+# Chapter 5.1
+
+This notebook displays the analysis of rhyme words described in Chapter
+5.1. The main focus is on the rhyme pairs lexical frequencies and how it
+relates to the overall word bigrams frequencies in the corpus.
+
 ### load pckg
 
 ``` r
@@ -45,7 +51,7 @@ glimpse(rhymes_1835)
 #### C-35 metadata
 
 ``` r
-corpus_1835 <- readRDS("../../data/corpus1835/corpus_1835_metrics.Rds")
+corpus_1835 <- readRDS("../../data/corpus1835/corpus_1835.Rds")
 
 # attach year to rhyme data
 rhymes_1835 <- rhymes_1835 %>% 
@@ -54,16 +60,30 @@ rhymes_1835 <- rhymes_1835 %>%
   mutate(corpus = "M")
 ```
 
+    Warning in left_join(., corpus_1835 %>% select(text_id, year), by = "text_id"): Detected an unexpected many-to-many relationship between `x` and `y`.
+    ℹ Row 2118 of `x` matches multiple rows in `y`.
+    ℹ Row 1014 of `y` matches multiple rows in `x`.
+    ℹ If a many-to-many relationship is expected, set `relationship =
+      "many-to-many"` to silence this warning.
+
 Number of lines to the number of rhymes (% of rhymed lines detected)
 
 ``` r
 rhymes_t <- rhymes_1835 %>% 
   left_join(corpus_1835 %>% select(text_id, n_lines), by = "text_id")
+```
 
+    Warning in left_join(., corpus_1835 %>% select(text_id, n_lines), by = "text_id"): Detected an unexpected many-to-many relationship between `x` and `y`.
+    ℹ Row 2118 of `x` matches multiple rows in `y`.
+    ℹ Row 1014 of `y` matches multiple rows in `x`.
+    ℹ If a many-to-many relationship is expected, set `relationship =
+      "many-to-many"` to silence this warning.
+
+``` r
 glimpse(rhymes_t)
 ```
 
-    Rows: 81,247
+    Rows: 81,325
     Columns: 7
     $ text_id    <chr> "P_1938", "P_1938", "P_1938", "C_156__20", "C_156__20", "C_…
     $ from       <chr> "краса", "огневым", "красавицей", "око", "силки", "стонет",…
@@ -89,7 +109,7 @@ rhymes_t %>%
      Length:4688        Min.   :  1.00   Min.   :  1.00   Min.   :  1.82  
      Class :character   1st Qu.:  8.00   1st Qu.:  7.00   1st Qu.: 83.33  
      Mode  :character   Median : 13.00   Median : 11.00   Median : 95.83  
-                        Mean   : 19.44   Mean   : 17.33   Mean   : 87.33  
+                        Mean   : 19.44   Mean   : 17.35   Mean   : 87.33  
                         3rd Qu.: 22.00   3rd Qu.: 20.00   3rd Qu.:100.00  
                         Max.   :423.50   Max.   :408.00   Max.   :100.00  
 
@@ -173,7 +193,7 @@ rhymes <- rbind(rhymes_1835, rnc_rhymes)
 glimpse(rhymes)
 ```
 
-    Rows: 227,406
+    Rows: 227,432
     Columns: 6
     $ text_id    <chr> "P_1938", "P_1938", "P_1938", "C_156__20", "C_156__20", "C_…
     $ from       <chr> "краса", "огневым", "красавицей", "око", "силки", "стонет",…
@@ -188,7 +208,7 @@ table(rhymes$corpus) # quick check in the number of rhymes found
 
 
          M    RNC 
-     81247 146159 
+     81273 146159 
 
 ### Overview
 
@@ -232,7 +252,7 @@ total_year
     3 1837  16751
     4 1838  14259
     5 1839   8173
-    6 1840  12878
+    6 1840  12904
 
 ``` r
 rhymes_1835 %>% 
@@ -284,7 +304,7 @@ rhymes_1835 %>%
     3 1837      0.81
     4 1838      1.09
     5 1839      1.34
-    6 1840      1.05
+    6 1840      1.03
 
 ## 5.1. stats
 
@@ -332,7 +352,7 @@ rhyme_words <- rbind(w1, w2)
 Attach data about rhyme words endings
 
 ``` r
-rhyme_words_meta <- read_csv("../../data/corpus1835/sql_db/rhyme_words_upd.csv")
+rhyme_words_meta <- read_csv("../../data/corpus1835/sql_db/rhyme_words.csv")
 ```
 
     Rows: 34801 Columns: 8
@@ -628,12 +648,12 @@ res %>%
     # A tibble: 6 × 9
            V1      V2      V3      V4      V5 word     Mean       SD     CV
         <dbl>   <dbl>   <dbl>   <dbl>   <dbl> <chr>   <dbl>    <dbl>  <dbl>
-    1 0.0045  0.00505 0.0043  0.0044  0.0047  я     0.00462 0.000263 0.0568
-    2 0.003   0.00265 0.00295 0.003   0.00255 меня  0.00304 0.000313 0.103 
-    3 0.00345 0.00365 0.0033  0.00265 0.00335 она   0.00316 0.000317 0.100 
-    4 0.00275 0.0029  0.00305 0.00335 0.003   свет  0.00302 0.000206 0.0681
-    5 0.002   0.00275 0.00295 0.0024  0.00285 мне   0.00257 0.000354 0.138 
-    6 0.0019  0.0023  0.0028  0.0025  0.00245 моей  0.00239 0.000400 0.167 
+    1 0.0043  0.00505 0.0043  0.00515 0.00545 я     0.00482 0.000428 0.0887
+    2 0.00345 0.00325 0.0034  0.00285 0.0039  меня  0.00322 0.000335 0.104 
+    3 0.0029  0.00255 0.00355 0.0031  0.00375 она   0.00312 0.000394 0.127 
+    4 0.0026  0.0029  0.00275 0.00245 0.00315 свет  0.00272 0.000389 0.143 
+    5 0.0027  0.0022  0.00285 0.0026  0.0028  мне   0.00266 0.000279 0.105 
+    6 0.0023  0.0029  0.0021  0.0025  0.0021  моей  0.00251 0.000315 0.126 
 
 ``` r
 # subset for plot
@@ -657,12 +677,12 @@ head(total_ranks)
     # Groups:   word [6]
       word      n
       <chr> <int>
-    1 и     38471
-    2 в     26913
+    1 и     38473
+    2 в     26921
     3 не    14983
-    4 на    11840
-    5 с     11215
-    6 я     10971
+    4 на    11842
+    5 с     11217
+    6 я     10975
 
 ``` r
 v <- NULL
@@ -702,12 +722,12 @@ res_all %>%
     # A tibble: 6 × 9
           V1     V2     V3     V4     V5 word    Mean       SD     CV
        <dbl>  <dbl>  <dbl>  <dbl>  <dbl> <chr>  <dbl>    <dbl>  <dbl>
-    1 0.0422 0.0452 0.0432 0.0426 0.0402 и     0.0433 0.00176  0.0406
-    2 0.0322 0.0293 0.0295 0.032  0.0316 в     0.0306 0.00147  0.0481
-    3 0.0170 0.0171 0.0162 0.019  0.0166 не    0.0172 0.000916 0.0533
-    4 0.0137 0.0138 0.0140 0.0139 0.0143 на    0.0135 0.000961 0.0713
-    5 0.0127 0.0126 0.0136 0.0130 0.0134 с     0.0127 0.000605 0.0476
-    6 0.0124 0.0128 0.012  0.0114 0.0121 я     0.0124 0.00100  0.0806
+    1 0.0424 0.0440 0.0453 0.0455 0.0445 и     0.0441 0.000923 0.0209
+    2 0.0278 0.0328 0.0339 0.0316 0.0313 в     0.0313 0.00181  0.0579
+    3 0.0167 0.0178 0.0168 0.0176 0.0182 не    0.0173 0.000804 0.0466
+    4 0.0136 0.0131 0.0127 0.012  0.0134 на    0.0132 0.000840 0.0635
+    5 0.0138 0.0109 0.0142 0.0133 0.0134 с     0.0127 0.00110  0.0863
+    6 0.0124 0.0112 0.014  0.0122 0.0126 я     0.0124 0.00114  0.0922
 
 ``` r
 # subset for plot & merge with rhymes CV data
@@ -993,7 +1013,7 @@ Some more analysis for 1835 rhymes? why the mean is so different?
 glimpse(rhymes_1835)
 ```
 
-    Rows: 81,247
+    Rows: 81,273
     Columns: 6
     $ text_id    <chr> "P_1938", "P_1938", "P_1938", "C_156__20", "C_156__20", "C_…
     $ from       <chr> "краса", "огневым", "красавицей", "око", "силки", "стонет",…
@@ -1006,12 +1026,12 @@ glimpse(rhymes_1835)
 glimpse(corpus_1835)
 ```
 
-    Rows: 4,797
+    Rows: 4,799
     Columns: 20
     $ text_id       <chr> "P_1", "P_10", "P_100", "P_1000", "P_1001", "P_1002", "P…
     $ A_ID          <chr> "", "A-50", "A-7", "A-41", "A-139", "A-11", "A-163", "A-…
-    $ author_text   <chr> "", "Якубович Л.А.", "Кольцов А.В.", "Глинка Ф.Н.", "Про…
     $ author_sign   <chr> "", "Л. Якубович", "Кольцов", "Ф. Глинка", "Н. Прокопови…
+    $ author_text   <chr> "", "Якубович Л.А.", "Кольцов А.В.", "Глинка Ф.Н.", "Про…
     $ text_title    <chr> "Солдатская песня", "Молния", "Ночлег чумаков", "Утешите…
     $ text_subtitle <chr> "", "", "Сельские картины", "", "", "", "", "", "", "", …
     $ first_line    <chr> "Ох жизнь, молодецкая", "Зачем с небесной высоты", "В бл…
@@ -1024,9 +1044,9 @@ glimpse(corpus_1835)
     $ text_cln      <chr> "Ох, жизнь молодецкая,\nБравая, солдатская!\nКак осенняя…
     $ text_lemm     <chr> "ох, жизнь молодецкий,\nбравый, солдатский!\nкак осенний…
     $ text_acc      <chr> "Ох, жизнь молоде'цкая,\nБра'вая, солда'тская!\nКак осе'…
-    $ meter         <fct> Other?, Iamb, Iamb, Iamb, Trochee, Iamb, Trochee, Iamb, …
-    $ feet          <chr> "?", "3", "4", "4", "4", "4", "other", "4", "6", "5", "4…
-    $ formula       <chr> "Other?_?", "Iamb_3", "Iamb_4", "Iamb_4", "Trochee_4", "…
+    $ meter         <chr> "Other", "Iamb", "Iamb", "Iamb", "Trochee", "Iamb", "Oth…
+    $ feet          <chr> "?", "3", "4", "4", "4", "4", "?", "4", "6", "5", "4", "…
+    $ formula       <chr> "Other_?", "Iamb_3", "Iamb_4", "Iamb_4", "Trochee_4", "I…
     $ n_lines       <int> 38, 16, 98, 77, 28, 12, 44, 25, 31, 28, 100, 16, 17, 60,…
 
 ``` r
@@ -1038,20 +1058,20 @@ rhymes_1835 %>%
   filter(author_text != "" & n > 50)
 ```
 
-    # A tibble: 36 × 2
+    # A tibble: 37 × 2
        author_text          n
        <chr>            <int>
      1 Жуковский В.А.    3400
      2 Крылов И.А.       3160
      3 Баратынский Е.А.  1759
      4 Зилов А.М.        1292
-     5 Бенедиктов В.Г.    823
+     5 Бенедиктов В.Г.    845
      6 Тимофеев А.В.      655
      7 Меркли М.М.        554
      8 Деларю М.Д.        403
      9 Савурский Н.       386
     10 Пушкин А.С.        340
-    # ℹ 26 more rows
+    # ℹ 27 more rows
 
 There is definitely a bias because of dates incompatibility in RNC &
 Corpus-1835 (e.g. reprints of Zhukovsky’s poems included in C-1835 but
@@ -1073,9 +1093,15 @@ rhymes_test <- rhymes_1835 %>%
   filter(!author_text %in% c("Жуковский В.А.", "Крылов И.А.", "Баратынский Е.А.",
                              "Пушкин А.С.")) %>% 
   mutate(rhyme_alph = str_replace(rhyme_alph, " ", "_"))
+```
 
+    Warning in left_join(., corpus_1835 %>% select(text_id, author_text), by = "text_id"): Detected an unexpected many-to-many relationship between `x` and `y`.
+    ℹ Row 2118 of `x` matches multiple rows in `y`.
+    ℹ Row 1014 of `y` matches multiple rows in `x`.
+    ℹ If a many-to-many relationship is expected, set `relationship =
+      "many-to-many"` to silence this warning.
 
-
+``` r
 rnc_rhymes_before1830 <- rnc_rhymes_before1830 %>% 
   mutate(rhyme_alph = str_replace(rhyme_alph, " ", "_"))
 
@@ -1180,12 +1206,12 @@ head(df)
     # A tibble: 6 × 5
           a year_count     n perc_top rhymes_top                                    
       <int> <chr>      <int>    <int> <chr>                                         
-    1     1 1840          36        6 ночи_очи милой_силой покой_твой боязни_казни …
-    2     1 1837          28        2 дышит_пишет дышит_слышит                      
-    3     1 1838          33        4 волен_доволен голова_слова ответа_поэта певца…
-    4     1 1836          34        6 их_своих жестокой_одинокой мной_собой мои_стр…
-    5     1 1835          32        5 народа_природа вод_свод лет_свет небесах_прах…
-    6     1 1839          35        6 воды_свободы перуны_струны собой_тобой певца_…
+    1     1 1840          29        3 нет_цвет себе_судьбе душой_мной               
+    2     1 1837          30        6 всех_утех дум_ум лес_небес друзей_людей ему_у…
+    3     1 1838          31        4 воды_свободы ново_слово вас_час моей_ней      
+    4     1 1836          37        7 покой_твой думой_угрюмой природы_свободы верш…
+    5     1 1835          36        8 друзья_я его_него брани_длани младость_сладос…
+    6     1 1839          31        3 горе_море судьбе_тебе нам_там                 
 
 ``` r
 glimpse(df)
@@ -1195,9 +1221,9 @@ glimpse(df)
     Columns: 5
     $ a          <int> 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4,…
     $ year_count <chr> "1840", "1837", "1838", "1836", "1835", "1839", "1840", "18…
-    $ n          <int> 36, 28, 33, 34, 32, 35, 34, 29, 33, 31, 34, 35, 37, 34, 36,…
-    $ perc_top   <int> 6, 2, 4, 6, 5, 6, 5, 5, 3, 4, 2, 11, 7, 2, 5, 9, 2, 8, 5, 3…
-    $ rhymes_top <chr> "ночи_очи милой_силой покой_твой боязни_казни готово_слово …
+    $ n          <int> 29, 30, 31, 37, 36, 31, 32, 30, 36, 31, 36, 37, 32, 28, 34,…
+    $ perc_top   <int> 3, 6, 4, 7, 8, 3, 3, 5, 5, 6, 6, 12, 0, 5, 4, 5, 6, 6, 3, 6…
+    $ rhymes_top <chr> "нет_цвет себе_судьбе душой_мной", "всех_утех дум_ум лес_не…
 
 Look into the top-freq RNC pairs which were found in trials most
 frequently
@@ -1214,26 +1240,26 @@ df %>%
     # A tibble: 20 × 2
        rhymes_top         n
        <chr>          <int>
-     1 моей_твоей        15
-     2 милой_силой       13
-     3 власть_страсть    12
-     4 нас_час           12
-     5 природы_своды     12
-     6 бед_свет          11
-     7 богу_дорогу       11
-     8 быть_жить         11
-     9 глуши_души        11
-    10 дух_слух          11
-    11 его_своего        11
-    12 камень_пламень    11
-    13 любви_мои         11
-    14 ныне_пустыне      11
-    15 очах_устах        11
-    16 раз_час           11
-    17 сон_стон          11
-    18 весна_она         10
-    19 глубине_мне       10
-    20 девы_напевы       10
+     1 вас_раз           14
+     2 взоры_горы        14
+     3 битвы_молитвы     13
+     4 дочь_ночь         13
+     5 мою_свою          13
+     6 вершины_долины    12
+     7 грехи_стихи       12
+     8 их_них            12
+     9 могилой_унылой    12
+    10 взор_приговор     11
+    11 дали_печали       11
+    12 дней_людей        11
+    13 дней_ней          11
+    14 друзей_людей      11
+    15 душой_мной        11
+    16 земля_поля        11
+    17 красоты_цветы     11
+    18 милый_могилой     11
+    19 милый_могилы      11
+    20 нет_поэт          11
 
 ``` r
 # distribution
@@ -1257,9 +1283,9 @@ glimpse(df)
     Columns: 5
     $ a          <int> 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4,…
     $ year_count <chr> "1840", "1837", "1838", "1836", "1835", "1839", "1840", "18…
-    $ n          <int> 36, 28, 33, 34, 32, 35, 34, 29, 33, 31, 34, 35, 37, 34, 36,…
-    $ perc_top   <int> 6, 2, 4, 6, 5, 6, 5, 5, 3, 4, 2, 11, 7, 2, 5, 9, 2, 8, 5, 3…
-    $ rhymes_top <chr> "ночи_очи милой_силой покой_твой боязни_казни готово_слово …
+    $ n          <int> 29, 30, 31, 37, 36, 31, 32, 30, 36, 31, 36, 37, 32, 28, 34,…
+    $ perc_top   <int> 3, 6, 4, 7, 8, 3, 3, 5, 5, 6, 6, 12, 0, 5, 4, 5, 6, 6, 3, 6…
+    $ rhymes_top <chr> "нет_цвет себе_судьбе душой_мной", "всех_утех дум_ум лес_не…
 
 ``` r
 df %>% 
@@ -1320,31 +1346,6 @@ ggsave(filename = "plots/bw/fig_5-1-2.png", plot = last_plot(), dpi = 300,
        width = 8, height = 6, bg = "white")
 ```
 
-``` r
-# earlier version of the plot
-# df
-#   ggplot(aes(x = as.numeric(year_count), 
-#              y = n, group = year_count)) + 
-#   geom_boxplot(color = met.brewer("Veronese")[7]) + 
-#   geom_jitter(alpha = 0.3, color = met.brewer(name = "Veronese")[5]) + 
-#   
-#   geom_boxplot(data = df, 
-#                aes(x = as.numeric(year_count), 
-#                    y = perc_top, 
-#                    group = year_count), 
-#                color = met.brewer("Veronese")[1]) + 
-#   geom_jitter(data = df, aes(x = as.numeric(year_count), 
-#                              y = perc_top, group = year_count), 
-#               colour = met.brewer("Veronese")[3], alpha = 0.2) + 
-#   scale_y_continuous(limits = c(0,100)) + 
-#   scale_x_continuous(breaks = c(1835:1840)) + 
-#   labs(x = "Год",
-#        y = "Число пересечений (из 100 возможных)" #,
-#        #title = "Количество пересечений", 
-#        #subtitle = "между случайной выборкой рифм из Корпуса-1835 (100 рифм, 100 итераций)\nи всеми известными рифмами из НКРЯ, датированными до соответствующего года"
-#        )
-```
-
 ## Kendall rank cor
 
 sHow much rankings within language are similar to those in rhyme freq
@@ -1381,12 +1382,12 @@ head(inline_freq)
     # A tibble: 6 × 3
       word      n rank_inline
       <chr> <int>       <int>
-    1 и     38456           1
-    2 в     26909           2
+    1 и     38458           1
+    2 в     26917           2
     3 не    14983           3
-    4 на    11839           4
-    5 с     11212           5
-    6 я     10183           6
+    4 на    11841           4
+    5 с     11214           5
+    6 я     10187           6
 
 ### rhyme words freq
 
@@ -1471,11 +1472,11 @@ cor.test(mfw_100_rhyme$rank_rhyme, mfw_100_rhyme$rank_inline, method = "kendall"
         Kendall's rank correlation tau
 
     data:  mfw_100_rhyme$rank_rhyme and mfw_100_rhyme$rank_inline
-    z = 4.0562, p-value = 4.988e-05
+    z = 4.0502, p-value = 5.117e-05
     alternative hypothesis: true tau is not equal to 0
     sample estimates:
           tau 
-    0.2751515 
+    0.2747475 
 
 ``` r
 mfw_100_rhyme %>% 
@@ -1534,11 +1535,11 @@ cor.test(mfw_1000_rhyme$rank_rhyme, mfw_1000_rhyme$rank_inline, method = "kendal
         Kendall's rank correlation tau
 
     data:  mfw_1000_rhyme$rank_rhyme and mfw_1000_rhyme$rank_inline
-    z = 17.075, p-value < 2.2e-16
+    z = 17.084, p-value < 2.2e-16
     alternative hypothesis: true tau is not equal to 0
     sample estimates:
-          tau 
-    0.3611558 
+         tau 
+    0.361329 
 
 #### mfw 10000
 
@@ -1556,11 +1557,11 @@ cor.test(mfw_10000_rhyme$rank_rhyme, mfw_10000_rhyme$rank_inline, method = "kend
         Kendall's rank correlation tau
 
     data:  mfw_10000_rhyme$rank_rhyme and mfw_10000_rhyme$rank_inline
-    z = 55.003, p-value < 2.2e-16
+    z = 54.965, p-value < 2.2e-16
     alternative hypothesis: true tau is not equal to 0
     sample estimates:
           tau 
-    0.3915479 
+    0.3913013 
 
 ### iamb & trochee cor test separately
 
@@ -1597,12 +1598,12 @@ head(iamb_inline_freq)
     # A tibble: 6 × 3
       word      n rank_inline
       <chr> <int>       <int>
-    1 и     25843           1
-    2 в     17546           2
-    3 не     9979           3
-    4 на     7413           4
-    5 с      7373           5
-    6 я      7025           6
+    1 и     25736           1
+    2 в     17457           2
+    3 не     9949           3
+    4 на     7400           4
+    5 с      7330           5
+    6 я      6989           6
 
 ``` r
 iamb_rhyme_freq <- rhymes_1835 %>% 
@@ -1614,19 +1615,27 @@ iamb_rhyme_freq <- rhymes_1835 %>%
   unnest_tokens(input = rhyme_alph, output = word, token = "words") %>% 
   count(word, sort = T) %>% 
   mutate(rank_rhyme = row_number())
+```
 
+    Warning in left_join(., corpus_1835 %>% select(text_id, meter), by = "text_id"): Detected an unexpected many-to-many relationship between `x` and `y`.
+    ℹ Row 2118 of `x` matches multiple rows in `y`.
+    ℹ Row 1014 of `y` matches multiple rows in `x`.
+    ℹ If a many-to-many relationship is expected, set `relationship =
+      "many-to-many"` to silence this warning.
+
+``` r
 head(iamb_rhyme_freq)
 ```
 
     # A tibble: 6 × 3
       word      n rank_rhyme
       <chr> <int>      <int>
-    1 я       484          1
-    2 свет    325          2
-    3 меня    318          3
-    4 тобой   300          4
-    5 она     299          5
-    6 нет     294          6
+    1 я       471          1
+    2 свет    322          2
+    3 меня    313          3
+    4 она     300          4
+    5 тобой   293          5
+    6 нет     291          6
 
 #### cor texts
 
@@ -1644,11 +1653,11 @@ cor.test(mfw_100_rhyme$rank_rhyme, mfw_100_rhyme$rank_inline, method = "kendall"
         Kendall's rank correlation tau
 
     data:  mfw_100_rhyme$rank_rhyme and mfw_100_rhyme$rank_inline
-    z = 3.8656, p-value = 0.0001108
+    z = 3.9311, p-value = 8.455e-05
     alternative hypothesis: true tau is not equal to 0
     sample estimates:
           tau 
-    0.2622222 
+    0.2666667 
 
 ``` r
 mfw_100_rhyme %>% 
@@ -1660,15 +1669,15 @@ mfw_100_rhyme %>%
        word  rank_rhyme rank_inline
        <chr>      <int>       <int>
      1 я              1           6
-     2 свет           2         121
+     2 свет           2         122
      3 меня           3          40
-     4 тобой          4         148
-     5 она            5          36
+     4 она            4          35
+     5 тобой          5         148
      6 нет            6          31
      7 ты             7           8
-     8 моей           8          88
-     9 мечты          9         189
-    10 дней          10         228
+     8 моей           8          89
+     9 мечты          9         190
+    10 дней          10         225
     # ℹ 40 more rows
 
 ``` r
@@ -1692,11 +1701,11 @@ cor.test(mfw_1000_rhyme$rank_rhyme, mfw_1000_rhyme$rank_inline, method = "kendal
         Kendall's rank correlation tau
 
     data:  mfw_1000_rhyme$rank_rhyme and mfw_1000_rhyme$rank_inline
-    z = 15.727, p-value < 2.2e-16
+    z = 15.492, p-value < 2.2e-16
     alternative hypothesis: true tau is not equal to 0
     sample estimates:
           tau 
-    0.3339897 
+    0.3291494 
 
 ``` r
 mfw_1000_rhyme %>% 
@@ -1707,16 +1716,16 @@ mfw_1000_rhyme %>%
     # A tibble: 25 × 3
        word    rank_rhyme rank_inline
        <chr>        <int>       <int>
-     1 любимой        976        5119
-     2 младые         977         939
-     3 можно          978         565
-     4 муз            979         714
-     5 награда        980        6594
-     6 напев          981        2391
-     7 наряд          982        2259
-     8 неволе         983        7633
-     9 нее            984         437
-    10 несется        985        1029
+     1 никак          976        1801
+     2 ногами         977        8988
+     3 огней          978        5790
+     4 око            979        7651
+     5 плоды          980         996
+     6 пожар          981        2141
+     7 поймет         982        1747
+     8 пою            983        2047
+     9 пройдет        984         821
+    10 прости         985         237
     # ℹ 15 more rows
 
 ``` r
@@ -1735,11 +1744,11 @@ cor.test(mfw_10000_rhyme$rank_rhyme, mfw_10000_rhyme$rank_inline, method = "kend
         Kendall's rank correlation tau
 
     data:  mfw_10000_rhyme$rank_rhyme and mfw_10000_rhyme$rank_inline
-    z = 47.34, p-value < 2.2e-16
+    z = 47.516, p-value < 2.2e-16
     alternative hypothesis: true tau is not equal to 0
     sample estimates:
-          tau 
-    0.3580691 
+         tau 
+    0.359658 
 
 ``` r
 mfw_10000_rhyme %>% 
@@ -1748,18 +1757,18 @@ mfw_10000_rhyme %>%
 ```
 
     # A tibble: 25 × 3
-       word       rank_rhyme rank_inline
-       <chr>           <int>       <int>
-     1 неложно          9957       37893
-     2 немногу          9960       37916
-     3 немые            9961       11088
-     4 ненавидеть       9963       20183
-     5 ненавидит        9964       37939
-     6 ненавидя         9965       37940
-     7 ненастных        9966       37967
-     8 необозримы       9968       37988
-     9 необходим        9970       37997
-    10 необъятную       9972       38009
+       word          rank_rhyme rank_inline
+       <chr>              <int>       <int>
+     1 неровный            9953       38145
+     2 неси                9954        3851
+     3 несметных           9956       20200
+     4 несправедливы       9958       38219
+     5 несчастен           9961       38245
+     6 несчастливец        9962       20211
+     7 несчастны           9963       20217
+     8 несчастным          9964        5150
+     9 несчетны            9965       38262
+    10 нетленны            9969       38289
     # ℹ 15 more rows
 
 #### trochee freqs
@@ -1793,12 +1802,12 @@ head(tr_inline_freq)
     # A tibble: 6 × 3
       word      n rank_inline
       <chr> <int>       <int>
-    1 и      5637           1
-    2 в      4532           2
-    3 не     2281           3
-    4 на     1937           4
-    5 с      1776           5
-    6 как    1498           6
+    1 и      4767           1
+    2 в      4054           2
+    3 не     2051           3
+    4 на     1686           4
+    5 с      1590           5
+    6 как    1304           6
 
 ``` r
 tr_rhyme_freq <- rhymes_1835 %>% 
@@ -1810,19 +1819,27 @@ tr_rhyme_freq <- rhymes_1835 %>%
   unnest_tokens(input = rhyme_alph, output = word, token = "words") %>% 
   count(word, sort = T) %>% 
   mutate(rank_rhyme = row_number())
+```
 
+    Warning in left_join(., corpus_1835 %>% select(text_id, meter), by = "text_id"): Detected an unexpected many-to-many relationship between `x` and `y`.
+    ℹ Row 2118 of `x` matches multiple rows in `y`.
+    ℹ Row 1014 of `y` matches multiple rows in `x`.
+    ℹ If a many-to-many relationship is expected, set `relationship =
+      "many-to-many"` to silence this warning.
+
+``` r
 head(tr_rhyme_freq)
 ```
 
     # A tibble: 6 × 3
       word      n rank_rhyme
       <chr> <int>      <int>
-    1 я       134          1
-    2 она     117          2
-    3 мне      96          3
-    4 меня     86          4
-    5 свет     86          5
-    6 моей     71          6
+    1 я       118          1
+    2 она     102          2
+    3 мне      85          3
+    4 меня     81          4
+    5 свет     79          5
+    6 лет      64          6
 
 Cor tests
 
@@ -1840,11 +1857,11 @@ cor.test(mfw_100_rhyme$rank_rhyme, mfw_100_rhyme$rank_inline, method = "kendall"
         Kendall's rank correlation tau
 
     data:  mfw_100_rhyme$rank_rhyme and mfw_100_rhyme$rank_inline
-    z = 3.7275, p-value = 0.0001934
+    z = 3.3224, p-value = 0.0008924
     alternative hypothesis: true tau is not equal to 0
     sample estimates:
           tau 
-    0.2541744 
+    0.2265512 
 
 ``` r
 mfw_100_rhyme %>% 
@@ -1856,15 +1873,15 @@ mfw_100_rhyme %>%
        word  rank_rhyme rank_inline
        <chr>      <int>       <int>
      1 я              1           7
-     2 она            2          55
+     2 она            2          60
      3 мне            3          14
-     4 меня           4          43
-     5 свет           5         105
-     6 моей           6         112
-     7 моя            7          91
-     8 очи            8         114
-     9 лет            9         308
-    10 ночи          10         278
+     4 меня           4          46
+     5 свет           5         110
+     6 лет            6         287
+     7 очи            7         105
+     8 моей           8         109
+     9 ночи           9         311
+    10 моя           10         100
     # ℹ 40 more rows
 
 ``` r
@@ -1888,11 +1905,11 @@ cor.test(mfw_1000_rhyme$rank_rhyme, mfw_1000_rhyme$rank_inline, method = "kendal
         Kendall's rank correlation tau
 
     data:  mfw_1000_rhyme$rank_rhyme and mfw_1000_rhyme$rank_inline
-    z = 13.912, p-value < 2.2e-16
+    z = 12.728, p-value < 2.2e-16
     alternative hypothesis: true tau is not equal to 0
     sample estimates:
           tau 
-    0.3080526 
+    0.2837049 
 
 ``` r
 mfw_1000_rhyme %>% 
@@ -1903,16 +1920,16 @@ mfw_1000_rhyme %>%
     # A tibble: 25 × 3
        word     rank_rhyme rank_inline
        <chr>         <int>       <int>
-     1 сказать         970        1675
-     2 скала           971        1676
-     3 скользит        973        3203
-     4 сладко          974         221
-     5 снега           975        4518
-     6 снов            976        3224
-     7 соловья         977        4532
-     8 сталь           978        2489
-     9 стекло          979       19466
-    10 стоят           980        2495
+     1 забвенья        972        3329
+     2 зари            973        1042
+     3 зимой           975        2496
+     4 златая          976        5153
+     5 знамя           977        2503
+     6 золотая         978       10841
+     7 золотит         979        5173
+     8 золотом         980         934
+     9 играть          982       10892
+    10 играя           983        5190
     # ℹ 15 more rows
 
 ``` r
@@ -1931,11 +1948,11 @@ cor.test(mfw_10000_rhyme$rank_rhyme, mfw_10000_rhyme$rank_inline, method = "kend
         Kendall's rank correlation tau
 
     data:  mfw_10000_rhyme$rank_rhyme and mfw_10000_rhyme$rank_inline
-    z = 32.736, p-value < 2.2e-16
+    z = 32.254, p-value < 2.2e-16
     alternative hypothesis: true tau is not equal to 0
     sample estimates:
           tau 
-    0.3217603 
+    0.3265279 
 
 ``` r
 mfw_10000_rhyme %>% 
@@ -1944,16 +1961,16 @@ mfw_10000_rhyme %>%
 ```
 
     # A tibble: 25 × 3
-       word        rank_rhyme rank_inline
-       <chr>            <int>       <int>
-     1 развился          9875       17566
-     2 разврата          9882       17571
-     3 разгар            9888       17577
-     4 раздавались       9897       17601
-     5 раздавался        9898       17602
-     6 раздавить         9899        7178
-     7 разлетелась       9914       17646
-     8 разлука           9922        7191
-     9 разлукой          9923       17668
-    10 разлюбил          9926        4373
+       word         rank_rhyme rank_inline
+       <chr>             <int>       <int>
+     1 снедает            9878       17198
+     2 снежный            9879       17204
+     3 снесу              9880       17211
+     4 сновиденья         9885       17216
+     5 сова               9901       17251
+     6 совершенства       9904        6721
+     7 согреет            9913       17276
+     8 сожжет             9924       17291
+     9 создам             9929       17298
+    10 сойдут             9936       17316
     # ℹ 15 more rows

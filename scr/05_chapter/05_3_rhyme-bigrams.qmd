@@ -4,6 +4,10 @@ format: md
 editor: visual
 ---
 
+# Chapter 5.1
+
+This notebook displays the analysis of rhyme words described in Chapter 5.1. The main focus is on the rhyme pairs lexical frequencies and how it relates to the overall word bigrams frequencies in the corpus.
+
 ### load pckg
 
 ```{r, message=FALSE, warning=FALSE}
@@ -32,7 +36,7 @@ glimpse(rhymes_1835)
 #### C-35 metadata
 
 ```{r}
-corpus_1835 <- readRDS("../../data/corpus1835/corpus_1835_metrics.Rds")
+corpus_1835 <- readRDS("../../data/corpus1835/corpus_1835.Rds")
 
 # attach year to rhyme data
 rhymes_1835 <- rhymes_1835 %>% 
@@ -975,31 +979,6 @@ df %>%
 
 ggsave(filename = "plots/bw/fig_5-1-2.png", plot = last_plot(), dpi = 300,
        width = 8, height = 6, bg = "white")
-```
-
-```{r}
-# earlier version of the plot
-# df
-#   ggplot(aes(x = as.numeric(year_count), 
-#              y = n, group = year_count)) + 
-#   geom_boxplot(color = met.brewer("Veronese")[7]) + 
-#   geom_jitter(alpha = 0.3, color = met.brewer(name = "Veronese")[5]) + 
-#   
-#   geom_boxplot(data = df, 
-#                aes(x = as.numeric(year_count), 
-#                    y = perc_top, 
-#                    group = year_count), 
-#                color = met.brewer("Veronese")[1]) + 
-#   geom_jitter(data = df, aes(x = as.numeric(year_count), 
-#                              y = perc_top, group = year_count), 
-#               colour = met.brewer("Veronese")[3], alpha = 0.2) + 
-#   scale_y_continuous(limits = c(0,100)) + 
-#   scale_x_continuous(breaks = c(1835:1840)) + 
-#   labs(x = "Год",
-#        y = "Число пересечений (из 100 возможных)" #,
-#        #title = "Количество пересечений", 
-#        #subtitle = "между случайной выборкой рифм из Корпуса-1835 (100 рифм, 100 итераций)\nи всеми известными рифмами из НКРЯ, датированными до соответствующего года"
-#        )
 ```
 
 ## Kendall rank cor

@@ -26,7 +26,7 @@ Load data
 ```{r}
 corpus1835 <- readRDS("../../data/corpus1835/corpus_1835.Rds")
 
-titles <- read.csv("poems_titles.csv") %>% select(-X)
+titles <- read.csv("../../data/ch3/poems_titles.csv") %>% select(-X)
 ```
 
 Attach titles data to the corpus: for genres only
@@ -73,7 +73,7 @@ m <- corpus1835 %>%
 
 ```{r}
 # read the data with normalised genres
-m <- read.delim("multigenre_texts.csv", sep = ';') %>% select(-X)
+m <- read.delim("../../data/ch3/multigenre_texts.csv", sep = ';') %>% select(-X)
 
 glimpse(m)
 

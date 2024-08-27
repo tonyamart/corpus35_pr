@@ -126,23 +126,31 @@ c35_rw <- rw %>%
          ending_st,
          pos_syl) %>% 
   mutate(corpus = paste0("c1835_", corpus))
+```
 
+    Warning in left_join(., meta, by = "text_id"): Detected an unexpected many-to-many relationship between `x` and `y`.
+    ℹ Row 2118 of `x` matches multiple rows in `y`.
+    ℹ Row 1014 of `y` matches multiple rows in `x`.
+    ℹ If a many-to-many relationship is expected, set `relationship =
+      "many-to-many"` to silence this warning.
+
+``` r
 # final view of the data
 sample_n(c35_rw, 5)
 ```
 
-       text_id  corpus   meter     author_name        word       lemma closure
-    1 C_101__3 c1835_C    Iamb     Кашкин Д.Е.       своей        свой    masc
-    2   P_1352 c1835_P    Iamb            <NA>     прольет   проливать    masc
-    3     P_93 c1835_P Trochee Бенедиктов В.Г.       брошу     бросать     fem
-    4   P_1247 c1835_P Trochee  Кронеберг А.И.    скрывала    скрывать     fem
-    5 C_92__47 c1835_C    Iamb  Жуковский В.А. примиритель примиритель     fem
-      ending_st pos_syl
-    1       е'й  PRON_2
-    2       ё'т  VERB_2
-    3      о'шу  VERB_2
-    4      а'ла  VERB_3
-    5    и'тель  NOUN_4
+        text_id  corpus meter    author_name     word     lemma closure ending_st
+    1 C_633__18 c1835_C  Iamb    Крылов И.А.   полете     полет     fem      е'те
+    2 C_111__90 c1835_C  Iamb     Мейснер А. зазвучат зазвучать    masc       а'т
+    3  C_92__51 c1835_C  Iamb Жуковский В.А.    шумел    шуметь    masc       е'л
+    4     P_113 c1835_P  Iamb    Козлов И.И.     бурь      буря    masc      у'рь
+    5    P_1709 c1835_P  Iamb           <NA>    мечты     мечта    masc       ты'
+      pos_syl
+    1  NOUN_3
+    2  VERB_3
+    3  VERB_2
+    4  NOUN_1
+    5  NOUN_2
 
 ``` r
 rm(authors_meta, lemm, meta, pos_transl, w, w1, w2, rhyme_pairs, rhyme_words, rw)
@@ -269,7 +277,7 @@ totals_masc %>% left_join(totals_fem %>% rename(n_fem = n), by = "corpus")
       <chr>           <int> <int>
     1 RNC_1810-1830   50499 48582
     2 RNC_before 1810 37479 39922
-    3 c1835_C         51353 47811
+    3 c1835_C         51379 47837
     4 c1835_P         31337 28195
 
 ### Totals - authors
@@ -391,7 +399,7 @@ head(masc_ending_50)
 ```
 
       ending_st     n rank
-    1       о'й 14734    1
+    1       о'й 14738    1
     2       е'й  9364    2
     3       а'л  5788    3
     4       и'т  5221    4
@@ -405,7 +413,7 @@ head(fem_ending_50)
       ending_st    n rank
     1       о'ю 6351    1
     2      а'ет 5798    2
-    3      а'ми 4370    3
+    3      а'ми 4372    3
     4     е'нье 3235    4
     5       а'я 3143    5
     6     е'нья 3098    6
@@ -440,11 +448,11 @@ head(masc_possyl_25)
 ```
 
           pos_syl     n rank
-    1 NOUN_2_masc 49778    1
-    2 NOUN_1_masc 25770    2
-    3 VERB_2_masc 20222    3
-    4 VERB_3_masc 14435    4
-    5 NOUN_3_masc 14114    5
+    1 NOUN_2_masc 49782    1
+    2 NOUN_1_masc 25772    2
+    3 VERB_2_masc 20226    3
+    4 VERB_3_masc 14439    4
+    5 NOUN_3_masc 14116    5
     6 PRON_1_masc  9369    6
 
 ``` r
@@ -452,11 +460,11 @@ head(fem_possyl_25)
 ```
 
          pos_syl     n rank
-    1 NOUN_3_fem 40697    1
-    2 NOUN_2_fem 27940    2
+    1 NOUN_3_fem 40711    1
+    2 NOUN_2_fem 27944    2
     3 VERB_3_fem 18667    3
-    4 VERB_4_fem 17949    4
-    5  ADJ_3_fem 14230    5
+    4 VERB_4_fem 17953    4
+    5  ADJ_3_fem 14234    5
     6 NOUN_4_fem 12204    6
 
 ``` r
@@ -669,25 +677,25 @@ x
 
     # A tibble: 60 × 237
     # Groups:   author_name [20]
-       author_name    бог  быть   век венец внимать  вода волна    вы говорить   год
-       <chr>        <int> <int> <int> <int>   <int> <int> <int> <int>    <int> <int>
-     1 "Батюшков К…     3     1     1     1       1     2     5     2        4     1
-     2 "Бенедиктов…     0     1     2     2       2     2     4     0        0     0
-     3 "Бернет Е."      4     5     1     2       1     2     1     1        6     9
-     4 "Бороздна И…     0     3     1     0       1     5     1     1        0     1
-     5 "Дельвиг А.…     5     1     0     2       1     0     2     2        4     6
-     6 "Державин Г…     6     5     2     3       1     4     3     0        1     1
-     7 "Дмитриев И…     4     8     1     2       1     5     0     6        4     8
-     8 "Крылов И. …     3    11     0     0       0     2     1     1        3     3
-     9 "Мейснер А."     4     5     2     0       1     2     3     1        0     8
-    10 "Мерзляков …     6     6     1     0       3     0     2     3        5     3
+       author_name     блистать   бог  быть венец внимать  вода волна    вы говорить
+       <chr>              <int> <int> <int> <int>   <int> <int> <int> <int>    <int>
+     1 "Батюшков К. Н…        2     3     3     3       1     4     3     2        3
+     2 "Бенедиктов В.…        1     2     1     2       1     3     3     2        3
+     3 "Бернет Е."            1     2     4     0       2     2     1     0        3
+     4 "Бороздна И.П."        5     1     6     0       0     6     2     2        1
+     5 "Дельвиг А. А.…        0     7     3     2       1     1     2     6        4
+     6 "Державин Г. Р…        3     4     0     3       3     2     5     0        1
+     7 "Дмитриев И. И…        1     6     2     0       0     4     1     2        6
+     8 "Крылов И. А. "        1     3     8     1       0     4     0     2        7
+     9 "Мейснер А."           2     2     3     0       1     1     3     1        0
+    10 "Мерзляков А. …        0     7     5     1       2     1     3     3        3
     # ℹ 50 more rows
-    # ℹ 226 more variables: гора <int>, грудь <int>, давать <int>, день <int>,
-    #   дорога <int>, друг <int>, душа <int>, желать <int>, забывать <int>,
-    #   земля <int>, знать <int>, золотой <int>, красота <int>, лететь <int>,
-    #   любить <int>, любовь <int>, мечта <int>, мечтание <int>, мир <int>,
-    #   могила <int>, мой <int>, молодой <int>, море <int>, мы <int>,
-    #   наслаждение <int>, небо <int>, нет <int>, ночь <int>, огонь <int>, …
+    # ℹ 227 more variables: год <int>, гора <int>, грудь <int>, давать <int>,
+    #   день <int>, друг <int>, душа <int>, желание <int>, жить <int>, земля <int>,
+    #   золотой <int>, красота <int>, лира <int>, любить <int>, любовь <int>,
+    #   мечта <int>, мечтание <int>, мир <int>, могила <int>, мой <int>,
+    #   молодой <int>, море <int>, мы <int>, наслаждение <int>, небо <int>,
+    #   нет <int>, огонь <int>, один <int>, око <int>, он <int>, она <int>, …
 
 ``` r
 dim(x)
@@ -1295,25 +1303,25 @@ x
 
     # A tibble: 54 × 227
     # Groups:   author_name [27]
-       author_name      бог  быть вдохновение   век венец  взор  вода волна говорить
-       <chr>          <int> <int>       <int> <int> <int> <int> <int> <int>    <int>
-     1 Алексеев П.Ф.      4     3           1     1     1     4     1     5        3
-     2 Анонимы            5     1           0     1     0     2     1     6        3
-     3 Бакунин И.М.       1     4           0     6     2     3     1     8        3
-     4 Баратынский Е…     3     0           2     1     2     3     2     0        2
-     5 Башкатов А.        4     9           0     5     3     3     2     0        1
-     6 Бенедиктов В.…     1     1           1     1     4     2     3     5        1
-     7 Бернет Е.          1     4           1     3     0     1     2     5        2
-     8 Бороздна И.П.      2     2           2     4     0     8     6     2        0
-     9 Быстроглазов …     1     7           0     0     1     3     1     3        1
-    10 Демидов М.А.       1     1           8     1     0     2     1     3        0
+       author_name      бог  быть   век венец  взор  вода волна говорить  гора грудь
+       <chr>          <int> <int> <int> <int> <int> <int> <int>    <int> <int> <int>
+     1 Алексеев П.Ф.      3     2     3     1     3     5     7        6     1     3
+     2 Анонимы            4     5     1     1     2     3     2        2     2     1
+     3 Бакунин И.М.       2     3     4     2     1     1     7        2     3     0
+     4 Баратынский Е…     3     3     1     1     3     5     3        0     1     1
+     5 Башкатов А.        4    10     6     2     2     0     0        3     0     0
+     6 Бенедиктов В.…     0     1     1     5     0     2     5        2     0     6
+     7 Бернет Е.          2     3     1     1     1     0     6        4     3     2
+     8 Бороздна И.П.      2     2     1     2     2     3     0        0     5     0
+     9 Быстроглазов …     0     8     1     1     1     2     4        1     2     1
+    10 Демидов М.А.       3     7     1     0     3     2     4        0     4     3
     # ℹ 44 more rows
-    # ℹ 217 more variables: грудь <int>, давать <int>, день <int>, дорога <int>,
-    #   друг <int>, душа <int>, забывать <int>, земля <int>, знать <int>,
-    #   золотой <int>, красота <int>, лететь <int>, лира <int>, любить <int>,
-    #   любовь <int>, мечта <int>, мир <int>, могила <int>, мой <int>,
-    #   молодой <int>, море <int>, небесный <int>, небо <int>, ночь <int>,
-    #   огонь <int>, один <int>, око <int>, он <int>, она <int>, петь <int>, …
+    # ℹ 216 more variables: давать <int>, день <int>, друг <int>, душа <int>,
+    #   земля <int>, знать <int>, золотой <int>, красота <int>, лететь <int>,
+    #   любить <int>, любовь <int>, мечта <int>, мир <int>, могила <int>,
+    #   мой <int>, молодой <int>, море <int>, небесный <int>, небо <int>,
+    #   ночь <int>, огонь <int>, один <int>, око <int>, он <int>, она <int>,
+    #   печаль <int>, покой <int>, поле <int>, природа <int>, путь <int>, …
 
 ``` r
 dim(x)

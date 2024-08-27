@@ -6,6 +6,8 @@ editor: visual
 
 ## 5.2.2. Rhyme grammatical contrast & endings variability
 
+Code used for analysis & plots in Chapter 5.2.2.
+
 Load pckg
 
 ```{r, warning=FALSE, message=FALSE}
@@ -922,7 +924,8 @@ ggsave("plots/bw/fig_5-2-1.png", plot = last_plot(), dpi = 300,
 ```{r}
 iamb_masc %>% 
   filter(from_pos == "NOUN" & to_pos == "PRON") %>% 
-  count(from, to, sort = T)
+  count(from, to, sort = T) %>% 
+  head(100)
 ```
 
 ## endings
@@ -1402,12 +1405,12 @@ m_plot <- m_ranked_long %>%
         plot.title = element_text(size = 18), 
         plot.subtitle = element_text(size = 14))
 
-m_plot
+# m_plot
 ```
 
 ### fig. 5.2.2
 
-```{r}
+```{r, eval=FALSE}
 layout <- "
 AAAAAA#CCCC
 AAAAAA#CCCC
@@ -1764,195 +1767,4 @@ fem_words %>%
   summarise(n_var = n(),
             word_list = paste0(word, collapse = ", ")) %>% 
   arrange(-desc(n_var))
-```
-
-NB both for masc & fem rhymes it seems that THE most freq ending is also the most variative (-oi, -oju),
-
-however, some of the endings have very low N of pos/feats combinations (-ить) but can generate very large number of words, these are mostly verbal endings =\> seeming refusal to use this kind of rhymes
-
-the most redundant / monotonous are though NOUN endings and rhyme pairs, which are less plausible to include many words for non-freq endings (such as -ец / -ца) though they include a small number of very symbolic poetic words (венец, певец... любовь кровь... пир мир...)
-
-## percentage of less variable rhyme endings
-
-### masc rhymes
-
-Count percentage by corpus
-
-```{r}
-m_ranked_pos %>% select(-pos_pair) %>% head
-
-corpus_totals <- masc_pairs %>% 
-  mutate(corpus = str_extract(text_id, "^\\w")) %>% 
-  count(corpus) %>% 
-  rename(total = n)
-
-masc_pairs %>% 
-  mutate(ending_pair = paste0("-", from_ending, " -- -", to_ending)) %>% 
-  select(text_id, ending_pair) %>% 
-  left_join(m_ranked_pos %>% select(ending_pair, pos_var, group),
-            by = "ending_pair") %>% 
-  mutate(group = ifelse(is.na(group), "non-freq", group),
-         corpus = str_extract(text_id, "^\\w")) %>% 
-  group_by(corpus) %>% 
-  count(group) %>% 
-  ungroup() %>% 
-  left_join(corpus_totals, by = "corpus") %>% 
-  mutate(perc = round((n / total)*100, 1)) %>% 
-  select(-n, -total) %>% 
-  pivot_wider(names_from = group, values_from = perc)
-  
-```
-
-Load metadata about authors
-
-```{r}
-meta <- read.csv("../../data/corpus1835/sql_db/texts_metadata.csv")
-authors <- read.csv("../../data/corpus1835/sql_db/authors.csv")
-
-meta <- meta %>% 
-  select(text_id, A_ID) %>% 
-  left_join(authors %>% select(A_ID, author_name), by = "A_ID")
-
-masc_pairs_authors <- masc_pairs %>% 
-  left_join(meta, by = "text_id")
-
-masc_pairs_authors %>% 
-  count(author_name, sort = T) %>% head()
-```
-
-Count perc of less / more variative rhymes by different authors
-
-```{r}
-# select authors
-a <- c("Баратынский Е.А.", "Бенедиктов В.Г.", "Мейснер А.", "Тимофеев А.В.",
-      "Шахова Е.Н.", "Некрасов Н.А.", "Суханов М.Д.", "Ростопчина Е.П.", 
-      "Козлов И.И.")
-
-a_totals <- masc_pairs_authors %>% 
-  filter(author_name %in% a) %>% 
-  count(author_name, sort = T) %>% 
-  rename(total = n)
-
-min(a_totals$total)
-m_ranked_pos %>% 
-  filter(group == "less variation") %>% 
-  select(ending_pair) %>% 
-  distinct() %>% pull()
-
-samples <- NULL
-
-for (i in 1:100) {
-  x <- masc_pairs_authors %>% 
-    filter(author_name %in% a) %>% 
-    group_by(author_name) %>% 
-    sample_n(100) %>% 
-    mutate(ending_pair = paste0("-", from_ending, " -- -", to_ending)) %>% 
-    select(text_id, author_name, ending_pair) %>% 
-    left_join(m_ranked_pos %>% select(ending_pair, pos_var, group),
-              by = "ending_pair") %>% 
-    mutate(group = ifelse(is.na(group), "non-freq rhymes (not top-100)", group)) %>% 
-    group_by(author_name) %>% 
-    count(group) %>% 
-    ungroup() %>% 
-    #left_join(a_totals, by = "author_name") %>% 
-    mutate(perc = round((n / 100)*100, 1)) %>% 
-    select(-n#, -total
-           ) #%>% 
-    #pivot_wider(names_from = group, values_from = perc) %>% 
-    #arrange(desc(`less variation`))
-
-  samples <- rbind(samples, x)
-}
-
-
-samples %>% 
-  ggplot(aes(x = author_name, y = perc, color = group)) + 
-  geom_boxplot(width = 0.5)
-```
-
-### fem rhymes
-
-```{r}
-f_ranked_pos %>% head
-
-f_ranked_pos %>% 
-  filter(group == "less variation") %>% 
-  select(ending_pair) %>% 
-  distinct() %>% pull()
-
-corpus_totals <- fem_pairs %>% 
-  mutate(corpus = str_extract(text_id, "^\\w")) %>% 
-  count(corpus) %>% 
-  rename(total = n)
-
-fem_pairs %>% 
-  mutate(ending_pair = paste0("-", from_ending, " -- -", to_ending)) %>% 
-  select(text_id, ending_pair) %>% 
-  left_join(f_ranked_pos %>% select(ending_pair, pos_var, group),
-            by = "ending_pair") %>% 
-  mutate(group = ifelse(is.na(group), "non-freq", group),
-         corpus = str_extract(text_id, "^\\w")) %>% 
-  group_by(corpus) %>% 
-  count(group) %>% 
-  ungroup() %>% 
-  left_join(corpus_totals, by = "corpus") %>% 
-  mutate(perc = round((n / total)*100, 1)) %>% 
-  select(-n, -total) %>% 
-  pivot_wider(names_from = group, values_from = perc)
-  
-```
-
-Authors
-
-```{r}
-fem_pairs_authors <- fem_pairs %>% 
-  left_join(meta, by = "text_id")
-
-fem_pairs_authors %>% 
-  count(author_name, sort = T) %>% head()
-```
-
-```{r}
-# select authors
-a <- c("Баратынский Е.А.", "Бенедиктов В.Г.", "Мейснер А.", "Тимофеев А.В.",
-      "Шахова Е.Н.", "Некрасов Н.А.", "Суханов М.Д.", "Ростопчина Е.П.", 
-      "Козлов И.И.")
-
-a_totals <- fem_pairs_authors %>% 
-  filter(author_name %in% a) %>% 
-  count(author_name, sort = T) %>% 
-  rename(total = n)
-
-min(a_totals$total)
-
-samples <- NULL
-
-for (i in 1:100) {
-  x <- fem_pairs_authors %>% 
-    filter(author_name %in% a) %>% 
-    group_by(author_name) %>% 
-    sample_n(100) %>% 
-    mutate(ending_pair = paste0("-", from_ending, " -- -", to_ending)) %>% 
-    select(text_id, author_name, ending_pair) %>% 
-    left_join(f_ranked_pos %>% select(ending_pair, pos_var, group),
-              by = "ending_pair") %>% 
-    mutate(group = ifelse(is.na(group), "non-freq rhymes (not top-100)", group)) %>% 
-    group_by(author_name) %>% 
-    count(group) %>% 
-    ungroup() %>% 
-    #left_join(a_totals, by = "author_name") %>% 
-    mutate(perc = round((n / 100)*100, 1)) %>% 
-    select(-n#, -total
-           ) #%>% 
-    #pivot_wider(names_from = group, values_from = perc) %>% 
-    #arrange(desc(`less variation`))
-
-  samples <- rbind(samples, x)
-}
-
-
-samples %>% 
-  filter(group != "non-freq rhymes (not top-100)") %>% 
-  ggplot(aes(x = author_name, y = perc, color = group)) + 
-  geom_boxplot(width = 0.5)
 ```

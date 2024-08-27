@@ -366,7 +366,7 @@ ggsave(file = "plots/bw/Fig_2-2-2.png", plot = last_plot(), dpi = 300,
 
 ## Table 2.2.4
 
--   count most prominent authors in a jounal (total years) to highlight table 2.2.4
+-   count most prominent authors in a journal (total years) to highlight table 2.2.4
 
 -   authors' age info
 
@@ -389,21 +389,7 @@ per %>%
   ungroup() %>% 
   distinct() %>% 
   arrange(-desc(as.numeric(year))) 
-# %>% 
-  #pivot_wider(names_from = "year", values_from = "author_names")
 
-
-# tile plot attempt
-# per %>% 
-#   #filter(year == "1835") %>% 
-#   filter(author_text != "" & !per_name %in% c("Телескоп", "СП")) %>% 
-#   group_by(per_name, year) %>% 
-#   count(author_text, sort = T) %>% 
-#   slice_max(order_by = n, n = 3) %>% 
-#   ungroup() %>% 
-#   #mutate(author_text = paste0(per_name, "_", author_text)) %>% 
-#   ggplot(aes(x = year, y = author_text, fill = n)) + 
-#   geom_tile() 
 ```
 
 Table 2.2.4 most prominent authors highlighting base
@@ -500,276 +486,6 @@ per %>%
   distinct()
 ```
 
-### treemap plots (not used)
-
-```{r, eval=FALSE}
-# remove incomplete sources
-periodicals <- per %>% 
-  filter(!PER_ID %in% c("Молва", "МН", "Сев_пч"))
-
-years_total <- periodicals %>% 
-  count(year) %>% 
-  mutate(year_label = paste0(year, " (N = ", n, ")"))
-
-source_year_total <- periodicals %>% 
-  count(PER_ID, year)
-```
-
-Count number of texts in each source by each author
-
-```{r, eval=FALSE}
-authors_sources <- periodicals %>% 
-    #filter(PER_ID != "Сев_пч") %>% 
-    mutate(PER_ID = ifelse(str_detect(PER_ID,"СОиСА"), "СО", PER_ID)) %>% 
-    filter(author_text != "") %>% 
-    
-    # grouping by author, year and source
-    group_by(year, PER_ID, author_text) %>% 
-    count(sort = T) %>% 
-    ungroup() %>%
-    
-    # non-frequent authors grouped as "others"
-    mutate(author_text = ifelse(n < 3, "Другие", author_text)) %>% 
-    group_by(year, PER_ID, author_text) %>% 
-    # sum poems by others
-    summarise(n = sum(n)) %>% 
-    mutate(author_label = paste0(author_text, " (", n, ")")) %>% 
-    filter(author_text != "Другие")
-
-head(authors_sources)
-```
-
-Select colours for charts
-
-```{r, eval=FALSE}
-MetBrewer::colorblind_palettes
-
-met.brewer("Archambault")
-
-met.brewer("Egypt")
-
-met.brewer("Johnson")
-
-met.brewer("Kandinsky")
-
-met.brewer("Veronese")
-```
-
-```{r, eval=FALSE}
-# treemap: https://cran.r-project.org/web/packages/treemap/treemap.pdf
-
-# x <- NULL
-# 
-# for (i in 1:length(unique(per$year))) {
-#     
-#     x <- unique(per$year)[i]
-#     
-#     filename = paste0("plots/treemaps/plot_", x, ".png")
-# 
-#     png(filename, width = 600, height = 600)
-# 
-#     t <- authors_sources %>% 
-#         filter(year == x) %>% 
-#         treemap(
-#             index = c("PER_ID", "author_label"),
-#             vSize = "n",
-#             type = "index",
-#             palette = light_palette,
-#             fontsize.labels = c(20, 16),
-#             #position.legend = "right",
-#             overlap.labels = 1,
-#             title = x,
-#             fontsize.title = 22
-#         )
-# 
-#     dev.off()
-# }
-```
-
-```{r, eval=FALSE}
-years_total
-```
-
-```{r, eval=FALSE}
-source_year_total %>% arrange(-desc(year))
-```
-
-```{r, eval=FALSE}
-
-png("plots/treemaps/2-2-2_1835_v2.png", height = 650, width = 600)
-
-tree_pal <- c(met.brewer("Veronese")[1], # BdCH
-              met.brewer("Veronese")[3], # LPRI
-              met.brewer("Veronese")[4], # SO
-              met.brewer("Kandinsky")[3]) # Telescop
-
-authors_sources %>% 
-        filter(year == 1835) %>% 
-        treemap(
-            index = c("PER_ID", "author_label"),
-            vSize = "n",
-            type = "index",
-            palette = tree_pal,
-            fontsize.labels = c(24, 16),
-            #position.legend = "right",
-            overlap.labels = 1,
-            title = "1835 (N = 269)",
-            fontsize.title = 22
-        )
-
-dev.off()
-```
-
-```{r, eval=FALSE}
-png("plots/treemaps/2-2-2_1836_v2.png", height = 650, width = 600)
-
-authors_sources %>% 
-        filter(year == 1836) %>% 
-        select(PER_ID) %>% distinct() %>% arrange(-desc(PER_ID))
-
-tree_pal <- c(met.brewer("Veronese")[1], # BdCH
-              met.brewer("Veronese")[3], # LPRI
-              met.brewer("Veronese")[4], # SO
-              met.brewer("Veronese")[7], # Sovr
-              met.brewer("Kandinsky")[3]) # Telescop
-
-authors_sources %>% 
-        filter(year == 1836) %>% 
-        treemap(
-            index = c("PER_ID", "author_label"),
-            vSize = "n",
-            type = "index",
-            palette = tree_pal,
-            fontsize.labels = c(24, 16),
-            #position.legend = "right",
-            overlap.labels = 1,
-            title = "1836 (N = 238)",
-            fontsize.title = 22
-        )
-
-dev.off()
-```
-
-```{r, eval=FALSE}
-png("plots/treemaps/2-2-2_1837_v2.png", height = 650, width = 600)
-
-authors_sources %>% 
-        filter(year == 1837) %>% 
-        select(PER_ID) %>% distinct() %>% arrange(-desc(PER_ID))
-
-tree_pal <- c(met.brewer("Veronese")[1], # BdCH
-              met.brewer("Veronese")[3], # LPRI
-              met.brewer("Veronese")[4], # SO
-              met.brewer("Veronese")[7]) # Sovr 
-
-authors_sources %>%
-        filter(year == 1837) %>%
-        treemap(
-            index = c("PER_ID", "author_label"),
-            vSize = "n",
-            type = "index",
-            palette = tree_pal,
-            fontsize.labels = c(24, 16),
-            #position.legend = "right",
-            overlap.labels = 1,
-            title = "1837 (N = 282)",
-            fontsize.title = 22
-        )
-
-dev.off()
-```
-
-```{r, eval=FALSE}
-png("plots/treemaps/2-2-2_1838_v2.png", height = 650, width = 600)
-
-authors_sources %>% 
-        filter(year == 1838) %>% 
-        select(PER_ID) %>% distinct() %>% arrange(-desc(PER_ID))
-
-tree_pal <- c(met.brewer("Veronese")[1], # BdCH
-              met.brewer("Veronese")[3], # LPRI
-              met.brewer("Veronese")[4], # SO
-              met.brewer("Veronese")[7]) # Sovr
-
-authors_sources %>%
-        filter(year == 1838) %>%
-        treemap(
-            index = c("PER_ID", "author_label"),
-            vSize = "n",
-            type = "index",
-            palette = tree_pal,
-            fontsize.labels = c(24, 16),
-            #position.legend = "right",
-            overlap.labels = 1,
-            title = "1838 (N = 288)",
-            fontsize.title = 22
-        )
-
-dev.off()
-```
-
-```{r, eval=FALSE}
-png("plots/treemaps/2-2-2_1839_v2.png", height = 650, width = 600)
-
-authors_sources %>% 
-        filter(year == 1839) %>% 
-        select(PER_ID) %>% distinct() %>% arrange(-desc(PER_ID))
-
-tree_pal <- c(met.brewer("Veronese")[1], # BdCH
-              met.brewer("Veronese")[3], # LPRI
-              met.brewer("Archambault")[2], # OZ
-              met.brewer("Veronese")[4], # SO
-              met.brewer("Veronese")[7]) # Sovr
-
-authors_sources %>%
-        filter(year == 1839) %>%
-        treemap(
-            index = c("PER_ID", "author_label"),
-            vSize = "n",
-            type = "index",
-            palette = tree_pal,
-            fontsize.labels = c(24, 16),
-            #position.legend = "right",
-            overlap.labels = 1,
-            title = "1839 (N = 312)",
-            fontsize.title = 22
-        )
-
-dev.off()
-```
-
-```{r, eval=FALSE}
-png("plots/treemaps/2-2-2_1840_v2.png", height = 700, width = 650)
-
-authors_sources %>% 
-        filter(year == 1840) %>% 
-        select(PER_ID) %>% distinct() %>% arrange(-desc(PER_ID))
-
-tree_pal <- c(met.brewer("Veronese")[1], # BdCH
-              met.brewer("Veronese")[3], # LG
-              met.brewer("Kandinsky")[3], # Mayak
-              met.brewer("Archambault")[2], # OZ
-              met.brewer("Egypt")[2], # PRiVET
-              met.brewer("Veronese")[4], # SO
-              met.brewer("Veronese")[7]) # Sovr
-
-authors_sources %>%
-        filter(year == 1840) %>%
-        treemap(
-            index = c("PER_ID", "author_label"),
-            vSize = "n",
-            type = "index",
-            palette = tree_pal,
-            fontsize.labels = c(24, 16),
-            #position.legend = "right",
-            overlap.labels = 1,
-            title = "1840 (N = 461)",
-            fontsize.title = 22
-        )
-
-dev.off()
-```
-
 ### Authors rotation in journals
 
 ```{r}
@@ -800,6 +516,8 @@ per %>%
 per_names <- c("БдЧ", "ЛПРИ", "СО", "Совр", "ОЗ")
 ```
 
+Author's appearances in a journal yearly
+
 ```{r}
 # per_names
 
@@ -826,6 +544,8 @@ for (i in 1:length(per_names)) {
 
 
 ```
+
+How many authors appeared in a journal only once (=with one poem) in a year
 
 ```{r}
 
@@ -868,6 +588,7 @@ for (i in 1:length(unique(per$year))) {
   
 }
 
+# percentage of onetimers in each journal in each year
 tibble(year = years,
        source = sources,
        perc = perc) %>% 
@@ -875,7 +596,7 @@ tibble(year = years,
   pivot_wider(names_from = year, values_from = perc)
 ```
 
-### Jaccard for total top authors in each source
+### Jaccard's coefficient for total top authors in each source
 
 ```{r}
 
@@ -956,25 +677,6 @@ tibble(sources = sources,
   separate(sources, into = c("s1", "s2"), sep = "__") %>% 
   pivot_wider(names_from = s2, values_from = jaccard) %>% 
   select(s1, БдЧ, ЛПРИ, СО, Совр, ОЗ)
-```
-
-```{r, eval=FALSE}
-tibble(sources = sources, 
-       int =  intersections, 
-       total = total) %>% 
-  mutate(jaccard = round(int/union, 3) ) %>% 
-  select(sources, jaccard) %>% 
-  filter(jaccard != 1) %>% 
-  ggplot(aes(y = jaccard)) + geom_boxplot()
-
-x <- tibble(sources = sources, 
-       int =  intersections, 
-       total = total) %>% 
-  mutate(jaccard = round(int/union, 3) ) %>% 
-  select(sources, jaccard) %>% 
-  filter(jaccard != 1)
-
-summary(x)
 ```
 
 ### LPRI genre titles

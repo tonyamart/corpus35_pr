@@ -4,6 +4,8 @@ format: html
 editor: visual
 ---
 
+This notebook is building the network visualizations with communities shown in Chapter 4.2.
+
 ## load pckg & data
 
 ```{r, warning=FALSE, message=FALSE}

@@ -42,7 +42,7 @@ sources <- text_ids %>%
 rm(text_ids)
 ```
 
-Helpers
+Translation
 
 ```{r}
 meters_transl <- tibble(
@@ -219,13 +219,13 @@ titles <- corpus_1835 %>%
   #filter(word == "е") #%>% 
   #count(word, sort = T) 
 
-# write.csv(titles, "poems_titles.csv") # write to lemmatise
+# write.csv(titles, "../../data/ch3/poems_titles.csv") # write to lemmatise
 ```
 
 Load titles
 
 ```{r}
-titles <- read.csv("poems_titles.csv") %>% select(-X)
+titles <- read.csv("../../data/ch3/poems_titles.csv") %>% select(-X)
 
 head(titles)
 ```
@@ -558,7 +558,7 @@ Some work around texts with multiple genres in the title ("подражание 
 # write.csv(m, "multigenre_texts.csv")
 
 # read the data with normalised genres
-m <- read.delim("multigenre_texts.csv", sep = ';') %>% select(-X)
+m <- read.delim("../../data/ch3/multigenre_texts.csv", sep = ';') %>% select(-X)
 
 glimpse(m)
 ```
@@ -706,8 +706,8 @@ titles %>%
         strip.text = element_text(size = 12)) + 
   labs(x = "", y = "Количество текстов")
 
-ggsave("plots/Fig_3-1-2b.png", plot = last_plot(), dpi = 300,
-       bg = "white", width = 8, height = 6)
+# ggsave("plots/Fig_3-1-2b.png", plot = last_plot(), dpi = 300,
+#        bg = "white", width = 8, height = 6)
 ```
 
 ```{r}
@@ -756,8 +756,8 @@ titles %>%
         strip.text = element_text(size = 12)) + 
   labs(x = "", y = "Количество текстов")
 
-ggsave("plots/bw/Fig_3-1-2b.png", plot = last_plot(), dpi = 300,
-       bg = "white", width = 8, height = 6)
+# ggsave("plots/bw/Fig_3-1-2b.png", plot = last_plot(), dpi = 300,
+#        bg = "white", width = 8, height = 6)
 ```
 
 Elegies in iamb-5

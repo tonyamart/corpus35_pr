@@ -131,10 +131,10 @@ Number of Iamb-4 texts without genre title
 
 ``` r
 # read genre titles
-titles <- read.csv("poems_titles.csv") %>% select(-X)
+titles <- read.csv("../../data/ch3/poems_titles.csv") %>% select(-X)
 
 # read the data with normalised genres
-m <- read.delim("multigenre_texts.csv", sep = ';') %>% select(-X)
+m <- read.delim("../../data/ch3/multigenre_texts.csv", sep = ';') %>% select(-X)
 
 # list of genre words (longer)
 genres <- unlist(str_split(c("песня

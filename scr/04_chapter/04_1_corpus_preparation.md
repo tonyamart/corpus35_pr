@@ -1,5 +1,7 @@
 # 04_1_corpus_preparation
 
+This notebook shows data preparation steps for the experiment in Chapter 4.2.
+
 ## 4.2.1. Corpus preparation
 
 ## load packages

@@ -1,5 +1,5 @@
 ### Repository description and structure
-This repository contains data and code used in the doctoral thesis **'Traditions and Innovations in Russian Poetry of the Second Half of the 1830s: A Quantitative Study'**.  
+This repository contains data and code used in the doctoral thesis ***Traditions and Innovations in Russian Poetry of the Second Half of the 1830s: A Quantitative Study***.  
   
 The structure of the repository is as follows:  
 - `scr`: contains folders for `quarto` or `ipynb` notebooks used for analysis in each chapter. The notebooks can be displayed directly on the Github via `.md` files;  
@@ -25,6 +25,6 @@ Thus, the truth lies somewhere between the contrasting opinions about this perio
 Martynenko, A. (2024). “Unreadable Poems of a Non-Existent Poetess: An Image of a Female Poet in One 19th–Century Hoax”. *Зборник Матице Српске За Славистику*, 2024(105), 31–46. https://doi.org/10.18485/ms_zmss.2024.105.2  
 
 Martynenko, A., & Šeļa, A. (2023). "The fall of genres that did not happen: Formalising history of the ‘universal’ semantics of Russian iambic tetrameter.” *Studia Metrica et Poetica*, 10(2), 89–111. https://doi.org/10.12697/smp.2023.10.2.04  
-  
+
 Martynenko, A. (2023) “Unread, yet preserved: A case study on survival of the 19th-century printed poetry.” *Literatura: teoría, historia, crítica*, 25(2), 192–214. https://doi.org/10.15446/lthc.v25n2.108775  
   

@@ -5,7 +5,7 @@ account: tonyamart
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 9592015
-bundleId: 7558054
+bundleId: 9036231
 url: https://tonyamart.shinyapps.io/corpus_1835/
 version: 1
 asMultiple: FALSE

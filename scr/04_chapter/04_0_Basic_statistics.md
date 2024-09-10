@@ -26,13 +26,15 @@ library(tidyverse)
     ℹ Use the conflicted package (<http://conflicted.r-lib.org/>) to force all conflicts to become errors
 
 ``` r
+theme_set(theme_minimal())
+
 corpus_1835 <- readRDS("../../data/corpus1835/corpus_1835.Rds")
 
 glimpse(corpus_1835)
 ```
 
-    Rows: 4,799
-    Columns: 20
+    Rows: 4,797
+    Columns: 21
     $ text_id       <chr> "P_1", "P_10", "P_100", "P_1000", "P_1001", "P_1002", "P…
     $ A_ID          <chr> "", "A-50", "A-7", "A-41", "A-139", "A-11", "A-163", "A-…
     $ author_sign   <chr> "", "Л. Якубович", "Кольцов", "Ф. Глинка", "Н. Прокопови…
@@ -53,6 +55,7 @@ glimpse(corpus_1835)
     $ feet          <chr> "?", "3", "4", "4", "4", "4", "?", "4", "6", "5", "4", "…
     $ formula       <chr> "Other_?", "Iamb_3", "Iamb_4", "Iamb_4", "Trochee_4", "I…
     $ n_lines       <int> 38, 16, 98, 77, 28, 12, 44, 25, 31, 28, 100, 16, 17, 60,…
+    $ feet_short    <chr> "other", "3", "4", "4", "4", "4", "other", "4", "6", "5"…
 
 A small notebook counting number of poems of different meters
 
@@ -72,7 +75,7 @@ n_texts_col <- corpus_1835 %>% filter(corpus == "col") %>% nrow()
 n_texts_col
 ```
 
-    [1] 2894
+    [1] 2892
 
 ``` r
 # total number of texts
@@ -80,7 +83,7 @@ n_texts_total <- corpus_1835 %>% nrow()
 n_texts_total
 ```
 
-    [1] 4799
+    [1] 4797
 
 ### meters
 
@@ -96,7 +99,7 @@ meters_total
       meter          n  perc
       <chr>      <int> <dbl>
     1 Iamb        3085  64.3
-    2 Trochee      778  16.2
+    2 Trochee      776  16.2
     3 Amphibrach   369   7.7
     4 Other        350   7.3
     5 Anapest      138   2.9
@@ -137,8 +140,8 @@ meters_b
     # A tibble: 6 × 3
       meter          n  perc
       <chr>      <int> <dbl>
-    1 Iamb        1972  68.1
-    2 Trochee      433  15  
+    1 Iamb        1972  68.2
+    2 Trochee      431  14.9
     3 Amphibrach   202   7  
     4 Other        160   5.5
     5 Anapest       71   2.5
@@ -158,7 +161,7 @@ corpus_1835 %>%
        <chr>            <int>
      1 Iamb_4            1515
      2 Iamb_v             712
-     3 Trochee_4          676
+     3 Trochee_4          674
      4 Iamb_6             380
      5 Other_?            350
      6 Iamb_5             254
@@ -204,7 +207,7 @@ formula_total
      1 Iamb_4         1515  31.6
      2 Other           801  16.7
      3 Iamb_v          712  14.8
-     4 Trochee_4       676  14.1
+     4 Trochee_4       674  14.1
      5 Iamb_6          380   7.9
      6 Iamb_5          254   5.3
      7 Amphibrach_4    213   4.4
@@ -258,7 +261,7 @@ formula_col
      1 Iamb_4          975  33.7
      2 Iamb_v          467  16.1
      3 Other           417  14.4
-     4 Trochee_4       383  13.2
+     4 Trochee_4       381  13.2
      5 Iamb_6          226   7.8
      6 Iamb_5          145   5  
      7 Amphibrach_4    112   3.9
@@ -267,6 +270,118 @@ formula_col
     10 Amphibrach_43    29   1  
     11 Amphibrach_3     20   0.7
     12 Anapest_2        15   0.5
+
+#### dynamics btw 1835 and 1840
+
+Percentage of meters in different years
+
+Total
+
+``` r
+year_total <- corpus_1835 %>% 
+  count(year) %>% 
+  rename(year_n = n)
+
+corpus_1835 %>% 
+  filter(meter == "Iamb") %>% 
+  count(year) %>% 
+  left_join(year_total, by = "year") %>% 
+  mutate(perc_year = n/year_n * 100) 
+```
+
+    # A tibble: 6 × 4
+      year      n year_n perc_year
+      <chr> <int>  <int>     <dbl>
+    1 1835    806   1110      72.6
+    2 1836    580    844      68.7
+    3 1837    465    747      62.2
+    4 1838    492    766      64.2
+    5 1839    307    537      57.2
+    6 1840    435    793      54.9
+
+``` r
+corpus_1835 %>% 
+  group_by(meter, year) %>% 
+  count() %>% 
+  ungroup() %>% 
+  left_join(year_total, by = "year") %>% 
+  mutate(perc_year = n/year_n * 100) %>% 
+  ggplot(aes(x = year, y = perc_year, colour = meter, group = meter)) + 
+  geom_line() + facet_wrap(~meter)
+```
+
+![](04_0_Basic_statistics.markdown_strict_files/figure-markdown_strict/unnamed-chunk-11-1.png)
+
+In periodicals and collections separately
+
+``` r
+year_type_n <- corpus_1835 %>% 
+  group_by(year, corpus) %>% 
+  count() %>% 
+  ungroup() %>% 
+  mutate(year_corpus = paste0(year, "_", corpus)) %>% 
+  rename(year_n = n) %>% 
+  select(-year, -corpus)
+
+year_type_n
+```
+
+    # A tibble: 12 × 2
+       year_n year_corpus
+        <int> <chr>      
+     1    786 1835_col   
+     2    324 1835_per   
+     3    583 1836_col   
+     4    261 1836_per   
+     5    478 1837_col   
+     6    269 1837_per   
+     7    478 1838_col   
+     8    288 1838_per   
+     9    235 1839_col   
+    10    302 1839_per   
+    11    332 1840_col   
+    12    461 1840_per   
+
+``` r
+corpus_1835 %>% 
+  #filter(meter == "Iamb") %>% 
+  count(meter, year, corpus) %>% 
+  mutate(year_corpus = paste0(year, "_", corpus)) %>% 
+  left_join(year_type_n, by = "year_corpus") %>% 
+  select(-year_corpus) %>% 
+  mutate(perc_year = n/year_n * 100) %>% 
+  ggplot(aes(x = year, y = perc_year, colour = corpus, group = corpus)) + 
+  geom_line() + facet_wrap(~meter)
+```
+
+![](04_0_Basic_statistics.markdown_strict_files/figure-markdown_strict/unnamed-chunk-12-1.png)
+
+``` r
+corpus_1835 %>% 
+  filter(meter == "Iamb") %>% 
+  count(meter, year, corpus) %>% 
+  mutate(year_corpus = paste0(year, "_", corpus)) %>% 
+  left_join(year_type_n, by = "year_corpus") %>% 
+  select(-year_corpus) %>% 
+  mutate(perc_year = n/year_n * 100) %>% 
+  arrange(desc(corpus))
+```
+
+    # A tibble: 12 × 6
+       meter year  corpus     n year_n perc_year
+       <chr> <chr> <chr>  <int>  <int>     <dbl>
+     1 Iamb  1835  per      208    324      64.2
+     2 Iamb  1836  per      183    261      70.1
+     3 Iamb  1837  per      145    269      53.9
+     4 Iamb  1838  per      177    288      61.5
+     5 Iamb  1839  per      166    302      55.0
+     6 Iamb  1840  per      234    461      50.8
+     7 Iamb  1835  col      598    786      76.1
+     8 Iamb  1836  col      397    583      68.1
+     9 Iamb  1837  col      320    478      66.9
+    10 Iamb  1838  col      315    478      65.9
+    11 Iamb  1839  col      141    235      60  
+    12 Iamb  1840  col      201    332      60.5
 
 ## RNC
 

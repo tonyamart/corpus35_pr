@@ -20,8 +20,8 @@ corpus_1835 <- readRDS("../../data/corpus1835/corpus_1835.Rds")
 glimpse(corpus_1835)
 ```
 
-    Rows: 4,799
-    Columns: 20
+    Rows: 4,797
+    Columns: 21
     $ text_id       <chr> "P_1", "P_10", "P_100", "P_1000", "P_1001", "P_1002", "P…
     $ A_ID          <chr> "", "A-50", "A-7", "A-41", "A-139", "A-11", "A-163", "A-…
     $ author_sign   <chr> "", "Л. Якубович", "Кольцов", "Ф. Глинка", "Н. Прокопови…
@@ -42,6 +42,7 @@ glimpse(corpus_1835)
     $ feet          <chr> "?", "3", "4", "4", "4", "4", "?", "4", "6", "5", "4", "…
     $ formula       <chr> "Other_?", "Iamb_3", "Iamb_4", "Iamb_4", "Trochee_4", "I…
     $ n_lines       <int> 38, 16, 98, 77, 28, 12, 44, 25, 31, 28, 100, 16, 17, 60,…
+    $ feet_short    <chr> "other", "3", "4", "4", "4", "4", "other", "4", "6", "5"…
 
 Read full metadata with books & periodicals titles to count sources
 
@@ -85,7 +86,7 @@ Corpus overview in terms of poems’ length and sizes of subcorpora
 print(paste0("Number of poems: ", nrow(corpus_1835)))
 ```
 
-    [1] "Number of poems: 4799"
+    [1] "Number of poems: 4797"
 
 ``` r
 print(paste0("Number of poems in periodicals: ", table(corpus_1835$corpus)[2]))
@@ -97,7 +98,7 @@ print(paste0("Number of poems in periodicals: ", table(corpus_1835$corpus)[2]))
 print(paste0( "Number of poems in collections: ", table(corpus_1835$corpus)[1]))
 ```
 
-    [1] "Number of poems in collections: 2894"
+    [1] "Number of poems in collections: 2892"
 
 ``` r
 print("Number of lines:")
@@ -112,7 +113,7 @@ corpus_1835 %>%
   filter(text_raw != "") %>% nrow()
 ```
 
-    [1] 192157
+    [1] 192109
 
 ``` r
 corpus_1835 %>% 
@@ -126,7 +127,7 @@ corpus_1835 %>%
     # A tibble: 2 × 2
       corpus      n
       <chr>   <int>
-    1 col    120141
+    1 col    120093
     2 per     71541
 
 ``` r
@@ -143,7 +144,7 @@ corpus_1835 %>%
   nrow()
 ```
 
-    [1] 881088
+    [1] 880922
 
 ``` r
 corpus_1835 %>% 
@@ -156,7 +157,7 @@ corpus_1835 %>%
     # A tibble: 2 × 2
       corpus      n
       <chr>   <int>
-    1 col    549576
+    1 col    549410
     2 per    331512
 
 ``` r
@@ -245,7 +246,7 @@ tokens %>%
 sum(tokens$n)
 ```
 
-    [1] 881120
+    [1] 880954
 
 ## authors’ subcorpora
 
@@ -632,7 +633,7 @@ n_corpus
     # A tibble: 2 × 2
       corpus total
       <chr>  <int>
-    1 C       2894
+    1 C       2892
     2 P       1905
 
 ### genre titles
@@ -809,7 +810,7 @@ titles %>%
 ```
 
          n     perc
-    1 1252 26.08877
+    1 1252 26.09965
 
 ``` r
 # same % but divided for periodicals and collections
@@ -823,7 +824,7 @@ titles %>%
 ```
 
       corpus   n total     perc
-    1      C 663  2894 22.90947
+    1      C 663  2892 22.92531
     2      P 589  1905 30.91864
 
 ``` r
@@ -839,7 +840,7 @@ titles %>%
 ```
 
       corpus   n total     perc
-    1      C 657  2894 22.70214
+    1      C 657  2892 22.71784
     2      P 513  1905 26.92913
 
 ``` r
@@ -861,7 +862,7 @@ titles %>%
      4 сонет     1.57  1.76
      5 элегия    1.52  1.52
      6 послание  0.31  1.28
-     7 альбом    1     1.17
+     7 альбом    1     1.18
      8 дума      1.63  0.73
      9 песнь     1.47  1.04
     10 баллада   1.52  0.55
@@ -947,15 +948,7 @@ p2 <- titles %>%
         strip.text = element_text(size = 12),
         legend.position = "bottom") + 
   labs(x = "", y = "Количество текстов", fill = "") 
-```
 
-    Warning in left_join(., corpus_1835 %>% select(text_id, year), by = "text_id"): Detected an unexpected many-to-many relationship between `x` and `y`.
-    ℹ Row 9189 of `x` matches multiple rows in `y`.
-    ℹ Row 1 of `y` matches multiple rows in `x`.
-    ℹ If a many-to-many relationship is expected, set `relationship =
-      "many-to-many"` to silence this warning.
-
-``` r
 p2
 ```
 
@@ -976,15 +969,7 @@ p2_bw <- titles %>%
         strip.text = element_text(size = 12),
         legend.position = "bottom") + 
   labs(x = "", y = "Количество текстов", fill = "") 
-```
 
-    Warning in left_join(., corpus_1835 %>% select(text_id, year), by = "text_id"): Detected an unexpected many-to-many relationship between `x` and `y`.
-    ℹ Row 9189 of `x` matches multiple rows in `y`.
-    ℹ Row 1 of `y` matches multiple rows in `x`.
-    ℹ If a many-to-many relationship is expected, set `relationship =
-      "many-to-many"` to silence this warning.
-
-``` r
 p2_bw
 ```
 
@@ -1093,17 +1078,17 @@ corpus_1835 %>%
   filter(text_id %in% c("P_1190", "P_1191", "P_1794", "P_1795"))
 ```
 
-    # A tibble: 4 × 20
+    # A tibble: 4 × 21
       text_id A_ID  author_sign      author_text text_title text_subtitle first_line
       <chr>   <chr> <chr>            <chr>       <chr>      <chr>         <chr>     
     1 P_1190  "A-7" А. Кольцов       Кольцов А.… ""         Две русские … Греет сол…
     2 P_1191  "A-7" А. Кольцов       Кольцов А.… ""         Две русские … Без ума, …
     3 P_1794  ""    Крестьянин Ав. … Крестьянин… ""         Хороводные п… Как под б…
     4 P_1795  ""    Крестьянин Ав. … Крестьянин… ""         Хороводные п… Вдоль по …
-    # ℹ 13 more variables: year <chr>, path_text <chr>, source_text <chr>,
+    # ℹ 14 more variables: year <chr>, path_text <chr>, source_text <chr>,
     #   COL_ID <chr>, corpus <chr>, text_raw <chr>, text_cln <chr>,
     #   text_lemm <chr>, text_acc <chr>, meter <chr>, feet <chr>, formula <chr>,
-    #   n_lines <int>
+    #   n_lines <int>, feet_short <chr>
 
 ### Figure 3-1-2-A: genre and meters
 
@@ -1675,7 +1660,7 @@ titles %>%
 ```
 
          n     perc
-    1 1138 23.71327
+    1 1138 23.72316
 
 ``` r
 # same % but divided for periodicals and collections
@@ -1689,7 +1674,7 @@ titles %>%
 ```
 
       corpus   n total     perc
-    1      C 665  2894 22.97858
+    1      C 665  2892 22.99447
     2      P 473  1905 24.82940
 
 ``` r
@@ -1885,7 +1870,7 @@ titles %>%
 ```
 
         n     perc
-    1 114 2.375495
+    1 114 2.376485
 
 ``` r
 # same % but divided for periodicals and collections
@@ -1899,7 +1884,7 @@ titles %>%
 ```
 
       corpus  n total     perc
-    1      C 56  2894 1.935038
+    1      C 56  2892 1.936376
     2      P 58  1905 3.044619
 
 ``` r
@@ -1944,8 +1929,8 @@ titles %>%
   mutate(perc = n/nrow(corpus_1835)*100)
 ```
 
-        n   perc
-    1 146 3.0423
+        n     perc
+    1 146 3.043569
 
 ``` r
 # same % but divided for periodicals and collections
@@ -1959,7 +1944,7 @@ titles %>%
 ```
 
       corpus   n total     perc
-    1      C  39  2894 1.347616
+    1      C  39  2892 1.348548
     2      P 107  1905 5.616798
 
 ``` r

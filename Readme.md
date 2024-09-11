@@ -8,6 +8,8 @@ The structure of the repository is as follows:
   
 **NB** An online user-friendly version of the corpus (with all metadata & bibliographies) is available online as a [shiny-app](https://tonyamart.shinyapps.io/corpus_1835/).  
   
+[![DOI](https://zenodo.org/badge/489143245.svg)](https://zenodo.org/doi/10.5281/zenodo.13749559)  
+  
 ------------------------------------------------------
   
 ### Abstract  
